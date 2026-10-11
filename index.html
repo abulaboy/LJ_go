@@ -46,6 +46,7 @@ canvas#c{display:block;width:100%;height:100%;outline:none}
 #pick p{margin:0 0 12px;font-size:13px;line-height:1.6;color:var(--muted)}
 #pickList{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
 .pickb{text-align:left;padding:10px 12px;font-size:14px}.pickb:disabled{opacity:.5;cursor:not-allowed}
+#voiceB{position:absolute;left:20px;bottom:calc(150px + env(safe-area-inset-bottom,0px));width:60px;height:60px;padding:0;border-radius:50%;box-shadow:0 2px 10px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:var(--ink)}#voiceB[hidden]{display:none}#voiceB svg{width:30px;height:30px}@media (hover:hover) and (pointer:fine){#voiceB{bottom:calc(24px + env(safe-area-inset-bottom,0px))}}#voiceB.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}#voiceB.listen{border-color:var(--accent);color:var(--accent)}#voiceB.off{color:var(--muted)}
 #netB{border-color:var(--accent);color:var(--accent);font-weight:700}
 </style>
 
@@ -61,8 +62,9 @@ canvas#c{display:block;width:100%;height:100%;outline:none}
   <div id="prompt" class="panel" hidden></div>
   <div id="stick"><div id="knob"></div></div>
   <button id="swap" class="btn" type="button">換人（Q）</button>
-  <div id="tools"><button id="netB" class="tbtn" type="button">線上：準備中</button><button id="jumpB" class="tbtn" type="button">跳（空白鍵）</button><button id="dressB" class="tbtn" type="button">換衣服（C）</button><button id="runB" class="tbtn" type="button">快跑：關（Shift）</button><button id="dayB" class="tbtn" type="button">切換夜晚（N）</button><button id="followB" class="tbtn" type="button">跟著走：關（F）</button><button id="resetB" class="tbtn" type="button">卡住了？重置（R）</button><button id="voiceB" class="tbtn" type="button" hidden>語音：關（T）</button><button id="flyB" class="tbtn" type="button">小飛碟：關（V）</button><button id="flyUp" class="tbtn" type="button" hidden>上升（空白鍵）</button><button id="flyDn" class="tbtn" type="button" hidden>下降（X）</button></div>
+  <div id="tools"><button id="netB" class="tbtn" type="button">線上：準備中</button><button id="jumpB" class="tbtn" type="button">跳（空白鍵）</button><button id="dressB" class="tbtn" type="button">換衣服（C）</button><button id="runB" class="tbtn" type="button">快跑：關（Shift）</button><button id="dayB" class="tbtn" type="button">切換夜晚（N）</button><button id="followB" class="tbtn" type="button">跟著走：關（F）</button><button id="resetB" class="tbtn" type="button">卡住了？重置（R）</button><button id="flyB" class="tbtn" type="button">小飛碟：關（V）</button><button id="flyUp" class="tbtn" type="button" hidden>上升（空白鍵）</button><button id="flyDn" class="tbtn" type="button" hidden>下降（X）</button></div>
   <button id="act" class="btn" type="button">互動</button>
+  <button id="voiceB" class="tbtn" type="button" hidden aria-label="語音：關（T）" title="語音：關（T）"></button>
   <div id="pick" class="panel" hidden role="dialog" aria-label="選擇你的角色"><h2>選擇你的角色</h2><p>大家打開同一個網址就會在同一個空間。每個人選一位家人，別人選走的就不能選。</p><label id="nickRow" hidden style="display:block;margin:0 0 10px;font-size:13px;color:var(--muted)">你的名字（顯示在角色頭上）<input id="nick" maxlength="12" autocomplete="nickname" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font:500 15px var(--body)"></label><div id="pickList"></div><button id="pickClose" class="tbtn" type="button">先不選，繼續看</button></div>
 </div>
 
@@ -2315,7 +2317,13 @@ function makeMqRoom(roomName,getName,onName){
 const VO={on:false,stream:null,pcs:new Map(),els:new Map(),fail:{},t:0,btn:document.getElementById('voiceB')};
 const VO_ICE=[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'}];
 window.__voOn=()=>VO.on;
-function voBtn(){VO.btn.textContent='語音：'+(VO.on?(VO.stream?'開':'只聽'):'關')+'（T）';VO.btn.style.borderColor=VO.on?'var(--accent)':'';}
+const VO_ICON={
+  on:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/><path d="M8.5 21h7"/></svg>',
+  off:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/><path d="M8.5 21h7"/><path d="M3.5 3.5l17 17" stroke-width="2.4"/></svg>',
+  listen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4.5" height="6.5" rx="1.5" fill="currentColor"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="1.5" fill="currentColor"/></svg>'};
+function voBtn(){const st=VO.on?(VO.stream?'on':'listen'):'off',lb='語音：'+{on:'開',listen:'只聽',off:'關'}[st]+'（T）';
+  VO.btn.innerHTML=VO_ICON[st];VO.btn.className='tbtn '+st;VO.btn.setAttribute('aria-label',lb);VO.btn.title=lb;VO.btn.setAttribute('aria-pressed',VO.on?'true':'false');}
+voBtn();
 function voEl(pid){let el=VO.els.get(pid);if(!el){el=document.createElement('audio');el.autoplay=true;el.setAttribute('playsinline','');el.playsInline=true;document.body.appendChild(el);VO.els.set(pid,el);}return el;}
 function voPlayAll(){VO.els.forEach(el=>{if(el.srcObject&&el.paused)el.play().catch(()=>{});});}
 window.addEventListener('pointerdown',()=>{if(VO.on)voPlayAll();});
