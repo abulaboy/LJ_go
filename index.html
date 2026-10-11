@@ -54,14 +54,14 @@ canvas#c{display:block;width:100%;height:100%;outline:none}
   <div id="info" class="panel">
     <h1>家裡走走</h1>
     <p>格局依掃地機器人地圖，每個房間都照你拍的照片布置。</p>
-    <p class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動　<kbd>E</kbd> 互動　<kbd>空白</kbd> 跳　<kbd>C</kbd> 換衣服　<kbd>Q</kbd> 換人　<kbd>F</kbd> 跟隨　<kbd>Shift</kbd> 快跑　<kbd>N</kbd> 日夜　<kbd>V</kbd> 小飛碟（飛行時 <kbd>空白</kbd> 上升、<kbd>X</kbd> 下降）　靠近另一人按 <kbd>E</kbd> 打屁股　<kbd>R</kbd> 重置　拖曳轉視角　滾輪縮放</p>
+    <p class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動　<kbd>E</kbd> 互動　<kbd>空白</kbd> 跳　<kbd>C</kbd> 換衣服　<kbd>Q</kbd> 換人　<kbd>F</kbd> 跟隨　<kbd>Shift</kbd> 快跑　<kbd>N</kbd> 日夜　<kbd>T</kbd> 語音（自架版）　<kbd>V</kbd> 小飛碟（飛行時 <kbd>空白</kbd> 上升、<kbd>X</kbd> 下降）　靠近另一人按 <kbd>E</kbd> 打屁股　<kbd>R</kbd> 重置　拖曳轉視角　滾輪縮放</p>
   </div>
   <div id="map" class="panel"><canvas id="mini" width="234" height="320"></canvas><div id="room">走廊</div></div>
   <div id="toast" class="panel" hidden></div>
   <div id="prompt" class="panel" hidden></div>
   <div id="stick"><div id="knob"></div></div>
   <button id="swap" class="btn" type="button">換人（Q）</button>
-  <div id="tools"><button id="netB" class="tbtn" type="button">線上：準備中</button><button id="jumpB" class="tbtn" type="button">跳（空白鍵）</button><button id="dressB" class="tbtn" type="button">換衣服（C）</button><button id="runB" class="tbtn" type="button">快跑：關（Shift）</button><button id="dayB" class="tbtn" type="button">切換夜晚（N）</button><button id="followB" class="tbtn" type="button">跟著走：關（F）</button><button id="resetB" class="tbtn" type="button">卡住了？重置（R）</button><button id="flyB" class="tbtn" type="button">小飛碟：關（V）</button><button id="flyUp" class="tbtn" type="button" hidden>上升（空白鍵）</button><button id="flyDn" class="tbtn" type="button" hidden>下降（X）</button></div>
+  <div id="tools"><button id="netB" class="tbtn" type="button">線上：準備中</button><button id="jumpB" class="tbtn" type="button">跳（空白鍵）</button><button id="dressB" class="tbtn" type="button">換衣服（C）</button><button id="runB" class="tbtn" type="button">快跑：關（Shift）</button><button id="dayB" class="tbtn" type="button">切換夜晚（N）</button><button id="followB" class="tbtn" type="button">跟著走：關（F）</button><button id="resetB" class="tbtn" type="button">卡住了？重置（R）</button><button id="voiceB" class="tbtn" type="button" hidden>語音：關（T）</button><button id="flyB" class="tbtn" type="button">小飛碟：關（V）</button><button id="flyUp" class="tbtn" type="button" hidden>上升（空白鍵）</button><button id="flyDn" class="tbtn" type="button" hidden>下降（X）</button></div>
   <button id="act" class="btn" type="button">互動</button>
   <div id="pick" class="panel" hidden role="dialog" aria-label="選擇你的角色"><h2>選擇你的角色</h2><p>大家打開同一個網址就會在同一個空間。每個人選一位家人，別人選走的就不能選。</p><label id="nickRow" hidden style="display:block;margin:0 0 10px;font-size:13px;color:var(--muted)">你的名字（顯示在角色頭上）<input id="nick" maxlength="12" autocomplete="nickname" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font:500 15px var(--body)"></label><div id="pickList"></div><button id="pickClose" class="tbtn" type="button">先不選，繼續看</button></div>
 </div>
@@ -2083,7 +2083,7 @@ function flyStep(dt,ix,iy,moving,run){const up=(keys[' ']?1:0)-(keys.x?1:0);
 const keys={};
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();
   if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
-  if(k==='e'&&!e.repeat)interact();if(k===' '&&!e.repeat&&!FLY.on)jump();if(k==='v'&&!e.repeat)toggleFly();if(k==='c'&&!e.repeat)changeClothes();if(k==='r'&&!e.repeat)resetKids();if(k==='f'&&!e.repeat)toggleFollow();if(k==='n'&&!e.repeat)toggleDay();if(k==='b'&&!e.repeat&&!sitting)spank();if(k==='q'&&!e.repeat)swap();keys[k]=true;});
+  if(k==='e'&&!e.repeat)interact();if(k===' '&&!e.repeat&&!FLY.on)jump();if(k==='v'&&!e.repeat)toggleFly();if(k==='t'&&!e.repeat&&window.__voToggle)window.__voToggle();if(k==='c'&&!e.repeat)changeClothes();if(k==='r'&&!e.repeat)resetKids();if(k==='f'&&!e.repeat)toggleFollow();if(k==='n'&&!e.repeat)toggleDay();if(k==='b'&&!e.repeat&&!sitting)spank();if(k==='q'&&!e.repeat)swap();keys[k]=true;});
 document.getElementById('jumpB').addEventListener('click',jump);document.getElementById('dressB').addEventListener('click',changeClothes);document.getElementById('resetB').addEventListener('click',resetKids);
 function toggleFollow(){followOn=!followOn;document.getElementById('followB').textContent='跟著走：'+(followOn?'開':'關')+'（F）';say(followOn?'另一個人會跟著走':'兩個人各自走');canvas.focus();}document.getElementById('followB').addEventListener('click',toggleFollow);
 function applyDay(){window.__envDirty=true;(window.__mirrors||[]).forEach(m=>m.n=0);const c=skyTex.image,g=c.getContext('2d');if(!drawCity(g,c.width,c.height,isDay)){g.clearRect(0,0,c.width,c.height);drawNight(g,c.width,c.height);}skyTex.needsUpdate=true;['__pano','__pano2','__pano3'].forEach(k=>{if(window[k])window[k].needsUpdate=true;});
@@ -2244,7 +2244,7 @@ function pickF(){if(!F||F===A||F.remote){const c=kids.find(k=>k!==A&&!k.remote);
 function sendPresence(force){if(!NET.on)return;const now=performance.now();if(!force&&now-NET.sendT<60)return;NET.sendT=now;
   if(now-NET.stT>2000){NET.stT=now;NET.sig=stateSig();}
   const p={c:NET.mine,j:NET.j,x:+A.pos.x.toFixed(2),z:+A.pos.z.toFixed(2),h:+A.heading.toFixed(2),y:+(A.jh||0).toFixed(2),s:sitting?+sitting.h.toFixed(2):0,o:A.outfit,st:NET.sig};
-  if(NET.act)p.a=NET.act;NET.room.presence(p).catch(()=>{});}
+  if(NET.act)p.a=NET.act;if(window.__voOn&&window.__voOn())p.v=1;NET.room.presence(p).catch(()=>{});}
 function lateSync(){if(NET.synced)return;const others=NET.peers.filter(p=>!p.isMe&&p.kind==='viewer'&&p.presence&&p.presence.st);if(!others.length)return;
   NET.synced=true;const src=others.reduce((a,b)=>(a.presence.j||0)<=(b.presence.j||0)?a:b);if((src.presence.j||0)>NET.j)return;const st=src.presence.st;
   for(let i=0;i<things.length&&i<st.length;i++){if(st[i]==='-')continue;const t=things[i];for(let k=0;k<4;k++){const l=t.label();if(!l||NOSHARE.test(l)||sigChar(t)===st[i])break;runRemote(i,null);}}
@@ -2262,11 +2262,11 @@ function netTick(dt){if(!NET.on)return;NET.peers=NET.room.peers();const cl=claim
       let dh=(+pr.h||0)-k.heading;while(dh>Math.PI)dh-=Math.PI*2;while(dh<-Math.PI)dh+=Math.PI*2;k.heading+=dh*Math.min(1,dt*12);
       k.rmv=d>0.02&&!(pr.s>0);if(k.rmv)k.walkT+=dt*Math.min(3,d/Math.max(dt,0.016))*5.2;
       k.seat=pr.s>0?{h:+pr.s}:null;k.jh=Math.max(0,+pr.y||0);k.jv=0;if(typeof pr.o==='number'&&pr.o!==k.outfit&&OUTFITS[pr.o])dress(k,pr.o);
-      tagFor(k,k.name+'・'+nameOf(p));k.tag.position.set(k.pos.x,(k.seat?k.seat.h+0.95:1.75)*(k.sc||1)+k.jh,k.pos.z);}
+      tagFor(k,k.name+'・'+nameOf(p)+(p.presence&&p.presence.v?' 🎤':''));k.tag.position.set(k.pos.x,(k.seat?k.seat.h+0.95:1.75)*(k.sc||1)+k.jh,k.pos.z);}
     else{if(k.remote){k.remote=false;k.rmv=false;k.seat=null;}if(k.tag)k.tag.visible=false;}});
   pickF();if(!pickEl.hidden)renderPicker();
   const n=NET.peers.filter(p=>p.kind==='viewer').length;netBtn.textContent='選角色（線上 '+n+' 人）';
-  sendPresence(false);}
+  sendPresence(false);if(typeof voTick==='function')voTick(dt);}
 function netStatus(t){netBtn.hidden=false;netBtn.textContent=t;}
 function netGoOnline(){if(NET.on)return;NET.on=true;pickEl.hidden=false;renderPicker();sendPresence(true);setTimeout(lateSync,2500);}
 // ---------- 自架版（不在 claude.ai 裡打開時）：用公開的 MQTT 中繼站同步，不用登入 ----------
@@ -2280,7 +2280,7 @@ function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 function loadScript(src){return new Promise((ok,no)=>{if(window.mqtt)return ok();const s=document.createElement('script');s.src=src;s.onload=()=>ok();s.onerror=()=>no(new Error('load'));document.head.appendChild(s);});}
 function makeMqRoom(roomName,getName,onName){
   const id=(Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4));
-  const topic='jiazou/v1/'+roomName+'/p',bye='jiazou/v1/'+roomName+'/bye';
+  const topic='jiazou/v1/'+roomName+'/p',bye='jiazou/v1/'+roomName+'/bye',sigP='jiazou/v1/'+roomName+'/s/';let sigCb=null,sigN=0;const seenSig=new Set();
   const peers=new Map(),me={peer:id,by:id,isMe:true,sameTab:true,kind:'viewer',guest:false,presence:{}};
   let seq=0,lastT=0,lastStr='',connCb=null,failCb=null,peersCb=null,up=0,dead=0;const cl=[];
   const list=()=>[me].concat([...peers.values()].map(p=>({peer:p.peer,by:p.peer,isMe:false,sameTab:false,kind:'viewer',guest:false,presence:p.presence})));
@@ -2291,6 +2291,7 @@ function makeMqRoom(roomName,getName,onName){
   function onMsg(tp,buf){let d;try{d=JSON.parse(typeof buf==='string'?buf:new TextDecoder().decode(buf));}catch(e){return;}
     if(!d||typeof d!=='object'||typeof d.id!=='string'||d.id===id||d.id.length>24)return;
     if(tp===bye){if(peers.delete(d.id))tell();return;}
+    if(tp.indexOf(sigP)===0){if(tp!==sigP+id||typeof d.mid!=='string'||seenSig.has(d.mid))return;seenSig.add(d.mid);if(seenSig.size>400)seenSig.clear();if(sigCb&&d.m&&typeof d.m==='object')sigCb(d.id,d.m);return;}
     const old=peers.get(d.id),t=+d.t||0;if(old&&t<=old.t)return;// 兩個中繼站會收到同一則，舊的丟掉
     const pr=(d.p&&typeof d.p==='object')?d.p:{};peers.set(d.id,{peer:d.id,presence:pr,last:Date.now(),t});
     if(typeof d.nm==='string')onName(d.id,d.nm.slice(0,12));
@@ -2307,13 +2308,55 @@ function makeMqRoom(roomName,getName,onName){
   window.addEventListener('pagehide',leave);
   setTimeout(()=>{if(!up&&failCb)failCb({code:'unreachable'});},12000);
   return {presence(p){me.presence=p||{};pub(false);return Promise.resolve();},peers:list,connected:()=>up>0,
-    onConnection(cb,fail){connCb=cb;failCb=fail;if(up)cb(true);},onPeers(cb){peersCb=cb;},roomName};}
+    onConnection(cb,fail){connCb=cb;failCb=fail;if(up)cb(true);},onPeers(cb){peersCb=cb;},roomName,myId:id,
+    signal(to,m){const msg=JSON.stringify({id,mid:id+'.'+(++sigN),m});cl.forEach(c=>{if(c.connected)try{c.publish(sigP+to,msg,{qos:0});}catch(e){}});},onSignal(cb){sigCb=cb;}};}
+
+// ---------- 語音通話（自架版）：用 WebRTC 點對點傳聲音，訊號經 MQTT 交換；離得越近聲音越大 ----------
+const VO={on:false,stream:null,pcs:new Map(),els:new Map(),fail:{},t:0,btn:document.getElementById('voiceB')};
+const VO_ICE=[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'}];
+window.__voOn=()=>VO.on;
+function voBtn(){VO.btn.textContent='語音：'+(VO.on?(VO.stream?'開':'只聽'):'關')+'（T）';VO.btn.style.borderColor=VO.on?'var(--accent)':'';}
+function voEl(pid){let el=VO.els.get(pid);if(!el){el=document.createElement('audio');el.autoplay=true;el.setAttribute('playsinline','');el.playsInline=true;document.body.appendChild(el);VO.els.set(pid,el);}return el;}
+function voPlayAll(){VO.els.forEach(el=>{if(el.srcObject&&el.paused)el.play().catch(()=>{});});}
+window.addEventListener('pointerdown',()=>{if(VO.on)voPlayAll();});
+function voPc(pid){let o=VO.pcs.get(pid);if(o)return o;const pc=new RTCPeerConnection({iceServers:VO_ICE});o={pc,pid,q:[]};VO.pcs.set(pid,o);
+  if(VO.stream)VO.stream.getTracks().forEach(t=>pc.addTrack(t,VO.stream));else pc.addTransceiver('audio',{direction:'recvonly'});
+  pc.onicecandidate=e=>{if(e.candidate&&NET.room)NET.room.signal(pid,{k:'ice',c:e.candidate.toJSON()});};
+  pc.ontrack=e=>{const el=voEl(pid);el.srcObject=(e.streams&&e.streams[0])||new MediaStream([e.track]);el.play().catch(()=>say('點一下畫面就能聽到其他人的聲音'));};
+  pc.onconnectionstatechange=()=>{const st=pc.connectionState;if(st==='failed'||st==='closed'){voClose(pid);VO.fail[pid]=Date.now();}};
+  return o;}
+function voClose(pid){const o=VO.pcs.get(pid);if(o){VO.pcs.delete(pid);try{o.pc.close();}catch(e){}}const el=VO.els.get(pid);if(el){el.srcObject=null;el.remove();VO.els.delete(pid);}}
+async function voFlush(o){const q=o.q;o.q=[];for(const c of q)try{await o.pc.addIceCandidate(c);}catch(e){}}
+async function voCall(pid){const o=voPc(pid);try{const off=await o.pc.createOffer();await o.pc.setLocalDescription(off);NET.room.signal(pid,{k:'sdp',d:{type:o.pc.localDescription.type,sdp:o.pc.localDescription.sdp}});}catch(e){voClose(pid);VO.fail[pid]=Date.now();}}
+async function voSignal(from,m){if(!VO.on||typeof from!=='string')return;
+  try{if(m.k==='sdp'&&m.d&&typeof m.d.sdp==='string'&&(m.d.type==='offer'||m.d.type==='answer')){
+      if(m.d.type==='offer'){let o=VO.pcs.get(from);if(o&&o.pc.signalingState!=='stable'){voClose(from);o=null;}o=voPc(from);
+        await o.pc.setRemoteDescription(m.d);await voFlush(o);const ans=await o.pc.createAnswer();await o.pc.setLocalDescription(ans);
+        NET.room.signal(from,{k:'sdp',d:{type:o.pc.localDescription.type,sdp:o.pc.localDescription.sdp}});}
+      else{const o=VO.pcs.get(from);if(o&&o.pc.signalingState==='have-local-offer'){await o.pc.setRemoteDescription(m.d);await voFlush(o);}}}
+    else if(m.k==='ice'&&m.c&&typeof m.c==='object'){const o=VO.pcs.get(from);if(!o)return;if(o.pc.remoteDescription)await o.pc.addIceCandidate(m.c);else o.q.push(m.c);}}catch(e){}}
+// 每秒檢查：跟每個也開語音的人建立連線（id 比較小的那一方先打過去），離開或關語音的就掛掉
+function voTick(dt){if(!VO.on||!NET.on||!NET.room||!NET.room.myId)return;VO.t+=dt;
+  const others=NET.peers.filter(p=>!p.isMe&&p.presence&&p.presence.v),want=new Set(others.map(p=>p.peer));
+  if(VO.t>1){VO.t=0;VO.pcs.forEach((o,pid)=>{if(!want.has(pid))voClose(pid);});
+    others.forEach(p=>{if(!VO.pcs.has(p.peer)&&NET.room.myId<p.peer&&!(Date.now()-(VO.fail[p.peer]||0)<8000))voCall(p.peer);});}
+  // 音量依距離：3 公尺內最大聲，越遠越小，最小 30%
+  const cl=claimed(),me=A&&A.pos;VO.els.forEach((el,pid)=>{let v=1;if(me)for(const c in cl){if(cl[c].peer===pid){const k=kids[c];if(k){const d=Math.hypot(k.pos.x-me.x,k.pos.z-me.z);v=Math.max(0.3,Math.min(1,1-(d-3)/10));}break;}}el.volume=v;});}
+async function voToggle(){if(!NET.room||!NET.room.signal){say('語音只有在自架網站版可以用');return;}
+  if(VO.on){VO.on=false;[...VO.pcs.keys()].forEach(voClose);if(VO.stream){VO.stream.getTracks().forEach(t=>t.stop());VO.stream=null;}voBtn();sendPresence(true);say('語音關了');canvas.focus();return;}
+  VO.on=true;voBtn();
+  try{VO.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});say('語音開了！其他也開語音的家人都聽得到你，靠越近聲音越大。');}
+  catch(e){VO.stream=null;say('沒有拿到麥克風權限，先用「只聽」模式；要說話請在瀏覽器允許麥克風再開一次。');}
+  if(!VO.on){if(VO.stream){VO.stream.getTracks().forEach(t=>t.stop());VO.stream=null;}return;}
+  voBtn();sendPresence(true);canvas.focus();}
+window.__voToggle=voToggle;VO.btn.addEventListener('click',voToggle);
 async function netStartSelf(){
   netStatus('線上：連線中…');const nick=document.getElementById('nick');document.getElementById('nickRow').hidden=false;
   nick.value=lsGet('jz-name');nick.addEventListener('input',()=>{lsSet('jz-name',nick.value.trim());sendPresence(true);});
   try{await loadScript(MQ_LIB);}catch(e){netStatus('線上：無法連線');NET.why='連線元件載入失敗，請確認有連上網路後重新整理。';return;}
   const rn=mqRoomName();
   const room=makeMqRoom(rn,()=>nick.value.trim(),(id,nm)=>{if(NET.names[id]!==nm){NET.names[id]=nm;pickKey='';}});NET.room=room;
+  room.onSignal(voSignal);if(navigator.mediaDevices&&window.RTCPeerConnection)VO.btn.hidden=false;
   const fail=()=>{if(NET.on)return;netStatus('線上：無法連線');NET.why='連不上同步伺服器。可能是網路（公司或學校網路常會擋）的關係，換手機網路或重新整理再試一次。';};
   room.onPeers(ch=>{NET.peers=ch.peers;if(room.connected())netGoOnline();if(ch.joined.length)NET.stT=0;});
   room.onConnection(c=>{if(c)netGoOnline();else if(!NET.on)netStatus('線上：連線中…');},fail);}
