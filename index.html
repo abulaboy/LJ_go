@@ -2327,29 +2327,49 @@ voBtn();
 function voEl(pid){let el=VO.els.get(pid);if(!el){el=document.createElement('audio');el.autoplay=true;el.setAttribute('playsinline','');el.playsInline=true;document.body.appendChild(el);VO.els.set(pid,el);}return el;}
 function voPlayAll(){VO.els.forEach(el=>{if(el.srcObject&&el.paused)el.play().catch(()=>{});});}
 window.addEventListener('pointerdown',()=>{if(VO.on)voPlayAll();});
-function voPc(pid){let o=VO.pcs.get(pid);if(o)return o;const pc=new RTCPeerConnection({iceServers:VO_ICE});o={pc,pid,q:[]};VO.pcs.set(pid,o);
+// 每條連線有自己的編號 sid：舊連線留下的訊號一律丟掉，避免新舊混在一起
+const voPend={};// 連線還沒建立前先到的 ICE（兩個中繼站的訊息先後順序可能顛倒）
+function voPc(pid,sid){const pc=new RTCPeerConnection({iceServers:VO_ICE});const o={pc,pid,sid,q:[],born:Date.now(),bad:0};VO.pcs.set(pid,o);
   if(VO.stream)VO.stream.getTracks().forEach(t=>pc.addTrack(t,VO.stream));else pc.addTransceiver('audio',{direction:'recvonly'});
-  pc.onicecandidate=e=>{if(e.candidate&&NET.room)NET.room.signal(pid,{k:'ice',c:e.candidate.toJSON()});};
-  pc.ontrack=e=>{const el=voEl(pid);el.srcObject=(e.streams&&e.streams[0])||new MediaStream([e.track]);el.play().catch(()=>say('點一下畫面就能聽到其他人的聲音'));};
-  pc.onconnectionstatechange=()=>{const st=pc.connectionState;if(st==='failed'||st==='closed'){voClose(pid);VO.fail[pid]=Date.now();}};
+  pc.onicecandidate=e=>{if(e.candidate&&NET.room&&VO.pcs.get(pid)===o)NET.room.signal(pid,{k:'ice',sid,c:e.candidate.toJSON()});};
+  pc.ontrack=e=>{if(VO.pcs.get(pid)!==o)return;const el=voEl(pid);el.srcObject=(e.streams&&e.streams[0])||new MediaStream([e.track]);el.play().catch(()=>say('點一下畫面就能聽到其他人的聲音'));};
+  pc.onconnectionstatechange=()=>{if(VO.pcs.get(pid)!==o)return;const st=pc.connectionState;if(st==='connected')o.ok=Date.now();if(st==='failed'||st==='closed'){voClose(pid);VO.fail[pid]=Date.now();}};
+  const pend=voPend[pid];delete voPend[pid];if(pend)pend.forEach(c=>{if(c.sid===sid)o.q.push(c.c);});
   return o;}
 function voClose(pid){const o=VO.pcs.get(pid);if(o){VO.pcs.delete(pid);try{o.pc.close();}catch(e){}}const el=VO.els.get(pid);if(el){el.srcObject=null;el.remove();VO.els.delete(pid);}}
 async function voFlush(o){const q=o.q;o.q=[];for(const c of q)try{await o.pc.addIceCandidate(c);}catch(e){}}
-async function voCall(pid){const o=voPc(pid);try{const off=await o.pc.createOffer();await o.pc.setLocalDescription(off);NET.room.signal(pid,{k:'sdp',d:{type:o.pc.localDescription.type,sdp:o.pc.localDescription.sdp}});}catch(e){voClose(pid);VO.fail[pid]=Date.now();}}
-async function voSignal(from,m){if(!VO.on||typeof from!=='string')return;
-  try{if(m.k==='sdp'&&m.d&&typeof m.d.sdp==='string'&&(m.d.type==='offer'||m.d.type==='answer')){
-      if(m.d.type==='offer'){let o=VO.pcs.get(from);if(o&&o.pc.signalingState!=='stable'){voClose(from);o=null;}o=voPc(from);
-        await o.pc.setRemoteDescription(m.d);await voFlush(o);const ans=await o.pc.createAnswer();await o.pc.setLocalDescription(ans);
-        NET.room.signal(from,{k:'sdp',d:{type:o.pc.localDescription.type,sdp:o.pc.localDescription.sdp}});}
-      else{const o=VO.pcs.get(from);if(o&&o.pc.signalingState==='have-local-offer'){await o.pc.setRemoteDescription(m.d);await voFlush(o);}}}
-    else if(m.k==='ice'&&m.c&&typeof m.c==='object'){const o=VO.pcs.get(from);if(!o)return;if(o.pc.remoteDescription)await o.pc.addIceCandidate(m.c);else o.q.push(m.c);}}catch(e){}}
-// 每秒檢查：跟每個也開語音的人建立連線（id 比較小的那一方先打過去），離開或關語音的就掛掉
+async function voCall(pid){voClose(pid);const sid=Math.random().toString(36).slice(2,10),o=voPc(pid,sid);
+  try{const off=await o.pc.createOffer();await o.pc.setLocalDescription(off);NET.room.signal(pid,{k:'sdp',sid,d:{type:o.pc.localDescription.type,sdp:o.pc.localDescription.sdp}});}catch(e){voClose(pid);VO.fail[pid]=Date.now();}}
+async function voSignal(from,m){if(!VO.on||typeof from!=='string'||!m||typeof m.sid!=='string')return;
+  try{if(m.k==='sdp'&&m.d&&typeof m.d.sdp==='string'){
+      if(m.d.type==='offer'){// 對方每次打來都是全新的連線：舊的（不管狀態）直接換掉
+        voClose(from);const o=voPc(from,m.sid);await o.pc.setRemoteDescription(m.d);await voFlush(o);
+        const ans=await o.pc.createAnswer();await o.pc.setLocalDescription(ans);
+        NET.room.signal(from,{k:'sdp',sid:m.sid,d:{type:o.pc.localDescription.type,sdp:o.pc.localDescription.sdp}});}
+      else if(m.d.type==='answer'){const o=VO.pcs.get(from);if(o&&o.sid===m.sid&&o.pc.signalingState==='have-local-offer'){await o.pc.setRemoteDescription(m.d);await voFlush(o);}}}
+    else if(m.k==='ice'&&m.c&&typeof m.c==='object'){const o=VO.pcs.get(from);
+      if(o&&o.sid===m.sid){if(o.pc.remoteDescription)await o.pc.addIceCandidate(m.c);else o.q.push(m.c);}
+      else{const p=voPend[from]||(voPend[from]=[]);if(p.length<40)p.push({sid:m.sid,c:m.c});}}}catch(e){}}
+// 每秒檢查：跟每個也開語音的人保持一條連線（id 比較小的一方負責打過去）；
+// 連不上（訊號在網路上掉了）、斷線太久的都會自動重來，不會卡死
 function voTick(dt){if(!VO.on||!NET.on||!NET.room||!NET.room.myId)return;VO.t+=dt;
   const others=NET.peers.filter(p=>!p.isMe&&p.presence&&p.presence.v),want=new Set(others.map(p=>p.peer));
-  if(VO.t>1){VO.t=0;VO.pcs.forEach((o,pid)=>{if(!want.has(pid))voClose(pid);});
-    others.forEach(p=>{if(!VO.pcs.has(p.peer)&&NET.room.myId<p.peer&&!(Date.now()-(VO.fail[p.peer]||0)<8000))voCall(p.peer);});}
+  if(VO.t>1){VO.t=0;const now=Date.now();
+    VO.pcs.forEach((o,pid)=>{if(!want.has(pid)){voClose(pid);return;}const st=o.pc.connectionState;
+      if(st==='connected'){o.bad=0;return;}
+      if(o.ok)o.bad+=1;// 曾經連上、後來斷掉
+      if((!o.ok&&now-o.born>12000)||o.bad>8){voClose(pid);VO.fail[pid]=now;}});
+    others.forEach(p=>{if(!VO.pcs.has(p.peer)&&NET.room.myId<p.peer&&!(now-(VO.fail[p.peer]||0)<4000))voCall(p.peer);});
+    for(const k in voPend)if(!want.has(k))delete voPend[k];}
   // 音量依距離：3 公尺內最大聲，越遠越小，最小 30%
   const cl=claimed(),me=A&&A.pos;VO.els.forEach((el,pid)=>{let v=1;if(me)for(const c in cl){if(cl[c].peer===pid){const k=kids[c];if(k){const d=Math.hypot(k.pos.x-me.x,k.pos.z-me.z);v=Math.max(0.3,Math.min(1,1-(d-3)/10));}break;}}el.volume=v;});}
+// 手機切到背景再回來時，麥克風常被系統停掉：回來時重新拿麥克風、換到每條連線上
+document.addEventListener('visibilitychange',async()=>{if(document.hidden||!VO.on||!VO.stream)return;
+  const tr=VO.stream.getAudioTracks()[0];if(tr&&tr.readyState==='live'&&!tr.muted)return;
+  try{const ns=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
+    const nt=ns.getAudioTracks()[0];VO.stream.getTracks().forEach(t=>t.stop());VO.stream=ns;
+    VO.pcs.forEach(o=>{o.pc.getSenders().forEach(s=>{if(s.track===null||s.track.kind==='audio')s.replaceTrack(nt).catch(()=>{});});});}catch(e){}
+  voPlayAll();});
 async function voToggle(){if(!NET.room||!NET.room.signal){say('語音只有在自架網站版可以用');return;}
   if(VO.on){VO.on=false;[...VO.pcs.keys()].forEach(voClose);if(VO.stream){VO.stream.getTracks().forEach(t=>t.stop());VO.stream=null;}voBtn();sendPresence(true);say('語音關了');canvas.focus();return;}
   VO.on=true;voBtn();
