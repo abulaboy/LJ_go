@@ -3018,8 +3018,8 @@ lifts.forEach(L=>{const lbl=t=>cTex(128,64,(g,w,h)=>{g.fillStyle='#1a1a1c';g.fil
 // 注意：這一段放在所有 things.push 之後，新的互動才會排在最後面（多人同步用索引）
 (function(){const K=kit(-230,230,'chapel'),{OX,OZ,B,C,SP,solid,light,PT,seat,sign}=K;
   const Z0=-14,Z1=2,L=Z1-Z0,HB=9,HF=12.5,WH=6.4,GAP=0.28,IN=4.25;// 後面矮、入口那頭高；底寬 12.8；屋脊中間留一條天窗縫
-  const Ht=u=>HB+(HF-HB)*u, zAt=u=>Z0+u*L;
-  const prof=(v,H)=>[GAP+(WH-GAP)*Math.pow(1-v,1.7),H*v];// 剖面：往下越來越外擴，像合起來的雙手
+  const Ht=u=>HB+(HF-HB)*u, zAt=u=>Z0+u*L, Wu=u=>WH*(0.5+0.5*Math.sin(Math.PI*u));// 兩頭窄、中間寬（從正面看得到兩片金色曲面）
+  const prof=(v,H,W)=>[GAP+((W||WH)-GAP)*Math.pow(1-v,1.7),H*v];// 剖面：往下越來越外擴，像合起來的雙手
   // 天空：白天藍天白雲＋遠方大度山的樹林，晚上星空
   const skyC=document.createElement('canvas');skyC.width=1024;skyC.height=512;const skyT=new THREE.CanvasTexture(skyC);skyT.encoding=THREE.sRGBEncoding;skyT.wrapS=THREE.RepeatWrapping;
   function drawSky(day){const g=skyC.getContext('2d'),w=1024,h=512;const gr=g.createLinearGradient(0,0,0,h);
@@ -3045,7 +3045,7 @@ lifts.forEach(L=>{const lbl=t=>cTex(128,64,(g,w,h)=>{g.fillStyle='#1a1a1c';g.fil
   const latT=cTex(256,256,(g,w,h)=>{g.fillStyle='#e8e2d4';g.fillRect(0,0,w,h);g.strokeStyle='#a8a296';g.lineWidth=10;for(let i=-4;i<8;i++){g.beginPath();g.moveTo(i*64,0);g.lineTo(i*64+256,256);g.stroke();g.beginPath();g.moveTo(i*64,256);g.lineTo(i*64+256,0);g.stroke();}});
   const outM=TM(tileT,{roughness:0.35,metalness:0.12}),inM=TM(latT,{roughness:0.85,side:THREE.BackSide});outM.side=THREE.FrontSide;
   function shell(s,v0,v1,mat,flip){const nu=22,nv=12,P=[],U=[],I=[];
-    for(let i=0;i<=nu;i++){const u=i/nu,H=Ht(u),z=zAt(u);for(let j=0;j<=nv;j++){const v=v0+(v1-v0)*j/nv,[x,y]=prof(v,H);P.push(OX+s*x,y,OZ+z);U.push(z/1.6,y/1.6+(s>0?0.5:0));}}
+    for(let i=0;i<=nu;i++){const u=i/nu,H=Ht(u),z=zAt(u),W=Wu(u);for(let j=0;j<=nv;j++){const v=v0+(v1-v0)*j/nv,[x,y]=prof(v,H,W);P.push(OX+s*x,y,OZ+z);U.push(z/1.6,y/1.6+(s>0?0.5:0));}}
     for(let i=0;i<nu;i++)for(let j=0;j<nv;j++){const a=i*(nv+1)+j,b=a+nv+1,c=a+1,d=b+1;if((s>0)!==!!flip){I.push(a,c,b,c,d,b);}else{I.push(a,b,c,c,b,d);}}
     const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(P,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));geo.setIndex(I);geo.computeVertexNormals();
     const m=new THREE.Mesh(geo,mat);m.castShadow=false;m.receiveShadow=true;scene.add(m);fadeMesh(m);return m;}
@@ -3061,7 +3061,7 @@ lifts.forEach(L=>{const lbl=t=>cTex(128,64,(g,w,h)=>{g.fillStyle='#1a1a1c';g.fil
   const paneE=cTex(128,128,(g,w,h)=>{g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.fillStyle='#000';g.fillRect(0,0,w,12);g.fillRect(0,0,12,h);g.fillRect(0,60,w,8);g.fillRect(60,0,8,h);});
   [paneT,paneE].forEach(t=>t.repeat.set(0.75,0.75));
   const endM=new THREE.MeshStandardMaterial({map:paneT,emissiveMap:paneE,emissive:0xffcf8a,emissiveIntensity:0,roughness:0.5,side:THREE.DoubleSide});
-  function gable(u,door){const H=Ht(u),sh=new THREE.Shape(),n=16;for(let j=0;j<=n;j++){const [x,y]=prof(j/n,H);j?sh.lineTo(-x,y):sh.moveTo(-x,y);}for(let j=n;j>=0;j--){const [x,y]=prof(j/n,H);sh.lineTo(x,y);}
+  function gable(u,door){const H=Ht(u),W=Wu(u),sh=new THREE.Shape(),n=16;for(let j=0;j<=n;j++){const [x,y]=prof(j/n,H,W);j?sh.lineTo(-x,y):sh.moveTo(-x,y);}for(let j=n;j>=0;j--){const [x,y]=prof(j/n,H,W);sh.lineTo(x,y);}
     if(door){const hp=new THREE.Path();hp.moveTo(-1.1,0.02);hp.lineTo(1.1,0.02);hp.lineTo(1.1,3.1);hp.lineTo(-1.1,3.1);hp.closePath();sh.holes.push(hp);}
     const m=new THREE.Mesh(new THREE.ShapeGeometry(sh),endM);m.position.set(OX,0,OZ+zAt(u));scene.add(m);fadeMesh(m);glow2.push(m.material);return m;}
   gable(0,false);gable(1,true);
@@ -3073,7 +3073,8 @@ lifts.forEach(L=>{const lbl=t=>cTex(128,64,(g,w,h)=>{g.fillStyle='#1a1a1c';g.fil
   // 屋頂上的十字架
   {const cm=S(0x3a3a3e,0.4,0.6);const ct=Ht(1);B(0.14,1.7,0.14,cm,0,ct-0.1,Z1-0.35);B(0.9,0.14,0.14,cm,0,ct+1.05,Z1-0.35);}
   // 碰撞：兩邊斜牆底下、後牆、前牆（留大門）
-  solid(-WH-0.3,-IN,Z0,Z1);solid(IN,WH+0.3,Z0,Z1);solid(-IN,IN,Z0-0.2,Z0+0.12);solid(-IN,-1.25,Z1-0.12,Z1+0.2);solid(1.25,IN,Z1-0.12,Z1+0.2);
+  for(let k=0;k<16;k++){const ua=k/16,ub=(k+1)/16,um=(ua+ub)/2,H=Ht(um),W=Wu(um),wi=GAP+(W-GAP)*Math.pow(1-1.8/H,1.7),wo=Math.max(Wu(ua),Wu(ub));solid(-wo-0.1,-wi,zAt(ua),zAt(ub));solid(wi,wo+0.1,zAt(ua),zAt(ub));}
+  {const wb=Wu(0),wf=Wu(1);solid(-wb,wb,Z0-0.2,Z0+0.12);solid(-wf-0.1,-1.25,Z1-0.12,Z1+0.2);solid(1.25,wf+0.1,Z1-0.12,Z1+0.2);}
   // 裡面：長椅、祭壇、十字架、蠟燭、講台、風琴
   const woodM=TM((()=>{const t=woodTex([150,98,58],6);t.repeat.set(1,1);return t;})(),{roughness:0.6});
   const pews=[];for(let r=0;r<7;r++){const z=-9.6+r*1.3;[-1,1].forEach(s=>{const x=s*2.2;B(2.7,0.06,0.42,woodM,x,0.42,z);B(2.7,0.5,0.05,woodM,x,0.45,z+0.24);[-1.3,1.3].forEach(dx=>B(0.06,0.9,0.5,woodM,x+dx,0,z+0.03));
@@ -3086,9 +3087,9 @@ lifts.forEach(L=>{const lbl=t=>cTex(128,64,(g,w,h)=>{g.fillStyle='#1a1a1c';g.fil
   const candleL=light(0xffc070,0,5,0,1.8,-12.6);
   B(0.6,1.15,0.45,woodM,3.1,0,-11.2,{solid:true});B(0.7,0.05,0.5,woodM,3.1,1.15,-11.2);// 講台
   // 小風琴（左前方）
-  B(1.3,1.0,0.55,S(0x3a2618,0.5),-3.35,0,-11.2,{solid:true});B(1.1,0.04,0.25,S(0xf4f2ec,0.4),-3.35,0.82,-10.98);for(let k=0;k<8;k++)B(0.06,0.02,0.15,S(0x1a1a1a,0.4),-3.8+k*0.13,0.86,-11.02);
-  for(let k=0;k<7;k++)C(0.04,0.04,0.5+Math.sin(k/6*Math.PI)*0.45,S(0xc8b070,0.3,0.7),-3.9+k*0.18,1.0,-11.4);
-  B(0.6,0.45,0.32,woodM,-3.35,0,-10.55);
+  B(1.3,1.0,0.55,S(0x3a2618,0.5),-2.95,0,-11.2,{solid:true});B(1.1,0.04,0.25,S(0xf4f2ec,0.4),-2.95,0.82,-10.98);for(let k=0;k<8;k++)B(0.06,0.02,0.15,S(0x1a1a1a,0.4),-3.4+k*0.13,0.86,-11.02);
+  for(let k=0;k<7;k++)C(0.04,0.04,0.5+Math.sin(k/6*Math.PI)*0.45,S(0xc8b070,0.3,0.7),-3.5+k*0.18,1.0,-11.4);
+  B(0.6,0.45,0.32,woodM,-2.95,0,-10.55);
   // 天光：從屋脊縫照下來的一道光
   const beamT=cTex(64,256,(g,w,h)=>{const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'rgba(255,248,220,.95)');gr.addColorStop(0.6,'rgba(255,240,200,.35)');gr.addColorStop(1,'rgba(255,240,200,0)');g.fillStyle=gr;g.fillRect(0,0,w,h);
     const gx=g.createLinearGradient(0,0,w,0);gx.addColorStop(0,'rgba(0,0,0,1)');gx.addColorStop(0.5,'rgba(0,0,0,0)');gx.addColorStop(1,'rgba(0,0,0,1)');g.globalCompositeOperation='destination-out';g.fillStyle=gx;g.fillRect(0,0,w,h);});
@@ -3117,7 +3118,7 @@ lifts.forEach(L=>{const lbl=t=>cTex(128,64,(g,w,h)=>{g.fillStyle='#1a1a1c';g.fil
   PT(-1.9,12,0.7,()=>'看教堂說明牌',()=>say('路思義教堂：1963 年蓋好，由貝聿銘和陳其寬設計。整座教堂是薄殼曲面，沒有柱子也沒有樑，從遠處看像一雙合起來祈禱的手。'));
   PT(0,7.5,0.9,()=>'在教堂前拍照打卡',()=>{flash();say('喀嚓！背後是金黃色的路思義教堂，藍天加上大草坪。');});
   PT(0,-5.5,0.8,()=>st.beam?'讓天光淡去':'抬頭看天光',()=>{st.beam=!st.beam;say(st.beam?'抬頭往上看：屋頂兩片曲面中間留了一條縫，光從那裡灑下來，一整條亮亮的。':'光線慢慢淡下來了。');if(st.beam)notes([523,659,784,1046],'sine',0.25);});
-  PT(-3.35,-10.05,0.6,()=>'彈風琴',()=>{const seq=[[262,330,392],[220,262,330],[175,220,262],[196,247,294],[262,330,392]];seq.forEach((c,i)=>setTimeout(()=>c.forEach(f=>notes([f],'sine',0.9)),i*900));say('風琴的聲音在整座教堂裡迴盪，好安靜、好好聽。');});
+  PT(-2.95,-10.05,0.6,()=>'彈風琴',()=>{const seq=[[262,330,392],[220,262,330],[175,220,262],[196,247,294],[262,330,392]];seq.forEach((c,i)=>setTimeout(()=>c.forEach(f=>notes([f],'sine',0.9)),i*900));say('風琴的聲音在整座教堂裡迴盪，好安靜、好好聽。');});
   PT(0,-11.2,0.8,()=>st.candle?'吹熄蠟燭':'點蠟燭許願',()=>{st.candle=!st.candle;say(st.candle?'點亮蠟燭，閉上眼睛許一個願望。':'輕輕把蠟燭吹熄了。');});
   pews.forEach((p,i)=>{PT(p.x-OX,p.z-OZ-0.2,0.55,()=>'坐在長椅上安靜一下',()=>sit(p));});
   benches.forEach(b=>PT(b.x-OX+(b.ry>0?0.4:-0.4),b.z-OZ,0.45,()=>'坐長椅看教堂',()=>sit(b)));
@@ -3131,7 +3132,7 @@ lifts.forEach(L=>{const lbl=t=>cTex(128,64,(g,w,h)=>{g.fillStyle='#1a1a1c';g.fil
     upL.forEach(l=>l.intensity=day?0:1.3);pathL.forEach(l=>l.intensity=day?0:0.9);lamps.forEach(l=>l.material.emissiveIntensity=day?0.2:2.2);inL.forEach(l=>l.intensity=day?0.5:0.9);};
   drawSky(true);
   const RR=[OX-30,OZ-30,OX+30,OZ+24];ROOMS.push({id:'chapel',name:'東海教堂',venue:'chapel',rects:[RR.map(v=>v*80)],m:[RR]});
-  VEN.chapel={x:OX,z:OZ,name:'東海教堂',ax:OX,az:OZ+19,ah:Math.PI,msg:'到了東海大學的路思義教堂：金黃色的曲面屋頂像合起來的雙手。可以走進去坐坐、抬頭看天光、彈風琴。'};
+  VEN.chapel={x:OX,z:OZ,name:'東海教堂',ax:OX,az:OZ+17,ah:Math.PI,msg:'到了東海大學的路思義教堂：金黃色的曲面屋頂像合起來的雙手。可以走進去坐坐、抬頭看天光、彈風琴。'};
   K.done();
   // 星星、集章、徽章、手冊
   {const s0=STARS[0];[['c1','教堂',3.4,-10.4,0.5],['c2','教堂',-12,6,1.6],['c3','教堂',0,-17.5,0.5]].forEach(([id,where,x,z,y])=>{x+=OX;z+=OZ;const m=new THREE.Mesh(s0.m.geometry,s0.m.material);m.position.set(x,y,z);scene.add(m);const g=glow(0xffe08a,0.7);g.position.set(x,y,z);
