@@ -3555,6 +3555,8 @@ async function netStart(){
   setTimeout(()=>{if(!NET.on&&room.connected&&room.connected())netGoOnline();else if(!NET.on&&!NET.why){netStatus('線上：連不上');NET.why='等了 8 秒還是連不上。請確認已登入 Claude，或重新整理頁面。';}},8000);}
 netBtn.addEventListener('click',()=>{if(!NET.on){say(NET.why||'正在連線，請稍等…');return;}pickEl.hidden=!pickEl.hidden;renderPicker();});
 document.getElementById('pickClose').addEventListener('click',()=>{pickEl.hidden=true;canvas.focus();});
+// 檢查畫面用：網址加 ?dbg=1 才會開（傳送位置、設定鏡頭）；一般打開不會有
+if(/[?&]dbg=1/.test(location.search))window.__dbg={tp:(x,z,h)=>tpTo(x,z,h||0),cam:(y,p,d)=>{yaw=y;pitch=p;dist=d;},day:d=>{if(isDay!==d)toggleDay();},act:()=>interact(),pos:()=>[pos.x,pos.z]};
 netStart();
 requestAnimationFrame(frame);
 })();
