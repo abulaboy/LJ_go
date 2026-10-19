@@ -2889,7 +2889,7 @@ function rideTick(dt){if(!ride)return;if(A!==ride.kid){ride=null;return;}if(sitt
     const s=Math.sin(n.d*7+n.ph);n.legs[0].rotation.x=s*0.5;n.legs[1].rotation.x=-s*0.5;n.arms[0].rotation.x=-s*0.45;n.arms[1].rotation.x=s*0.45;});}
   ['park','oldst','wet'].forEach(pl=>{const old=VT[pl];VT[pl]=(dt,t)=>{old(dt,t);tickNPC(pl,dt,t);};});
   // 環境音
-  const AMB={park:{birds:1,hum:0.025},oldst:{hum:0.03,birds:0.4},wet:{waves:1,birds:0.6},roof:{birds:0.5,wind:0.6},aqua:{bubble:1},hotel:{waves:0.6},studio:{waves:0.5}};
+  const AMB={park:{birds:1,hum:0.025},oldst:{hum:0.03,birds:0.4},wet:{waves:1,birds:0.6},roof:{birds:0.5,wind:0.6},aqua:{bubble:1},chapel:{birds:0.9,wind:0.3},hotel:{waves:0.6},studio:{waves:0.5}};
   let ambOn=true,amb=null,ambPlace=null,birdT=2,cricT=1;
   function noiseLoop(a,type,f,q){const n=a.sampleRate*3,buf=a.createBuffer(1,n,a.sampleRate),d=buf.getChannelData(0);let last=0;for(let i=0;i<n;i++){const w=Math.random()*2-1;last=(last+0.02*w)/1.02;d[i]=type==='brown'?last*3.5:w;}
     const s=a.createBufferSource();s.buffer=buf;s.loop=true;const fl=a.createBiquadFilter();fl.type='lowpass';fl.frequency.value=f;fl.Q.value=q||0.7;const g=a.createGain();g.gain.value=0;s.connect(fl);fl.connect(g);g.connect(a.destination);s.start();return {s,g,fl};}
@@ -2900,7 +2900,7 @@ function rideTick(dt){if(!ride)return;if(A!==ride.kid){ride=null;return;}if(sitt
       if(cfg.wind)amb.push(Object.assign(noiseLoop(a,'brown',350),{kind:'wind',v:cfg.wind}));if(cfg.bubble)amb.push(Object.assign(noiseLoop(a,'brown',260,4),{kind:'bub',v:cfg.bubble}));}}
     if(amb)amb.forEach(x=>{const v=x.kind==='waves'?(0.05+0.035*Math.sin(t*0.6))*x.v:x.kind==='hum'?x.v:x.kind==='wind'?(0.03+0.02*Math.sin(t*0.3))*x.v:(0.035+0.02*Math.sin(t*1.7))*x.v;x.g.gain.value+=(v-x.g.gain.value)*Math.min(1,dt*2);});
     if(cfg&&cfg.birds&&isDay&&!(typeof rainOn!=='undefined'&&rainOn)){birdT-=dt;if(birdT<=0){birdT=2+Math.random()*5/cfg.birds;const f=2400+Math.random()*1400;glide(f,f*1.3,f*0.9,0.18,'sine',0.03);setTimeout(()=>glide(f*1.1,f*1.4,f,0.15,'sine',0.025),200);}}
-    if(cfg&&!isDay&&(pl==='park'||pl==='roof'||pl==='wet'||pl==='oldst')){cricT-=dt;if(cricT<=0){cricT=0.6+Math.random()*1.4;const a=actx;try{for(let k=0;k<3;k++){const o=a.createOscillator(),g=a.createGain(),tt=a.currentTime+k*0.07;o.type='square';o.frequency.value=4300;g.gain.setValueAtTime(0.0001,tt);g.gain.exponentialRampToValueAtTime(0.012,tt+0.01);g.gain.exponentialRampToValueAtTime(0.0001,tt+0.05);o.connect(g);g.connect(a.destination);o.start(tt);o.stop(tt+0.06);}}catch(e){}}}};
+    if(cfg&&!isDay&&(pl==='park'||pl==='roof'||pl==='wet'||pl==='oldst'||pl==='chapel')){cricT-=dt;if(cricT<=0){cricT=0.6+Math.random()*1.4;const a=actx;try{for(let k=0;k<3;k++){const o=a.createOscillator(),g=a.createGain(),tt=a.currentTime+k*0.07;o.type='square';o.frequency.value=4300;g.gain.setValueAtTime(0.0001,tt);g.gain.exponentialRampToValueAtTime(0.012,tt+0.01);g.gain.exponentialRampToValueAtTime(0.0001,tt+0.05);o.connect(g);g.connect(a.destination);o.start(tt);o.stop(tt+0.06);}}catch(e){}}}};
 })();
 
 // ===== 第 37 版玩法：探險手冊（集章、星星、徽章、相簿）、表情動作、拍照、下雨、地名標題卡 =====
@@ -2959,7 +2959,7 @@ for(let i=0;i<RN;i++){rainArr[i*6]=(Math.random()-0.5)*24;rainArr[i*6+1]=Math.ra
 function rainSound(on){const a=audio();if(!a)return;try{if(on&&!rainSnd){const n=a.sampleRate*2,buf=a.createBuffer(1,n,a.sampleRate),d=buf.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
     const s=a.createBufferSource();s.buffer=buf;s.loop=true;const f=a.createBiquadFilter();f.type='bandpass';f.frequency.value=2200;f.Q.value=0.6;const g=a.createGain();g.gain.value=0.06;s.connect(f);f.connect(g);g.connect(a.destination);s.start();rainSnd={s,g};}
   else if(!on&&rainSnd){rainSnd.s.stop();rainSnd=null;}}catch(e){}}
-function toggleRain(){rainOn=!rainOn;const pl=placeNow();say(rainOn?(OUTDOOR[pl]?'下雨了！雨滴滴答答。':'天氣變成下雨。到戶外的地方（頂樓、遊樂園、老街、濕地）就看得到。'):'雨停了，出太陽囉。');syncPlayMenu();canvas.focus();}
+function toggleRain(){rainOn=!rainOn;const pl=placeNow();say(rainOn?(OUTDOOR[pl]?'下雨了！雨滴滴答答。':'天氣變成下雨。到戶外的地方（頂樓、遊樂園、老街、濕地、東海教堂）就看得到。'):'雨停了，出太陽囉。');syncPlayMenu();canvas.focus();}
 // 每格更新：集章、星星、動作、雨、標題卡
 let lastStampKey='',lastVenue='?';
 window.__moreTick2=(dt,t)=>{
@@ -2991,7 +2991,7 @@ function openBook(){const bk=document.getElementById('bookPanel'),body=document.
   const h=(t)=>{const e=document.createElement('h3');e.textContent=t;body.appendChild(e);};const grid=()=>{const g=document.createElement('div');g.className='bkGrid';body.appendChild(g);return g;};
   const cell=(g,icon,name,on,sub)=>{const c=document.createElement('div');c.className='bkCell'+(on?' on':'');c.innerHTML='<b></b><span></span>';c.firstChild.textContent=on?icon:'？';c.lastChild.textContent=name+(sub?'　'+sub:'');g.appendChild(c);};
   const ns=Object.keys(BK.st).filter(k=>STAMPS.some(s=>s[0]===k)).length;h('集章　'+ns+' / '+STAMPS.length);const g1=grid();STAMPS.forEach(s=>cell(g1,s[2],s[1],BK.st[s[0]]));
-  const nst=STARS.filter(s=>BK.stars[s.id]).length;h('星星　'+nst+' / '+STARS.length);const g2=grid();['家','頂樓','遊樂園','老街','濕地','水族館'].forEach(w=>{const a=STARS.filter(s=>s.where===w),n=a.filter(s=>BK.stars[s.id]).length;cell(g2,n===a.length?'🌟':'⭐',w,n>0,n+'/'+a.length);});
+  const nst=STARS.filter(s=>BK.stars[s.id]).length;h('星星　'+nst+' / '+STARS.length);const g2=grid();['家','頂樓','遊樂園','老街','濕地','水族館','教堂'].forEach(w=>{const a=STARS.filter(s=>s.where===w),n=a.filter(s=>BK.stars[s.id]).length;cell(g2,n===a.length?'🌟':'⭐',w,n>0,n+'/'+a.length);});
   const p=document.createElement('p');p.className='bkTip';p.textContent='小提示：星星會發光、轉圈圈。有些飄得比較高，要跳起來（空白鍵）或騎小飛碟才拿得到。';body.appendChild(p);
   const nb=Object.keys(BK.bad).length;h('徽章　'+nb+' / '+BADGES.length);const g3=grid();BADGES.forEach(b=>cell(g3,b[2],b[1],BK.bad[b[0]]));
   h('相簿　'+BK.photos.length+' 張');if(!BK.photos.length){const e=document.createElement('p');e.className='bkTip';e.textContent='按 P 或「玩法」選單裡的拍照，照片會出現在這裡。';body.appendChild(e);}
@@ -3008,12 +3008,201 @@ lifts.forEach(L=>{const lbl=t=>cTex(128,64,(g,w,h)=>{g.fillStyle='#1a1a1c';g.fil
     const go=()=>rideTo(L,q[1]);things.push({x,z:side+0.3,r:0.07,label:()=>liftBusy?'':'搭電梯'+q[3],go});clickables.push({mesh:b,go});});});
 // 「去哪裡」選單：一鍵到任何地方（G）
 (function(){const b=document.getElementById('goB'),pnl=document.getElementById('goPanel'),list=document.getElementById('goList');if(!b||!pnl)return;
-  const PL=[['home','🏠 家（16 樓走廊）'],['hotel','🌊 四人海景客房'],['studio','🎨 海景畫室'],['roof','🌙 頂樓空中花園'],['park','🎡 彩虹遊樂園'],['oldst','🏮 百年老街'],['wet','🌅 高美濕地'],['aqua','🐠 海洋水族館']];
+  const PL=[['home','🏠 家（16 樓走廊）'],['hotel','🌊 四人海景客房'],['studio','🎨 海景畫室'],['roof','🌙 頂樓空中花園'],['park','🎡 彩虹遊樂園'],['oldst','🏮 百年老街'],['wet','🌅 高美濕地'],['aqua','🐠 海洋水族館'],['chapel','⛪ 東海教堂']];
   PL.forEach(([d,n])=>{const x=document.createElement('button');x.type='button';x.className='tbtn pickb';x.textContent=n;
     x.addEventListener('click',()=>{pnl.hidden=true;if(FLY.on)toggleFly();if(sitting){sitting=null;seatAnim=null;}travel(d);canvas.focus();});list.appendChild(x);});
   const tog=()=>{pnl.hidden=!pnl.hidden;if(pnl.hidden)canvas.focus();};b.addEventListener('click',tog);
   document.getElementById('goClose').addEventListener('click',()=>{pnl.hidden=true;canvas.focus();});
   window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='g'&&!e.repeat&&!(e.target&&/INPUT|TEXTAREA/.test(e.target.tagName)))tog();});})();
+// ========== 第 38 版：東海教堂（路思義教堂）＋電梯廳的「旅行畫廊」 ==========
+// 注意：這一段放在所有 things.push 之後，新的互動才會排在最後面（多人同步用索引）
+(function(){const K=kit(-230,230,'chapel'),{OX,OZ,B,C,SP,solid,light,PT,seat,sign}=K;
+  const Z0=-14,Z1=2,L=Z1-Z0,HB=9,HF=12.5,WH=6.4,GAP=0.28,IN=4.25;// 後面矮、入口那頭高；底寬 12.8；屋脊中間留一條天窗縫
+  const Ht=u=>HB+(HF-HB)*u, zAt=u=>Z0+u*L;
+  const prof=(v,H)=>[GAP+(WH-GAP)*Math.pow(1-v,1.7),H*v];// 剖面：往下越來越外擴，像合起來的雙手
+  // 天空：白天藍天白雲＋遠方大度山的樹林，晚上星空
+  const skyC=document.createElement('canvas');skyC.width=1024;skyC.height=512;const skyT=new THREE.CanvasTexture(skyC);skyT.encoding=THREE.sRGBEncoding;skyT.wrapS=THREE.RepeatWrapping;
+  function drawSky(day){const g=skyC.getContext('2d'),w=1024,h=512;const gr=g.createLinearGradient(0,0,0,h);
+    if(day){gr.addColorStop(0,'#4f92dc');gr.addColorStop(0.62,'#a9d2f2');gr.addColorStop(0.75,'#e9f2f0');}else{gr.addColorStop(0,'#070b20');gr.addColorStop(0.62,'#18204a');gr.addColorStop(0.75,'#2a2a48');}
+    g.fillStyle=gr;g.fillRect(0,0,w,h);let s=23;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+    if(day){for(let i=0;i<10;i++){g.fillStyle='rgba(255,255,255,.85)';const cx=r()*w,cy=50+r()*170;for(let k=0;k<5;k++){g.beginPath();g.ellipse(cx+k*24,cy+Math.sin(k)*6,28+r()*18,9+r()*6,0,0,7);g.fill();}}}
+    else{for(let i=0;i<340;i++){g.fillStyle='rgba(255,255,255,'+(0.3+r()*0.7)+')';g.fillRect(r()*w,r()*h*0.65,1.5,1.5);}g.fillStyle='#f4ecd0';g.beginPath();g.arc(w*0.2,h*0.18,16,0,7);g.fill();}
+    for(let k=0;k<3;k++){g.fillStyle=day?['#7a9a7a','#5f8a5a','#4a7446'][k]:['#141a2a','#10162a','#0c1222'][k];g.beginPath();g.moveTo(0,h);for(let x=0;x<=w;x+=8){const y=h*(0.70+k*0.025)-Math.abs(Math.sin(x*0.011+k*2))*10-Math.sin(x*0.047+k)*5;g.lineTo(x,y);}g.lineTo(w,h);g.fill();}
+    skyT.needsUpdate=true;}
+  const sd=skyDome(OX,OZ-4,58,skyT,-20,70);
+  // 大草坪、步道、小廣場
+  const lawnT=cTex(256,256,(g,w,h)=>{g.fillStyle='#6f9f4a';g.fillRect(0,0,w,h);for(let i=0;i<1600;i++){g.fillStyle=`rgba(${60+rnd()*50|0},${110+rnd()*60|0},${40+rnd()*30|0},.55)`;g.fillRect(rnd()*w,rnd()*h,1.5,3+rnd()*3);}});lawnT.repeat.set(26,26);
+  K.disc(57,TM(lawnT,{roughness:0.95}),0,-4,0.001);
+  const paveT=cTex(256,256,(g,w,h)=>{g.fillStyle='#d8d4cc';g.fillRect(0,0,w,h);g.strokeStyle='rgba(120,112,100,.45)';g.lineWidth=2;for(let y=0;y<h;y+=32){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();for(let x=((y/32)%2)*32;x<w;x+=64){g.beginPath();g.moveTo(x,y);g.lineTo(x,y+32);g.stroke();}}});
+  const paveM=(rx,ry)=>{const t=paveT.clone();t.needsUpdate=true;t.repeat.set(rx,ry);return TM(t,{roughness:0.9});};
+  K.ground(3.2,19,paveM(1.6,9.5),0,Z1+9.5,0.006);// 從電梯亭走到教堂大門
+  K.ground(16,4,paveM(8,2),0,Z1+1.6,0.007);// 門前小廣場
+  K.ground(2.2,30,paveM(1.1,15),-9.5,-4,0.006);K.ground(2.2,30,paveM(1.1,15),9.5,-4,0.006);K.ground(21.2,2.2,paveM(10.6,1.1),0,-19,0.006);// 繞教堂一圈的小路
+  // 金黃色菱形瓦片（外面）、灰色混凝土菱格（裡面）
+  const tileT=cTex(256,256,(g,w,h)=>{g.fillStyle='#8a6a2c';g.fillRect(0,0,w,h);const n=4,cw=w/n,ch=h/n;
+    for(let i=-1;i<=n;i++)for(let j=-1;j<=n*2;j++){const cx=i*cw+(j%2?cw/2:0),cy=j*ch/2;const k=0.86+rnd()*0.24;g.fillStyle=`rgb(${Math.min(255,222*k)|0},${Math.min(255,176*k)|0},${Math.min(255,72*k)|0})`;
+      g.beginPath();g.moveTo(cx,cy-ch/2+3);g.lineTo(cx+cw/2-3,cy);g.lineTo(cx,cy+ch/2-3);g.lineTo(cx-cw/2+3,cy);g.closePath();g.fill();g.fillStyle='rgba(255,250,220,.35)';g.beginPath();g.moveTo(cx,cy-ch/2+5);g.lineTo(cx+cw/4,cy-ch/4+2);g.lineTo(cx,cy-2);g.lineTo(cx-cw/4,cy-ch/4+2);g.closePath();g.fill();}});
+  const latT=cTex(256,256,(g,w,h)=>{g.fillStyle='#e8e2d4';g.fillRect(0,0,w,h);g.strokeStyle='#a8a296';g.lineWidth=10;for(let i=-4;i<8;i++){g.beginPath();g.moveTo(i*64,0);g.lineTo(i*64+256,256);g.stroke();g.beginPath();g.moveTo(i*64,256);g.lineTo(i*64+256,0);g.stroke();}});
+  const outM=TM(tileT,{roughness:0.35,metalness:0.12}),inM=TM(latT,{roughness:0.85,side:THREE.BackSide});outM.side=THREE.FrontSide;
+  function shell(s,v0,v1,mat,flip){const nu=22,nv=12,P=[],U=[],I=[];
+    for(let i=0;i<=nu;i++){const u=i/nu,H=Ht(u),z=zAt(u);for(let j=0;j<=nv;j++){const v=v0+(v1-v0)*j/nv,[x,y]=prof(v,H);P.push(OX+s*x,y,OZ+z);U.push(z/1.6,y/1.6+(s>0?0.5:0));}}
+    for(let i=0;i<nu;i++)for(let j=0;j<nv;j++){const a=i*(nv+1)+j,b=a+nv+1,c=a+1,d=b+1;if((s>0)!==!!flip){I.push(a,c,b,c,d,b);}else{I.push(a,b,c,c,b,d);}}
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(P,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));geo.setIndex(I);geo.computeVertexNormals();
+    const m=new THREE.Mesh(geo,mat);m.castShadow=false;m.receiveShadow=true;scene.add(m);fadeMesh(m);return m;}
+  // 四片曲面（上下各兩片），中間一圈細細的玻璃窗
+  const glassM=new THREE.MeshStandardMaterial({color:0x8fb4c8,roughness:0.1,metalness:0.3,emissive:0xffd9a0,emissiveIntensity:0,side:THREE.DoubleSide});
+  const glow2=[];// 晚上要發光的材質（fadeMesh 會複製材質，所以記下複製後的那份）
+  [-1,1].forEach(s=>{shell(s,0,0.47,outM);shell(s,0.5,1,outM);shell(s,0,0.47,inM);shell(s,0.5,1,inM);glow2.push(shell(s,0.47,0.5,glassM).material);});
+  // 屋脊天窗：兩邊屋頂中間一道亮光
+  {const P=[],I=[],nu=22;for(let i=0;i<=nu;i++){const u=i/nu,H=Ht(u),z=zAt(u);P.push(OX-GAP,H,OZ+z,OX+GAP,H,OZ+z);if(i<nu){const a=i*2;I.push(a,a+1,a+2,a+1,a+3,a+2);}}
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(P,3));geo.setIndex(I);scene.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0xfff4d6,side:THREE.DoubleSide,toneMapped:false})));}
+  // 兩頭的山牆：混凝土格子＋玻璃，晚上會透出燈光
+  const paneT=cTex(128,128,(g,w,h)=>{g.fillStyle='#5f7f94';g.fillRect(0,0,w,h);g.fillStyle='rgba(255,255,255,.18)';g.fillRect(14,14,40,100);g.fillStyle='#d8d2c4';g.fillRect(0,0,w,12);g.fillRect(0,0,12,h);g.fillRect(0,60,w,8);g.fillRect(60,0,8,h);});
+  const paneE=cTex(128,128,(g,w,h)=>{g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.fillStyle='#000';g.fillRect(0,0,w,12);g.fillRect(0,0,12,h);g.fillRect(0,60,w,8);g.fillRect(60,0,8,h);});
+  [paneT,paneE].forEach(t=>t.repeat.set(0.75,0.75));
+  const endM=new THREE.MeshStandardMaterial({map:paneT,emissiveMap:paneE,emissive:0xffcf8a,emissiveIntensity:0,roughness:0.5,side:THREE.DoubleSide});
+  function gable(u,door){const H=Ht(u),sh=new THREE.Shape(),n=16;for(let j=0;j<=n;j++){const [x,y]=prof(j/n,H);j?sh.lineTo(-x,y):sh.moveTo(-x,y);}for(let j=n;j>=0;j--){const [x,y]=prof(j/n,H);sh.lineTo(x,y);}
+    if(door){const hp=new THREE.Path();hp.moveTo(-1.1,0.02);hp.lineTo(1.1,0.02);hp.lineTo(1.1,3.1);hp.lineTo(-1.1,3.1);hp.closePath();sh.holes.push(hp);}
+    const m=new THREE.Mesh(new THREE.ShapeGeometry(sh),endM);m.position.set(OX,0,OZ+zAt(u));scene.add(m);fadeMesh(m);glow2.push(m.material);return m;}
+  gable(0,false);gable(1,true);
+  // 大門：門框＋兩扇往外開的木門
+  const doorM=S(0x5a3a22,0.6),frameM=S(0x3a3a3c,0.5);
+  B(0.18,3.2,0.3,frameM,-1.19,0,Z1);B(0.18,3.2,0.3,frameM,1.19,0,Z1);B(2.56,0.2,0.3,frameM,0,3.1,Z1);
+  [-1,1].forEach(s=>{const g=new THREE.Group();g.position.set(OX+s*1.1,0,OZ+Z1+0.05);g.rotation.y=s*1.25;scene.add(g);const d=new THREE.Mesh(new THREE.BoxGeometry(1.08,3.0,0.07),doorM);d.position.set(-s*0.54,1.5,0);g.add(d);
+    for(let k=0;k<3;k++){const p=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.7,0.02),S(0x4a2e1a,0.6));p.position.set(-s*0.54,0.6+k*0.95,0.045);g.add(p);}});
+  // 屋頂上的十字架
+  {const cm=S(0x3a3a3e,0.4,0.6);const ct=Ht(1);B(0.14,1.7,0.14,cm,0,ct-0.1,Z1-0.35);B(0.9,0.14,0.14,cm,0,ct+1.05,Z1-0.35);}
+  // 碰撞：兩邊斜牆底下、後牆、前牆（留大門）
+  solid(-WH-0.3,-IN,Z0,Z1);solid(IN,WH+0.3,Z0,Z1);solid(-IN,IN,Z0-0.2,Z0+0.12);solid(-IN,-1.25,Z1-0.12,Z1+0.2);solid(1.25,IN,Z1-0.12,Z1+0.2);
+  // 裡面：長椅、祭壇、十字架、蠟燭、講台、風琴
+  const woodM=TM((()=>{const t=woodTex([150,98,58],6);t.repeat.set(1,1);return t;})(),{roughness:0.6});
+  const pews=[];for(let r=0;r<7;r++){const z=-9.6+r*1.3;[-1,1].forEach(s=>{const x=s*2.2;B(2.7,0.06,0.42,woodM,x,0.42,z);B(2.7,0.5,0.05,woodM,x,0.45,z+0.24);[-1.3,1.3].forEach(dx=>B(0.06,0.9,0.5,woodM,x+dx,0,z+0.03));
+    solid(x-1.35,x+1.35,z-0.22,z+0.28,0.48);pews.push(seat(x+s*-0.5,z,Math.PI,0.48));});}
+  K.ground(5,2.4,S(0x8a3a32,0.9),0,-12.7,0.125);B(5,0.12,2.4,S(0xb8b0a2,0.7),0,0,-12.7);// 祭壇台（紅地毯）
+  K.ground(1.4,12.0,S(0x8a3a32,0.9),0,-5.5,0.01);// 走道紅地毯
+  B(2.0,0.95,0.7,S(0xf2ede2,0.6),0,0.12,-13.0,{solid:true});B(2.1,0.05,0.8,woodM,0,1.07,-13.0);
+  {const cw=S(0x6a4428,0.6);B(0.2,3.4,0.12,cw,0,2.2,-13.82);B(1.5,0.2,0.12,cw,0,4.6,-13.82);}
+  const candles=[];[-0.6,0.6].forEach(x=>{C(0.04,0.05,0.35,S(0xf6f0e0,0.5),x,1.12,-13.0);const f=SP(0.035,new THREE.MeshBasicMaterial({color:0xffc860}),x,1.52,-13.0);f.scale.y=1.6;f.visible=false;const gl=glow(0xffb040,0.5);gl.position.set(OX+x,1.52,OZ-13.0);gl.visible=false;candles.push({f,gl});});
+  const candleL=light(0xffc070,0,5,0,1.8,-12.6);
+  B(0.6,1.15,0.45,woodM,3.1,0,-11.2,{solid:true});B(0.7,0.05,0.5,woodM,3.1,1.15,-11.2);// 講台
+  // 小風琴（左前方）
+  B(1.3,1.0,0.55,S(0x3a2618,0.5),-3.35,0,-11.2,{solid:true});B(1.1,0.04,0.25,S(0xf4f2ec,0.4),-3.35,0.82,-10.98);for(let k=0;k<8;k++)B(0.06,0.02,0.15,S(0x1a1a1a,0.4),-3.8+k*0.13,0.86,-11.02);
+  for(let k=0;k<7;k++)C(0.04,0.04,0.5+Math.sin(k/6*Math.PI)*0.45,S(0xc8b070,0.3,0.7),-3.9+k*0.18,1.0,-11.4);
+  B(0.6,0.45,0.32,woodM,-3.35,0,-10.55);
+  // 天光：從屋脊縫照下來的一道光
+  const beamT=cTex(64,256,(g,w,h)=>{const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'rgba(255,248,220,.95)');gr.addColorStop(0.6,'rgba(255,240,200,.35)');gr.addColorStop(1,'rgba(255,240,200,0)');g.fillStyle=gr;g.fillRect(0,0,w,h);
+    const gx=g.createLinearGradient(0,0,w,0);gx.addColorStop(0,'rgba(0,0,0,1)');gx.addColorStop(0.5,'rgba(0,0,0,0)');gx.addColorStop(1,'rgba(0,0,0,1)');g.globalCompositeOperation='destination-out';g.fillStyle=gx;g.fillRect(0,0,w,h);});
+  const beamM=new THREE.MeshBasicMaterial({map:beamT,transparent:true,opacity:0.18,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,toneMapped:false});
+  const beams=[];for(let k=0;k<6;k++){const z=Z0+1.4+k*2.6,H=Ht((z-Z0)/L);const m=new THREE.Mesh(new THREE.PlaneGeometry(2.7,H),beamM);m.position.set(OX,H/2,OZ+z);m.rotation.y=Math.PI/2;scene.add(m);beams.push(m);}
+  const st={beam:false,candle:false};
+  // 樹（大草坪上的圓樹）、路燈、長椅
+  const trunkM=S(0x5a4232,0.9),leafMs=[S(0x3f7a3a,0.85),S(0x4f8a42,0.85),S(0x356c34,0.85)];
+  [[-14,8],[-17,-2],[-15,-13],[-11,-24],[2,-26],[13,-23],[16,-12],[18,-1],[14,9],[-7,14],[7,15],[-21,16],[22,18],[-24,-8],[25,-14],[-6,24],[6,26],[-20,28],[21,30]].forEach(([x,z],i)=>{const hh=2.2+(i%3)*0.5;C(0.14,0.22,hh,trunkM,x,0,z);
+    SP(1.5+(i%2)*0.4,leafMs[i%3],x,hh+1.0,z,{s:[1,0.9,1]});SP(1.0,leafMs[(i+1)%3],x+0.7,hh+0.5,z+0.3);SP(0.9,leafMs[(i+2)%3],x-0.6,hh+0.6,z-0.4);solid(x-0.25,x+0.25,z-0.25,z+0.25);});
+  const lamps=[];[6,10,14].forEach(z=>[-2.1,2.1].forEach(x=>{C(0.04,0.05,2.6,S(0x2a2a2c,0.5),x,0,z);lamps.push(SP(0.13,EM(0xffe2a8,0.2),x,2.7,z));}));
+  const benches=[[-4.2,8,Math.PI/2],[4.2,8,-Math.PI/2]].map(([x,z,ry])=>{B(0.45,0.06,1.6,woodM,x,0.42,z);B(0.06,0.42,0.06,trunkM,x,0,z-0.7);B(0.06,0.42,0.06,trunkM,x,0,z+0.7);solid(x-0.25,x+0.25,z-0.8,z+0.8,0.48);return seat(x,z,ry,0.48);});
+  // 草地野餐墊
+  const checkT=cTex(64,64,(g,w,h)=>{for(let i=0;i<8;i++)for(let j=0;j<8;j++){g.fillStyle=(i+j)%2?'#f4eee2':'#c8443a';g.fillRect(i*8,j*8,8,8);}});
+  K.ground(1.8,1.4,TM(checkT,{roughness:0.95}),8,11,0.012);B(0.4,0.25,0.28,S(0xb88a4a,0.8),8.6,0.012,10.7);
+  const picnic=seat(7.7,11.2,-Math.PI/2,0.05);
+  // 電梯亭（回家）、說明牌
+  B(1.6,2.5,1.2,S(0xdcd6ca,0.8),0,0,21.2);sign(txtTex('回家電梯',256,64,'#2a2a2e','#e8d29a',40),0.8,0.2,0,2.25,20.59,Math.PI);[-0.22,0.22].forEach(x=>B(0.42,2.0,0.04,S(0xb8bcc2,0.25,0.85),x,0,20.59,{cast:false}));solid(-0.8,0.8,20.6,21.8);
+  sign(txtTex('東海大學・路思義教堂',768,128,'#2f4a3a','#f4ecd8',70),2.2,0.37,-2.45,1.35,12,Math.PI/2);B(0.08,1.6,0.08,S(0x3a2e24,0.9),-2.45,0,10.95);B(0.08,1.6,0.08,S(0x3a2e24,0.9),-2.45,0,13.05);
+  // 燈光（只在這裡亮）
+  const inL=[light(0xfff0d8,0.5,14,0,5.5,-9),light(0xfff0d8,0.5,14,0,5.5,-3)];
+  const upL=[light(0xffc888,0,16,-5,1.0,Z1+3),light(0xffc888,0,16,5,1.0,Z1+3),light(0xffc888,0,16,0,1.0,Z0-3)];
+  const pathL=[light(0xffd8a0,0,8,0,2.4,8),light(0xffd8a0,0,8,0,2.4,15)];
+  // 互動
+  PT(0,20.1,0.55,()=>liftBusy?'':'搭電梯回 16 樓',()=>goHome());
+  PT(-1.9,12,0.7,()=>'看教堂說明牌',()=>say('路思義教堂：1963 年蓋好，由貝聿銘和陳其寬設計。整座教堂是薄殼曲面，沒有柱子也沒有樑，從遠處看像一雙合起來祈禱的手。'));
+  PT(0,7.5,0.9,()=>'在教堂前拍照打卡',()=>{flash();say('喀嚓！背後是金黃色的路思義教堂，藍天加上大草坪。');});
+  PT(0,-5.5,0.8,()=>st.beam?'讓天光淡去':'抬頭看天光',()=>{st.beam=!st.beam;say(st.beam?'抬頭往上看：屋頂兩片曲面中間留了一條縫，光從那裡灑下來，一整條亮亮的。':'光線慢慢淡下來了。');if(st.beam)notes([523,659,784,1046],'sine',0.25);});
+  PT(-3.35,-10.05,0.6,()=>'彈風琴',()=>{const seq=[[262,330,392],[220,262,330],[175,220,262],[196,247,294],[262,330,392]];seq.forEach((c,i)=>setTimeout(()=>c.forEach(f=>notes([f],'sine',0.9)),i*900));say('風琴的聲音在整座教堂裡迴盪，好安靜、好好聽。');});
+  PT(0,-11.2,0.8,()=>st.candle?'吹熄蠟燭':'點蠟燭許願',()=>{st.candle=!st.candle;say(st.candle?'點亮蠟燭，閉上眼睛許一個願望。':'輕輕把蠟燭吹熄了。');});
+  pews.forEach((p,i)=>{PT(p.x-OX,p.z-OZ-0.2,0.55,()=>'坐在長椅上安靜一下',()=>sit(p));});
+  benches.forEach(b=>PT(b.x-OX+(b.ry>0?0.4:-0.4),b.z-OZ,0.45,()=>'坐長椅看教堂',()=>sit(b)));
+  PT(7.4,11.2,0.6,()=>'坐在草地上野餐',()=>{sit(picnic);say('在大草坪上野餐，抬頭就是教堂和藍天。');});
+  window.__venueSeats.push({s:pews[6],n:'在教堂裡安靜坐著'});
+  // 每格更新
+  let cDay=true;
+  VT.chapel=(dt,t)=>{const bk=st.beam?(cDay?0.75:0.35):(cDay?0.18:0.04);beamM.opacity+=(bk-beamM.opacity)*Math.min(1,dt*2);beams.forEach((b,i)=>b.material.opacity=beamM.opacity);
+    candles.forEach((c,i)=>{c.f.visible=c.gl.visible=st.candle;if(st.candle){c.f.scale.y=1.5+Math.sin(t*12+i)*0.2;}});candleL.intensity=st.candle?0.8+Math.sin(t*9)*0.08:0;};
+  VT.chapelDay=(day)=>{cDay=day;drawSky(day);sd.top.material.color.set(day?0x4f92dc:0x070b20);glow2.forEach(m=>m.emissiveIntensity=day?0:(m.emissiveMap?0.9:1.1));
+    upL.forEach(l=>l.intensity=day?0:1.3);pathL.forEach(l=>l.intensity=day?0:0.9);lamps.forEach(l=>l.material.emissiveIntensity=day?0.2:2.2);inL.forEach(l=>l.intensity=day?0.5:0.9);};
+  drawSky(true);
+  const RR=[OX-30,OZ-30,OX+30,OZ+24];ROOMS.push({id:'chapel',name:'東海教堂',venue:'chapel',rects:[RR.map(v=>v*80)],m:[RR]});
+  VEN.chapel={x:OX,z:OZ,name:'東海教堂',ax:OX,az:OZ+19,ah:Math.PI,msg:'到了東海大學的路思義教堂：金黃色的曲面屋頂像合起來的雙手。可以走進去坐坐、抬頭看天光、彈風琴。'};
+  K.done();
+  // 星星、集章、徽章、手冊
+  {const s0=STARS[0];[['c1','教堂',3.4,-10.4,0.5],['c2','教堂',-12,6,1.6],['c3','教堂',0,-17.5,0.5]].forEach(([id,where,x,z,y])=>{x+=OX;z+=OZ;const m=new THREE.Mesh(s0.m.geometry,s0.m.material);m.position.set(x,y,z);scene.add(m);const g=glow(0xffe08a,0.7);g.position.set(x,y,z);
+    STARS.push({id,where,x,z,y,m,g,ph:x*0.3+z});if(BK.stars[id]){m.visible=false;g.visible=false;}});}
+  STAMPS.push(['chapel','東海教堂','⛪']);
+  const bi=BADGES.findIndex(b=>b[0]==='act30');BADGES.splice(bi,0,['skylight','看見教堂天光','✨',l=>l==='抬頭看天光'],['organ','小小風琴手','🎹',l=>l==='彈風琴']);
+  OUTDOOR.chapel=1;
+})();
+// 電梯廳的旅行畫廊：出大門正對面那面牆掛台中三景（老街、東海教堂、高美濕地），右手邊牆上再掛五幅；點畫或走到畫前按互動就會過去
+(function(){
+  const PW=0.56,PH=0.46,TW=320,TH=262;
+  function dab(g,x,y,r,c){g.fillStyle=c;g.beginPath();g.ellipse(x,y,r,r*0.7,(x*7+y)%3,0,7);g.fill();}
+  const ART={
+    chapel(g,w,h){const sk=g.createLinearGradient(0,0,0,h*0.7);sk.addColorStop(0,'#5a9ae0');sk.addColorStop(1,'#cfe6f4');g.fillStyle=sk;g.fillRect(0,0,w,h);
+      for(let i=0;i<5;i++)dab(g,30+i*70,40+(i%2)*18,26,'rgba(255,255,255,.8)');
+      g.fillStyle='#5f9a44';g.fillRect(0,h*0.72,w,h);for(let i=0;i<120;i++)dab(g,(i*37)%w,h*0.74+((i*53)%60),4,i%2?'#4f8a3a':'#78b05a');
+      g.fillStyle='#dcd6cc';g.beginPath();g.moveTo(w*0.45,h*0.73);g.lineTo(w*0.55,h*0.73);g.lineTo(w*0.62,h);g.lineTo(w*0.38,h);g.fill();
+      [[60,0.66],[262,0.64],[290,0.7]].forEach(([x,y])=>{g.fillStyle='#4a3424';g.fillRect(x-3,h*y,6,30);dab(g,x,h*y-6,24,'#3f7a3a');dab(g,x+8,h*y-14,16,'#5a9a4a');});
+      const cx=w*0.5,by=h*0.74,top=h*0.1;
+      [-1,1].forEach(s=>{g.fillStyle=s<0?'#e2b04a':'#c8922e';g.beginPath();g.moveTo(cx+s*4,top);g.quadraticCurveTo(cx+s*20,by-50,cx+s*110,by);g.lineTo(cx+s*4,by);g.closePath();g.fill();
+        g.strokeStyle='rgba(120,80,20,.45)';g.lineWidth=1;for(let k=1;k<9;k++){g.beginPath();g.moveTo(cx+s*4,top+k*20);g.lineTo(cx+s*(18+k*11),by);g.stroke();g.beginPath();g.moveTo(cx+s*(8+k*6),top+30);g.lineTo(cx+s*4,by-k*14);g.stroke();}});
+      g.fillStyle='#fff6d8';g.fillRect(cx-2,top,4,by-top-40);g.fillStyle='#7a90a0';g.beginPath();g.moveTo(cx-14,by);g.lineTo(cx-4,by-60);g.lineTo(cx+4,by-60);g.lineTo(cx+14,by);g.fill();
+      g.fillStyle='#4a2e1a';g.fillRect(cx-9,by-26,18,26);g.fillStyle='#3a3a3e';g.fillRect(cx-1.5,top-22,3,24);g.fillRect(cx-8,top-16,16,3);
+      g.fillStyle='#d8402a';g.beginPath();g.moveTo(w-58,0);g.lineTo(w,0);g.lineTo(w,58);g.closePath();g.fill();g.save();g.translate(w-22,22);g.rotate(Math.PI/4);g.fillStyle='#fff';g.font='bold 20px sans-serif';g.textAlign='center';g.fillText('新',0,7);g.restore();},
+    oldst(g,w,h){g.fillStyle='#f2c89a';g.fillRect(0,0,w,h);const sk=g.createLinearGradient(0,0,0,h*0.4);sk.addColorStop(0,'#e88a5a');sk.addColorStop(1,'#f8d8a8');g.fillStyle=sk;g.fillRect(0,0,w,h*0.4);
+      [-1,1].forEach(s=>{for(let k=0;k<4;k++){const x0=s<0?k*36:w-k*36-60,y0=h*0.18+k*14;g.fillStyle=['#a8483a','#b85a44','#9a4034','#c0644a'][k];g.fillRect(x0,y0,60,h-y0);g.fillStyle='#3a2420';g.fillRect(x0+10,y0+40,40,h-y0-40);
+        for(let r=0;r<6;r++)g.fillRect(x0,y0+8+r*22,60,1.5);}});
+      g.fillStyle='#8a7a6a';g.beginPath();g.moveTo(w*0.42,h*0.5);g.lineTo(w*0.58,h*0.5);g.lineTo(w*0.8,h);g.lineTo(w*0.2,h);g.fill();
+      for(let i=0;i<10;i++){const x=w*0.2+i*20,y=h*0.22+(i%2)*10;g.strokeStyle='#3a2420';g.beginPath();g.moveTo(x,0);g.lineTo(x,y);g.stroke();dab(g,x,y+8,9,'#e8302a');g.fillStyle='#ffd27a';g.fillRect(x-3,y+5,6,6);}
+      g.fillStyle='#c8302a';g.fillRect(w*0.4,h*0.3,w*0.2,10);g.fillRect(w*0.42,h*0.3,6,h*0.22);g.fillRect(w*0.58-6,h*0.3,6,h*0.22);g.fillStyle='#2a5a3a';g.fillRect(w*0.38,h*0.27,w*0.24,8);},
+    wet(g,w,h){const sk=g.createLinearGradient(0,0,0,h*0.62);sk.addColorStop(0,'#5a5a9a');sk.addColorStop(0.55,'#e8806a');sk.addColorStop(1,'#ffd27a');g.fillStyle=sk;g.fillRect(0,0,w,h);
+      dab(g,w*0.62,h*0.56,22,'#fff1c0');const wa=g.createLinearGradient(0,h*0.62,0,h);wa.addColorStop(0,'#e8a07a');wa.addColorStop(1,'#6a7aa0');g.fillStyle=wa;g.fillRect(0,h*0.62,w,h);
+      g.fillStyle='rgba(255,230,170,.7)';for(let i=0;i<14;i++)g.fillRect(w*0.55+(i%3)*8-10,h*0.65+i*6,30-i,2);
+      for(let i=0;i<6;i++){const x=20+i*52,y=h*0.62-60-(i%2)*8;g.strokeStyle='#3a3048';g.lineWidth=3;g.beginPath();g.moveTo(x,h*0.63);g.lineTo(x,y);g.stroke();g.lineWidth=2;for(let k=0;k<3;k++){const a=k*2.09+i;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*22,y+Math.sin(a)*22);g.stroke();}}
+      g.fillStyle='#6a4a34';g.beginPath();g.moveTo(w*0.3,h);g.lineTo(w*0.44,h*0.7);g.lineTo(w*0.5,h*0.7);g.lineTo(w*0.52,h);g.fill();},
+    hotel(g,w,h){g.fillStyle='#f2ecdd';g.fillRect(0,0,w,h);g.fillStyle='#8cc6e8';g.fillRect(30,20,w-60,h*0.45);g.fillStyle='#2f86a8';g.fillRect(30,20+h*0.3,w-60,h*0.15);
+      g.strokeStyle='#d8d4cc';g.lineWidth=6;g.strokeRect(30,20,w-60,h*0.45);g.beginPath();g.moveTo(w/2,20);g.lineTo(w/2,20+h*0.45);g.stroke();
+      [[20,0],[w-150,0]].forEach(([x])=>{g.fillStyle='#fbfbf8';g.fillRect(x,h*0.62,130,60);g.fillStyle='#e8e2d4';g.fillRect(x+6,h*0.6,40,18);g.fillRect(x+84,h*0.6,40,18);g.fillStyle='#c8a878';g.fillRect(x,h*0.62+60,130,10);});
+      g.fillStyle='#d79a2f';g.fillRect(w/2-40,h*0.88,80,20);},
+    studio(g,w,h){g.fillStyle='#c9c2b4';g.fillRect(0,0,w,h);g.fillStyle='#9fd0ee';g.fillRect(0,0,w,h*0.5);g.fillStyle='#3fb8c8';g.fillRect(0,h*0.32,w,h*0.18);g.strokeStyle='#b9bcbd';g.lineWidth=5;for(let k=0;k<5;k++)g.strokeRect(k*64,2,64,h*0.5);
+      g.fillStyle='#d6c3a5';g.fillRect(40,h*0.62,w-80,24);g.strokeStyle='#6a4a30';g.lineWidth=4;g.beginPath();g.moveTo(w*0.62,h*0.95);g.lineTo(w*0.7,h*0.45);g.lineTo(w*0.78,h*0.95);g.stroke();
+      g.fillStyle='#fffaf0';g.fillRect(w*0.62,h*0.48,w*0.16,h*0.2);dab(g,w*0.67,h*0.56,8,'#e85a4a');dab(g,w*0.73,h*0.6,7,'#4a9ae8');},
+    roof(g,w,h){const sk=g.createLinearGradient(0,0,0,h);sk.addColorStop(0,'#0a1030');sk.addColorStop(1,'#2a2a5a');g.fillStyle=sk;g.fillRect(0,0,w,h);for(let i=0;i<60;i++){g.fillStyle='rgba(255,255,255,.7)';g.fillRect((i*71)%w,(i*37)%(h*0.5),1.5,1.5);}
+      dab(g,w*0.78,h*0.2,24,'#f8eec8');g.fillStyle='#4a3a2a';g.fillRect(0,h*0.72,w,h);g.fillStyle='#3a6a34';for(let i=0;i<8;i++)dab(g,20+i*40,h*0.72,14,'#3f7a3a');
+      for(let i=0;i<9;i++){const x=20+i*36,y=h*0.32+Math.sin(i)*8;dab(g,x,y,5,i%2?'#ffd06a':'#ff8a6a');}
+      for(let i=0;i<3;i++){const x=60+i*90,y=h*0.15+i*20;g.fillStyle='#ffb04a';g.fillRect(x,y,14,18);dab(g,x+7,y+20,6,'rgba(255,220,120,.6)');}},
+    park(g,w,h){g.fillStyle='#9fd0f0';g.fillRect(0,0,w,h);['#e84a4a','#f29a3a','#f2d23a','#5ac25a','#4a9ae8','#9a5ae8'].forEach((c,i)=>{g.strokeStyle=c;g.lineWidth=8;g.beginPath();g.arc(w*0.3,h*0.85,170-i*8,Math.PI,0);g.stroke();});
+      g.fillStyle='#7ac85a';g.fillRect(0,h*0.78,w,h);g.strokeStyle='#e8e8f0';g.lineWidth=3;const fx=w*0.72,fy=h*0.42;g.beginPath();g.arc(fx,fy,70,0,7);g.stroke();for(let k=0;k<10;k++){const a=k*0.628;g.beginPath();g.moveTo(fx,fy);g.lineTo(fx+Math.cos(a)*70,fy+Math.sin(a)*70);g.stroke();dab(g,fx+Math.cos(a)*70,fy+Math.sin(a)*70,7,['#e84a4a','#f2d23a','#4a9ae8'][k%3]);}
+      g.beginPath();g.moveTo(fx-30,h*0.8);g.lineTo(fx,fy);g.lineTo(fx+30,h*0.8);g.stroke();g.fillStyle='#f4a0c0';g.fillRect(40,h*0.62,110,40);g.fillStyle='#e84a8a';g.beginPath();g.moveTo(30,h*0.62);g.lineTo(95,h*0.46);g.lineTo(160,h*0.62);g.fill();},
+    aqua(g,w,h){const sk=g.createLinearGradient(0,0,0,h);sk.addColorStop(0,'#3a8ad0');sk.addColorStop(1,'#0a2a5a');g.fillStyle=sk;g.fillRect(0,0,w,h);for(let i=0;i<6;i++){g.fillStyle='rgba(255,255,255,.12)';g.fillRect(i*60,0,18,h);}
+      g.fillStyle='#2a4a6a';g.beginPath();g.ellipse(w*0.5,h*0.35,70,18,0,0,7);g.fill();g.beginPath();g.moveTo(w*0.5+60,h*0.35);g.lineTo(w*0.5+95,h*0.25);g.lineTo(w*0.5+95,h*0.45);g.fill();g.beginPath();g.moveTo(w*0.5,h*0.3);g.lineTo(w*0.47,h*0.18);g.lineTo(w*0.56,h*0.3);g.fill();
+      for(let i=0;i<14;i++)dab(g,30+(i*41)%260,h*0.55+(i*29)%80,6,['#f2a03a','#f2d23a','#e85a8a'][i%3]);for(let i=0;i<3;i++){const x=40+i*110;dab(g,x,h*0.75,16,'rgba(220,170,255,.7)');for(let k=0;k<4;k++)g.fillRect(x-8+k*5,h*0.75,1.5,26);}
+      g.fillStyle='#2a6a3a';for(let i=0;i<7;i++){g.beginPath();g.moveTo(i*48,h);g.quadraticCurveTo(i*48+12,h*0.8,i*48+4,h*0.68);g.lineTo(i*48+10,h);g.fill();}}};
+  const NAME={chapel:'東海教堂',oldst:'百年老街',wet:'高美濕地',hotel:'四人海景客房',studio:'海景畫室',roof:'頂樓空中花園',park:'彩虹遊樂園',aqua:'海洋水族館'};
+  const frameM=S(0xb8913a,0.35,0.7),lampM=EM(0xfff0c8,1.4),brassM=S(0x9a7a3a,0.4,0.6);
+  // 牆面：west＝出大門正對面（x=-1.2，畫朝 +x），south＝右手邊（z=8.0，畫朝 -z）
+  const Y=1.58,WX=P(-96),SZ=P(640);
+  const list=[['oldst','W',7.54],['chapel','W',6.92],['wet','W',6.30],['hotel','S',1.79],['studio','S',1.17],['roof','S',0.55],['park','S',-0.07],['aqua','S',-0.69]];
+  list.forEach(([d,wall,c])=>{const tex=cTex(TW,TH,(g,w,h)=>{ART[d](g,w,h);g.globalAlpha=0.06;for(let i=0;i<400;i++){g.fillStyle=i%2?'#fff':'#000';g.fillRect((i*97)%w,(i*61)%h,2,2);}g.globalAlpha=1;g.strokeStyle='rgba(60,40,20,.35)';g.lineWidth=6;g.strokeRect(0,0,w,h);});
+    const ry=wall==='W'?Math.PI/2:Math.PI,nx=wall==='W'?1:0,nz=wall==='W'?0:-1;
+    const x=wall==='W'?WX+0.075:c,z=wall==='W'?c:SZ-0.075;
+    const pic=new THREE.Mesh(new THREE.PlaneGeometry(PW,PH),new THREE.MeshBasicMaterial({map:tex,toneMapped:false}));pic.position.set(x+nx*0.012,Y,z+nz*0.012);pic.rotation.y=ry;scene.add(pic);
+    const fr=new THREE.Mesh(new THREE.BoxGeometry(PW+0.07,PH+0.07,0.025),frameM);fr.position.set(x,Y,z);fr.rotation.y=ry;scene.add(fr);
+    const lb=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.06),new THREE.MeshBasicMaterial({map:txtTex(NAME[d],340,60,'#2a2622','#f2e2b0',34),toneMapped:false}));lb.position.set(x+nx*0.004,Y-PH/2-0.1,z+nz*0.004);lb.rotation.y=ry;scene.add(lb);
+    const lp=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.025,0.05),brassM);lp.position.set(x+nx*0.06,Y+PH/2+0.07,z+nz*0.06);lp.rotation.y=ry;scene.add(lp);
+    const lg=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.008,0.02),lampM);lg.position.set(x+nx*0.07,Y+PH/2+0.056,z+nz*0.07);lg.rotation.y=ry;scene.add(lg);
+    const go=()=>{if(FLY.on)toggleFly();if(sitting){sitting=null;seatAnim=null;}travel(d);};
+    clickables.push({mesh:pic,go});
+    things.push({x:x+nx*0.55,z:z+nz*0.55,r:0.32,label:()=>liftBusy?'':'去「'+NAME[d]+'」（看畫）',go});});
+  const gl=new THREE.PointLight(0xfff0d8,0.45,4,1.6);gl.position.set(0.2,2.3,7.2);scene.add(gl);
+})();
 
 
 // ---------- 小飛碟：可以自由飛、穿牆，用來近看東西，飛到東西旁邊一樣可以互動 ----------
@@ -3079,7 +3268,7 @@ function collide(p,h){h=h||0;for(let it=0;it<3;it++)for(const c of colliders){if
 // ---------- 小地圖 ----------
 const mini=document.getElementById('mini'),mg=mini.getContext('2d'),roomEl=document.getElementById('room');
 const MP={x0:-140,y0:25,s:Math.min(mini.width/1330,mini.height/1520)};
-const mapCol={hotel:'#b9c49a',studio:'#a9bccb',roof:'#b8a07a',park:'#9fd08a',oldst:'#c8907a',wet:'#8ab8c8',aqua:'#5a8ab8',lobby:'#d8d4ca',liftN:'#9a9a9e',liftS:'#9a9a9e',laundry:'#cdb9a2',toy:'#c9b49a',game:'#a9c39a',bath1:'#cfd8dc',bath0:'#cfd8dc',hall:'#b49c84',foyer:'#e3dccd',living:'#c9bba7',dining:'#d9cdb8',study:'#d9b48a',master:'#8d8a86',closet:'#8d8a86',bath2:'#8d8a86',balcony:'#7d7b78'};
+const mapCol={chapel:'#9ac47a',hotel:'#b9c49a',studio:'#a9bccb',roof:'#b8a07a',park:'#9fd08a',oldst:'#c8907a',wet:'#8ab8c8',aqua:'#5a8ab8',lobby:'#d8d4ca',liftN:'#9a9a9e',liftS:'#9a9a9e',laundry:'#cdb9a2',toy:'#c9b49a',game:'#a9c39a',bath1:'#cfd8dc',bath0:'#cfd8dc',hall:'#b49c84',foyer:'#e3dccd',living:'#c9bba7',dining:'#d9cdb8',study:'#d9b48a',master:'#8d8a86',closet:'#8d8a86',bath2:'#8d8a86',balcony:'#7d7b78'};
 let mpC=MP;function mxy(x,z){return [(x*80-mpC.x0)*mpC.s,(z*80-mpC.y0)*mpC.s];}
 function drawMini(){mg.clearRect(0,0,mini.width,mini.height);const vr=roomAt(A.pos.x,A.pos.z),V=vr&&vr.venue?vr:null;
   if(V){const q=V.rects[0];mpC={x0:q[0]-60,y0:q[1]-60,s:Math.min(mini.width/(q[2]-q[0]+120),mini.height/(q[3]-q[1]+120))};}else mpC=MP;const MPc=mpC,RS=V?[V]:ROOMS.filter(r=>!r.venue);
