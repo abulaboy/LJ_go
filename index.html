@@ -2959,7 +2959,7 @@ for(let i=0;i<RN;i++){rainArr[i*6]=(Math.random()-0.5)*24;rainArr[i*6+1]=Math.ra
 function rainSound(on){const a=audio();if(!a)return;try{if(on&&!rainSnd){const n=a.sampleRate*2,buf=a.createBuffer(1,n,a.sampleRate),d=buf.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
     const s=a.createBufferSource();s.buffer=buf;s.loop=true;const f=a.createBiquadFilter();f.type='bandpass';f.frequency.value=2200;f.Q.value=0.6;const g=a.createGain();g.gain.value=0.06;s.connect(f);f.connect(g);g.connect(a.destination);s.start();rainSnd={s,g};}
   else if(!on&&rainSnd){rainSnd.s.stop();rainSnd=null;}}catch(e){}}
-function toggleRain(){rainOn=!rainOn;const pl=placeNow();say(rainOn?(OUTDOOR[pl]?'下雨了！雨滴滴答答。':'天氣變成下雨。到戶外的地方（頂樓、遊樂園、老街、濕地、東海教堂）就看得到。'):'雨停了，出太陽囉。');syncPlayMenu();canvas.focus();}
+function toggleRain(){rainOn=!rainOn;const pl=placeNow();say(rainOn?(OUTDOOR[pl]?'下雨了！雨滴滴答答。':'天氣變成下雨。到戶外的地方（頂樓、遊樂園、老街、濕地、東海教堂、議會廣場）就看得到。'):'雨停了，出太陽囉。');syncPlayMenu();canvas.focus();}
 // 每格更新：集章、星星、動作、雨、標題卡
 let lastStampKey='',lastVenue='?';
 window.__moreTick2=(dt,t)=>{
@@ -3008,7 +3008,7 @@ lifts.forEach(L=>{const lbl=t=>cTex(128,64,(g,w,h)=>{g.fillStyle='#1a1a1c';g.fil
     const go=()=>rideTo(L,q[1]);things.push({x,z:side+0.3,r:0.07,label:()=>liftBusy?'':'搭電梯'+q[3],go});clickables.push({mesh:b,go});});});
 // 「去哪裡」選單：一鍵到任何地方（G）
 (function(){const b=document.getElementById('goB'),pnl=document.getElementById('goPanel'),list=document.getElementById('goList');if(!b||!pnl)return;
-  const PL=[['home','🏠 家（16 樓走廊）'],['hotel','🌊 四人海景客房'],['studio','🎨 海景畫室'],['roof','🌙 頂樓空中花園'],['park','🎡 彩虹遊樂園'],['oldst','🏮 百年老街'],['wet','🌅 高美濕地'],['aqua','🐠 海洋水族館'],['chapel','⛪ 東海教堂']];
+  const PL=[['home','🏠 家（16 樓走廊）'],['hotel','🌊 四人海景客房'],['studio','🎨 海景畫室'],['roof','🌙 頂樓空中花園'],['park','🎡 彩虹遊樂園'],['oldst','🏮 百年老街'],['wet','🌅 高美濕地'],['aqua','🐠 海洋水族館'],['chapel','⛪ 東海教堂'],['plaza','🏛️ 台中市議會廣場']];
   PL.forEach(([d,n])=>{const x=document.createElement('button');x.type='button';x.className='tbtn pickb';x.textContent=n;
     x.addEventListener('click',()=>{pnl.hidden=true;if(FLY.on)toggleFly();if(sitting){sitting=null;seatAnim=null;}travel(d);canvas.focus();});list.appendChild(x);});
   const tog=()=>{pnl.hidden=!pnl.hidden;if(pnl.hidden)canvas.focus();};b.addEventListener('click',tog);
@@ -3560,6 +3560,568 @@ netBtn.addEventListener('click',()=>{if(!NET.on){say(NET.why||'正在連線，�
 document.getElementById('pickClose').addEventListener('click',()=>{pickEl.hidden=true;canvas.focus();});
 // 檢查畫面用：網址加 ?dbg=1 才會開（傳送位置、設定鏡頭）；一般打開不會有
 if(/[?&]dbg=1/.test(location.search))window.__dbg={tp:(x,z,h)=>tpTo(x,z,h||0),cam:(y,p,d)=>{yaw=y;pitch=p;dist=d;},day:d=>{if(isDay!==d)toggleDay();},act:()=>interact(),pos:()=>[pos.x,pos.z]};
+// ===== 注音找找看：家裡 12 張注音小卡（走近就唸出來，集滿得徽章；程式由 Gemini 撰寫、Claude 整合） =====
+(function() {
+  // === 1. 注音卡片資料與存檔初始化 ===
+  var ZY = [
+    ['冰箱', 'ㄅㄧㄥ ㄒㄧㄤ', '🧊', 5.27, 11.93, 1.95],
+    ['電視', 'ㄉㄧㄢˋ ㄕˋ', '📺', 10.6, 5.85, 1.75],
+    ['沙發', 'ㄕㄚ ㄈㄚ', '🛋️', 10.0, 9.28, 1.3],
+    ['鋼琴', 'ㄍㄤ ㄑㄧㄣˊ', '🎹', 9.45, 13.69, 1.5],
+    ['大床', 'ㄉㄚˋ ㄔㄨㄤˊ', '🛏️', 9.9, 16.95, 1.2],
+    ['浴缸', 'ㄩˋ ㄍㄤ', '🛁', 2.75, 17.85, 1.2],
+    ['馬桶', 'ㄇㄚˇ ㄊㄨㄥˇ', '🚽', 6.4, 1.86, 1.2],
+    ['洗衣機', 'ㄒㄧˇ ㄧ ㄐㄧ', '🧺', 0.35, 17.0, 1.4],
+    ['電鍋', 'ㄉㄧㄢˋ ㄍㄨㄛ', '🍚', 5.55, 13.5, 1.45],
+    ['樂高', 'ㄌㄜˋ ㄍㄠ', '🧱', 4.4, 2.9, 1.6],
+    ['鞋櫃', 'ㄒㄧㄝˊ ㄍㄨㄟˋ', '👟', 4.2, 7.59, 1.5],
+    ['大門', 'ㄉㄚˋ ㄇㄣˊ', '🚪', 2.71, 6.95, 2.0]
+  ];
+
+  // 初始化存檔結構
+  if (!BK.zy || typeof BK.zy !== 'object') {
+    BK.zy = {};
+  }
+
+  // === 2. 插入「注音小達人」徽章 ===
+  var badgeEntry = ['zhuyin', '注音小達人（12 張注音卡）', '🔤', function() {
+    return ZY.every(function(c) { return !!BK.zy[c[0]]; });
+  }];
+  var act30Idx = -1;
+  for (var i = 0; i < BADGES.length; i++) {
+    if (BADGES[i][0] === 'act30') {
+      act30Idx = i;
+      break;
+    }
+  }
+  if (act30Idx !== -1) {
+    BADGES.splice(act30Idx, 0, badgeEntry);
+  } else {
+    BADGES.push(badgeEntry);
+  }
+
+  // === 3. 語音合成朗讀（支援 zh-TW 優先與防呆） ===
+  function speakWord(text) {
+    try {
+      if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-TW';
+      u.rate = 0.8;
+      var voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+      var twVoice = null;
+      for (var i = 0; i < voices.length; i++) {
+        var lang = (voices[i].lang || '').replace('_', '-');
+        if (lang === 'zh-TW' || lang.indexOf('zh-TW') === 0) {
+          twVoice = voices[i];
+          break;
+        }
+      }
+      if (!twVoice) {
+        for (var j = 0; j < voices.length; j++) {
+          var lang2 = (voices[j].lang || '').toLowerCase();
+          if (lang2.indexOf('zh') !== -1 || lang2.indexOf('cmn') !== -1) {
+            twVoice = voices[j];
+            break;
+          }
+        }
+      }
+      if (twVoice) u.voice = twVoice;
+      window.speechSynthesis.speak(u);
+    } catch (e) {
+      // 忽略語音錯誤，確保遊戲不中斷
+    }
+  }
+  // 預熱語音清單
+  try {
+    if ('speechSynthesis' in window && window.speechSynthesis.getVoices) {
+      window.speechSynthesis.getVoices();
+    }
+  } catch (e) {}
+
+  // === 4. 繪製直式注音卡貼圖（256x384） ===
+  function drawRoundRect(g, x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.lineTo(x + w - r, y);
+    g.quadraticCurveTo(x + w, y, x + w, y + r);
+    g.lineTo(x + w, y + h - r);
+    g.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    g.lineTo(x + r, y + h);
+    g.quadraticCurveTo(x, y + h, x, y + h - r);
+    g.lineTo(x, y + r);
+    g.quadraticCurveTo(x, y, x + r, y);
+    g.closePath();
+  }
+
+  function makeCardTex(word, zhuyin, emoji, isFound) {
+    return cTex(256, 384, function(g, w, h) {
+      g.clearRect(0, 0, w, h);
+
+      // 卡片白底與陰影
+      g.save();
+      g.shadowColor = 'rgba(0,0,0,0.18)';
+      g.shadowBlur = 12;
+      g.shadowOffsetY = 4;
+      drawRoundRect(g, 12, 12, w - 24, h - 24, 28);
+      g.fillStyle = isFound ? '#fffef7' : '#ffffff';
+      g.fill();
+      g.restore();
+
+      // 外框與內裝飾線（未找到：天藍邊框；已找到：金色邊框）
+      drawRoundRect(g, 12, 12, w - 24, h - 24, 28);
+      g.lineWidth = isFound ? 10 : 7;
+      g.strokeStyle = isFound ? '#f59e0b' : '#38bdf8';
+      g.stroke();
+
+      drawRoundRect(g, 22, 22, w - 44, h - 44, 20);
+      g.lineWidth = 2;
+      g.strokeStyle = isFound ? '#fde68a' : '#e0f2fe';
+      g.stroke();
+
+      // 已找到時右上角加一顆小星星
+      if (isFound) {
+        g.font = '38px sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText('⭐', w - 48, 50);
+      }
+
+      // 上方大 Emoji
+      g.font = '82px sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(emoji, w / 2, 82);
+
+      // 分隔虛線
+      g.beginPath();
+      g.setLineDash([6, 6]);
+      g.moveTo(40, 134);
+      g.lineTo(w - 40, 134);
+      g.strokeStyle = isFound ? '#fcd34d' : '#bae6fd';
+      g.lineWidth = 2;
+      g.stroke();
+      g.setLineDash([]);
+
+      // 下方國字＋右側課本式直排注音
+      var chars = Array.from(word);
+      var syllables = zhuyin.trim().split(/\s+/);
+      var n = chars.length;
+
+      // 依 2 字詞或 3 字詞動態調整字體大小與列高，讓字體大又清楚
+      var startY = n === 3 ? 174 : 196;
+      var rowH = n === 3 ? 68 : 92;
+      var charSize = n === 3 ? 52 : 66;
+      var zySize = n === 3 ? 21 : 25;
+
+      for (var i = 0; i < n; i++) {
+        var cy = startY + i * rowH;
+
+        // 國字本體（偏左對齊，留出右方注音空間）
+        g.fillStyle = '#1e293b';
+        g.font = 'bold ' + charSize + 'px "Microsoft JhengHei", "PingFang TC", "Heiti TC", sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(chars[i], 98, cy);
+
+        // 解析該字的注音與聲調（ˊ ˇ ˋ ˙）
+        var syl = syllables[i] || '';
+        var tone = '';
+        var lastCh = syl.slice(-1);
+        if (lastCh === 'ˊ' || lastCh === 'ˇ' || lastCh === 'ˋ' || lastCh === '˙') {
+          tone = lastCh;
+          syl = syl.slice(0, -1);
+        }
+        var zyChars = Array.from(syl);
+        var m = zyChars.length;
+        var zyStep = zySize * 0.95;
+        var zyStartY = cy - ((m - 1) * zyStep) / 2;
+        var zyX = 160;
+
+        // 由上往下直排注音符號
+        g.fillStyle = '#0369a1';
+        g.font = 'bold ' + zySize + 'px "Microsoft JhengHei", "PingFang TC", "Heiti TC", sans-serif';
+        for (var j = 0; j < m; j++) {
+          g.fillText(zyChars[j], zyX, zyStartY + j * zyStep);
+        }
+
+        // 聲調符號放在注音右上方（輕聲 ˙ 放在最上方）
+        if (tone) {
+          g.font = 'bold ' + Math.round(zySize * 1.15) + 'px "Microsoft JhengHei", "PingFang TC", "Heiti TC", sans-serif';
+          if (tone === '˙') {
+            g.fillText(tone, zyX, zyStartY - zyStep * 0.75);
+          } else {
+            // 放在第一與第二個注音符號之間的右上側，貼近課本排版
+            var toneY = m === 1 ? (zyStartY - zyStep * 0.15) : (zyStartY + zyStep * 0.35);
+            g.fillText(tone, zyX + zySize * 0.78, toneY);
+          }
+        }
+      }
+    });
+  }
+
+  // === 5. 建立 12 張 3D 注音卡片與發光效果 ===
+  var cardObjs = [];
+
+  for (var idx = 0; idx < ZY.length; idx++) {
+    var item = ZY[idx];
+    var word = item[0];
+    var zhuyin = item[1];
+    var emoji = item[2];
+    var x = item[3];
+    var z = item[4];
+    var baseY = item[5];
+    var isFound = !!BK.zy[word];
+
+    var texUnfound = makeCardTex(word, zhuyin, emoji, false);
+    var texFound = makeCardTex(word, zhuyin, emoji, true);
+
+    var mat = new THREE.SpriteMaterial({
+      map: isFound ? texFound : texUnfound,
+      transparent: true,
+      opacity: isFound ? 1.0 : 0.55,
+      depthWrite: false
+    });
+
+    var sprite = new THREE.Sprite(mat);
+    sprite.scale.set(0.56, 0.84, 1); // 維持 2:3 直式卡片比例（Claude 調大一點，小朋友比較看得清楚）
+    sprite.position.set(x, baseY, z);
+    scene.add(sprite);
+
+    // 卡片旁的加法混色發光
+    var glowSprite = glow(isFound ? 0xffd700 : 0x38bdf8, 0.85);
+    glowSprite.position.set(x, baseY, z);
+
+    cardObjs.push({
+      word: word,
+      zhuyin: zhuyin,
+      emoji: emoji,
+      x: x,
+      z: z,
+      baseY: baseY,
+      sprite: sprite,
+      mat: mat,
+      texUnfound: texUnfound,
+      texFound: texFound,
+      glow: glowSprite,
+      inRange: false,
+      phase: idx * 0.85
+    });
+  }
+
+  // 切換卡片找到/未找到外觀
+  function updateCardVisual(c, found) {
+    c.mat.map = found ? c.texFound : c.texUnfound;
+    c.mat.opacity = found ? 1.0 : 0.55;
+    c.mat.needsUpdate = true;
+    if (c.glow && c.glow.material && c.glow.material.color) {
+      c.glow.material.color.setHex(found ? 0xffd700 : 0x38bdf8);
+    }
+    if (found) {
+      c.mat.rotation = 0;
+      c.sprite.position.y = c.baseY;
+      if (c.glow) c.glow.position.y = c.baseY;
+    }
+  }
+
+  function getFoundCount() {
+    var cnt = 0;
+    for (var i = 0; i < ZY.length; i++) {
+      if (BK.zy[ZY[i][0]]) cnt++;
+    }
+    return cnt;
+  }
+
+  // === 6. 掛載每一格更新（距離觸發與浮動搖擺動畫） ===
+  var prevTick2 = window.__moreTick2;
+  window.__moreTick2 = function(dt, t) {
+    if (typeof prevTick2 === 'function') {
+      prevTick2(dt, t);
+    }
+    var p = vp();
+    if (!p) return;
+
+    for (var i = 0; i < cardObjs.length; i++) {
+      var c = cardObjs[i];
+      var dx = p.x - c.x;
+      var dz = p.z - c.z;
+      var distSq = dx * dx + dz * dz;
+
+      // 超過 30 公尺（900 平方公尺）直接跳過更新以節省效能
+      if (distSq > 900) continue;
+
+      var isFound = !!BK.zy[c.word];
+
+      // 浮動動畫：未找到時上下輕浮＋左右慢慢搖擺；已找到時輕微呼吸浮動、不歪斜
+      if (!isFound) {
+        var bobY = c.baseY + Math.sin(t * 2.2 + c.phase) * 0.06;
+        c.sprite.position.y = bobY;
+        if (c.glow) c.glow.position.y = bobY;
+        c.mat.rotation = Math.sin(t * 1.5 + c.phase) * 0.08;
+      } else {
+        var bobFoundY = c.baseY + Math.sin(t * 1.6 + c.phase) * 0.025;
+        c.sprite.position.y = bobFoundY;
+        if (c.glow) c.glow.position.y = bobFoundY;
+        c.mat.rotation = 0;
+      }
+
+      // 走近 < 0.9m 觸發（0.81），離開 > 1.6m 重置（2.56）
+      if (!c.inRange && distSq < 0.81) {
+        c.inRange = true;
+        speakWord(c.word);
+
+        if (!isFound) {
+          BK.zy[c.word] = Date.now();
+          saveBK();
+          updateCardVisual(c, true);
+
+          var count = getFoundCount();
+          notes([660, 880, 1320], 'triangle', 0.1);
+          say('🔤 找到「' + c.word + '」 ' + c.zhuyin + ' （' + count + '/12）');
+          checkBadges('');
+
+          if (count === 12) {
+            cheer();
+            banner('🔤 注音全部找到了！', '你是注音小達人');
+          }
+        } else {
+          say('「' + c.word + '」 ' + c.zhuyin);
+        }
+      } else if (c.inRange && distSq > 2.56) {
+        c.inRange = false;
+      }
+    }
+  };
+
+  // === 7. 擴充探險手冊 openBook ===
+  var origOpenBook = openBook;
+  openBook = function() {
+    origOpenBook();
+    var body = document.getElementById('bookBody');
+    if (!body) return;
+
+    var clearBtn = body.lastElementChild;
+    var count = getFoundCount();
+
+    // 標題：注音卡 n / 12
+    var h3 = document.createElement('h3');
+    h3.textContent = '注音卡　' + count + ' / 12';
+
+    // 卡片格子區 .bkGrid
+    var grid = document.createElement('div');
+    grid.className = 'bkGrid';
+
+    for (var i = 0; i < ZY.length; i++) {
+      var item = ZY[i];
+      var w = item[0];
+      var zy = item[1];
+      var em = item[2];
+      var got = !!BK.zy[w];
+
+      var cell = document.createElement('div');
+      cell.className = 'bkCell' + (got ? ' on' : '');
+
+      var b = document.createElement('b');
+      b.textContent = got ? em : '？';
+
+      var span = document.createElement('span');
+      span.textContent = w + ' ' + zy;
+
+      cell.appendChild(b);
+      cell.appendChild(span);
+      grid.appendChild(cell);
+    }
+
+    // 小提示文字 p.bkTip
+    var tip = document.createElement('p');
+    tip.className = 'bkTip';
+    tip.textContent = '小提示：家裡有 12 張會發光的注音卡，走過去就會唸給你聽。';
+
+    body.insertBefore(h3, clearBtn);
+    body.insertBefore(grid, clearBtn);
+    body.insertBefore(tip, clearBtn);
+
+    // 監聽「清除手冊紀錄」按鈕：確認清除後（徽章、照片也都被清空）才同步重置注音卡
+    if (clearBtn && !clearBtn.__zyBound) {
+      clearBtn.__zyBound = true;
+      clearBtn.addEventListener('click', function() {
+        if (BK.st && Object.keys(BK.st).length === 0 && Object.keys(BK.bad || {}).length === 0 && (BK.photos || []).length === 0) {
+          BK.zy = {};
+          saveBK();
+          for (var j = 0; j < cardObjs.length; j++) {
+            cardObjs[j].inRange = false;
+            updateCardVisual(cardObjs[j], false);
+          }
+          // 若手冊視窗仍開著，重新渲染手冊內容以更新剛插入的注音卡區塊
+          openBook();
+        }
+      });
+    }
+  };
+
+  // === 8. 房間方位判斷與「玩法」選單按鈕 ===
+  function getRoomName(x, z) {
+    if (x >= 7.85 && x <= 13.4 && z >= 5 && z <= 10.6) return '客廳';
+    if (x >= 2.31 && x <= 6.475 && z >= 8.54 && z <= 14.44) return '餐廳廚房';
+    if (x >= 2.31 && x <= 6.475 && z >= 5.84 && z <= 8.54) return '玄關';
+    if (x >= 7.85 && x <= 13.4 && z >= 10.6 && z <= 14.44) return '書房';
+    if (x >= 6.5 && x <= 13.4 && z >= 14.44 && z <= 19.2) return '主臥';
+    if (x >= 3.85 && x <= 6.5 && z >= 14.44 && z <= 19.2) return '衣帽間';
+    if (x >= 1.1 && x <= 3.85 && z >= 14.44 && z <= 19.2) return '主臥浴室';
+    if (x >= -0.3 && x <= 1.69 && z >= 12.81 && z <= 19.2) return '曬衣間';
+    if (x >= 2 && x <= 5.3 && z >= 0.4 && z <= 5.8) return '遊戲室';
+    if (x >= 5.3 && x <= 8.9 && z >= 0.4 && z <= 3.75) return '走廊浴室';
+    return '家裡某個地方';
+  }
+
+  var playList = document.getElementById('playList');
+  if (playList) {
+    var playBtn = document.createElement('button');
+    playBtn.type = 'button';
+    playBtn.className = 'tbtn pickb';
+    playBtn.textContent = '🔤 注音找找看';
+    playBtn.addEventListener('click', function() {
+      var panel = document.getElementById('playPanel');
+      if (panel) panel.hidden = true;
+
+      var p = vp() || { x: 0, z: 0 };
+      var unfoundCount = 0;
+      var nearestCard = null;
+      var minDistSq = Infinity;
+
+      for (var i = 0; i < cardObjs.length; i++) {
+        var c = cardObjs[i];
+        if (!BK.zy[c.word]) {
+          unfoundCount++;
+          var dx = p.x - c.x;
+          var dz = p.z - c.z;
+          var dSq = dx * dx + dz * dz;
+          if (dSq < minDistSq) {
+            minDistSq = dSq;
+            nearestCard = c;
+          }
+        }
+      }
+
+      if (unfoundCount === 0) {
+        say('全部找到了！要不要去探險手冊看看？');
+      } else {
+        var room = getRoomName(nearestCard.x, nearestCard.z);
+        say('還有 ' + unfoundCount + ' 張注音卡沒找到，最近的一張在「' + room + '」喔！');
+      }
+      canvas.focus();
+    });
+    playList.appendChild(playBtn);
+  }
+  window.__zyCards = cardObjs;
+})();
+
+// ========== 第 39 版：台中市議會廣場（依 10/11 拍的 4 張照片；場景設計由 Gemini 依照片提出，Claude 改寫成本專案的 kit 架構） ==========
+// 注意：這一段放在所有 things.push 之後，新的互動才會排在最後面（多人同步用索引）
+(function(){const K=kit(230,230,'plaza'),{OX,OZ,B,C,SP,solid,light,PT,sign}=K;
+  // 天空：白天傍晚藍天＋地平線暖色，晚上星空
+  const skyC=document.createElement('canvas');skyC.width=1024;skyC.height=512;const skyT=new THREE.CanvasTexture(skyC);skyT.encoding=THREE.sRGBEncoding;skyT.wrapS=THREE.RepeatWrapping;
+  function drawSky(day){const g=skyC.getContext('2d'),w=1024,h=512;const gr=g.createLinearGradient(0,0,0,h);
+    if(day){gr.addColorStop(0,'#2f6fd8');gr.addColorStop(0.55,'#6fa9ec');gr.addColorStop(0.8,'#bfe0f6');gr.addColorStop(1,'#ffe2c0');}else{gr.addColorStop(0,'#060a1c');gr.addColorStop(0.7,'#18204a');gr.addColorStop(1,'#3a2a48');}
+    g.fillStyle=gr;g.fillRect(0,0,w,h);let s=31;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+    if(!day)for(let i=0;i<260;i++){g.fillStyle='rgba(255,255,255,'+(0.3+r()*0.6)+')';g.fillRect(r()*w,r()*h*0.6,1.5,1.5);}
+    skyT.needsUpdate=true;}
+  const sd=skyDome(OX,OZ,58,skyT,-20,90);
+  // 夕陽方向光（從西側低角度斜照，只在廣場亮）
+  const sunP=new THREE.DirectionalLight(0xffdfb0,0.9);sunP.position.set(OX-42,26,OZ-13);sunP.target.position.set(OX,0,OZ);K.LG.add(sunP);K.LG.add(sunP.target);
+  // ---- 貼圖 ----
+  const stoneT=cTex(512,512,(g,w,h)=>{g.fillStyle='#cbd2da';g.fillRect(0,0,w,h);let y=0;const rows=[96,36,36,96,40,88,36,84];
+    rows.forEach((rh,r)=>{const cw=r%2?96:128,off=(r*48)%cw;for(let x=-off;x<w;x+=cw){const b=196+((r*11+Math.floor(x/32)*7)%18);g.fillStyle=`rgb(${b},${b+3},${b+7})`;g.fillRect(x+2,y+2,cw-3,rh-3);}g.fillStyle='#7a8595';g.fillRect(0,y,w,2);y+=rh;});
+    for(let i=0;i<900;i++){g.fillStyle=i%2?'rgba(255,255,255,.22)':'rgba(30,41,59,.16)';g.fillRect((i*73)%w,(i*137)%h,2,2);}
+    g.strokeStyle='#6b7686';g.lineWidth=3;g.strokeRect(140,102,88,84);g.fillStyle='#4a5566';g.beginPath();g.arc(184,144,7,0,7);g.fill();});// 花崗岩石板＋檢修孔蓋
+  const stoneM=(rx,ry)=>{const t=stoneT.clone();t.needsUpdate=true;t.repeat.set(rx,ry);return TM(t,{roughness:0.85});};
+  const ceilT=cTex(256,256,(g,w,h)=>{g.fillStyle='#a3adbb';g.fillRect(0,0,w,h);g.strokeStyle='#6b7686';g.lineWidth=2;for(let i=0;i<=w;i+=64){g.beginPath();g.moveTo(i,0);g.lineTo(i,h);g.stroke();g.beginPath();g.moveTo(0,i);g.lineTo(w,i);g.stroke();}
+    g.fillStyle='#fff6dc';for(let x=32;x<w;x+=64)for(let y=32;y<h;y+=64){g.beginPath();g.arc(x,y,4,0,7);g.fill();}});ceilT.repeat.set(8,4);// 雨遮底的金屬方格天花板＋嵌燈
+  const glassT=cTex(256,256,(g,w,h)=>{const gr=g.createLinearGradient(0,0,w,h);gr.addColorStop(0,'#1e293b');gr.addColorStop(0.5,'#0f172a');gr.addColorStop(1,'#334155');g.fillStyle=gr;g.fillRect(0,0,w,h);
+    g.strokeStyle='#94a3b8';g.lineWidth=3;for(let i=0;i<=w;i+=32){g.beginPath();g.moveTo(i,0);g.lineTo(i,h);g.stroke();g.beginPath();g.moveTo(0,i);g.lineTo(w,i);g.stroke();}
+    g.fillStyle='#eab308';g.fillRect(0,h-28,w,4);g.fillStyle='rgba(253,224,71,.1)';g.fillRect(20,40,90,160);});glassT.repeat.set(3,2);// 深色玻璃帷幕＋自動門防撞黃條
+  const potT=cTex(128,128,(g,w,h)=>{g.fillStyle='#f1f5f9';g.fillRect(0,0,w,h);g.fillStyle='#a3adbb';g.fillRect(22,24,w-44,h-48);g.strokeStyle='#d5dbe3';g.lineWidth=4;g.strokeRect(18,20,w-36,h-40);});// 白盆側面的灰色方框花紋
+  const busT=cTex(128,128,(g,w,h)=>{g.fillStyle='#f8fafc';g.fillRect(0,0,w,h);g.fillStyle='#334155';g.fillRect(18,20,38,44);g.fillRect(72,20,38,44);
+    [[14,82,'#ea580c'],[114,82,'#ea580c'],[14,96,'#dc2626'],[114,96,'#dc2626']].forEach(([x,y,c])=>{g.fillStyle=c;g.beginPath();g.arc(x,y,5,0,7);g.fill();});g.fillStyle='#e2e8f0';g.fillRect(46,86,36,16);});// 小巴士車尾（不放真的車牌）
+  function towerT(base,win,tint){const t=cTex(128,256,(g,w,h)=>{g.fillStyle=base;g.fillRect(0,0,w,h);if(tint){const gd=g.createLinearGradient(0,0,w,0);gd.addColorStop(0,tint);gd.addColorStop(1,base);g.fillStyle=gd;g.fillRect(0,0,w,h);}
+    g.fillStyle=win;for(let y=12;y<h-12;y+=18)for(let x=10;x<w-10;x+=22)g.fillRect(x,y,14,11);});t.repeat.set(2,4);return t;}
+  const coolM=TM(towerT('#cbd5e1','#334155',null),{roughness:0.8}),warmM=TM(towerT('#fed7aa','#475569','rgba(249,115,22,.45)'),{roughness:0.8});
+  // ---- 地面：雨遮下廣場、台階上人行道、車道、市政公園草坪 ----
+  K.ground(46,22,stoneM(9,4.4),0,-10,0.004);
+  K.ground(46,8,stoneM(9,1.6),0,4.5,0.005);
+  K.ground(46,4.2,S(0x4b5563,0.9),0,4.2,0.007);
+  K.ground(46,16,S(0x4f7a2a,0.95),0,16,0.005);
+  K.disc(57,S(0x5a7a3a,0.95),0,0,0.001);
+  // 4 階寬台階＋5 座銀色扶手（扶手之間可以走）
+  for(let s=0;s<4;s++)B(36,0.04+s*0.03,0.35,S(0x9aa4b2,0.8),0,0,-0.7+s*0.35);
+  [-13,-6.5,0,6.5,13].forEach(x=>{const r=B(0.08,0.55,1.5,S(0xcbd5e1,0.3,0.6),x,0.1,-0.2);r.rotation.x=-0.16;solid(x-0.3,x+0.3,-0.95,0.55);});
+  solid(-22,-13.5,-0.9,0.5);solid(13.5,22,-0.9,0.5);
+  // ---- 議會大樓：超大挑高雨遮、右側石牆＋玻璃門廳、左側金屬巨柱、後方大樓 ----
+  const canopy=B(30,0.9,15.5,TM(ceilT,{roughness:0.6,metalness:0.3}),0,7.75,-12.8,{cast:false});fadeMesh(canopy);
+  fadeMesh(B(4.5,8.2,6,S(0xa8a29e,0.85),12.5,0,-8.5));fadeMesh(B(4.6,8.2,8.5,TM(glassT,{roughness:0.15,metalness:0.4}),12.5,0,-15.5));solid(10.2,14.8,-19.8,-5.5);
+  fadeMesh(B(30,8.2,1,TM(glassT,{roughness:0.15,metalness:0.4}),0,0,-20.5));solid(-15,15,-21,-20);// 背後的議會大樓
+  [[-11.5,-14.5,2.6,6],[-11.5,-7.5,1.4,1.4],[-4.5,-18.8,1.1,1.1],[4.5,-18.8,1.1,1.1]].forEach(([x,z,w,d])=>{fadeMesh(B(w,7.75,d,S(0x9aa4b2,0.35,0.6),x,0,z));solid(x-w/2,x+w/2,z-d/2,z+d/2);});
+  const dl=[];[[-6,-15],[0,-15],[6,-15],[-6,-9],[0,-9],[6,-9]].forEach(([x,z])=>dl.push(light(0xfff0d0,0,9,x,7.2,z)));// 雨遮嵌燈（晚上亮）
+  // ---- 白色方形盆栽（四腳墊高＋灰框花紋＋圓灌木） ----
+  const potM=TM(potT,{roughness:0.7}),rimM=S(0xf8fafc,0.6),footM=S(0xcbd5e1,0.7),bushM=S(0x36622b,0.9);
+  [[-2.5,-14.5],[-3.2,-11.2],[-2.8,-8.2],[1.8,-9.8],[5.2,-9.2],[8,-8.8],[9.6,-8.5],[-8.5,-4],[-2.5,-4],[4.5,-4],[-10,1.3],[-5,1.3],[0,1.3],[5,1.3],[10,1.3]].forEach(([x,z],i)=>{
+    B(1.05,0.12,0.68,footM,x,0,z);B(1.02,0.56,0.66,potM,x,0.1,z);B(1.14,0.1,0.78,rimM,x,0.64,z);const b=SP(0.52,bushM,x,1.02,z,{s:[1.05,0.85,0.85]});b.rotation.y=i*0.8;solid(x-0.57,x+0.57,z-0.39,z+0.39);});
+  // ---- 照片裡的細節：白色小巴士、金色展翅雕塑、A 出口亭、休旅車、黃色滑板車、做操的民眾 ----
+  B(2.1,2.35,5.2,S(0xf8fafc,0.4,0.2),-7.8,0.25,-6.8);B(2.12,0.6,5.22,S(0x334155,0.2,0.3),-7.8,1.7,-6.8,{cast:false});
+  {const m=new THREE.Mesh(new THREE.PlaneGeometry(2.08,2.3),new THREE.MeshStandardMaterial({map:busT,roughness:0.5}));m.position.set(OX-7.8,1.42,OZ-9.42);m.rotation.y=Math.PI;scene.add(m);}
+  [-1,1].forEach(s=>[-1.8,1.8].forEach(z=>{const w=C(0.38,0.38,0.25,S(0x1a1a1a,0.8),-7.8+s*0.95,0.12,-6.8+z);w.rotation.z=Math.PI/2;w.position.y=0.38;}));solid(-8.9,-6.7,-9.4,-4.2);
+  {const gm=S(0xd4af37,0.25,0.8),g=grp(OX-4.5,OZ+7.5,0,scene);const w1=new THREE.Mesh(new THREE.TorusGeometry(1.6,0.22,8,20,Math.PI*0.75),gm);w1.rotation.z=0.4;w1.position.set(-0.8,2.2,0);
+    const w2=new THREE.Mesh(new THREE.TorusGeometry(1.9,0.22,8,20,Math.PI*0.75),gm);w2.rotation.z=-2.2;w2.position.set(0.8,2.5,0);g.add(w1,w2);w1.castShadow=w2.castShadow=true;
+    C(0.6,0.8,0.8,S(0xcbd5e1,0.6),-4.5,0,7.5);solid(-5.3,-3.7,6.7,8.3);}
+  B(3,2.5,5.2,S(0xe2e8f0,0.6),-11.2,0,3.5);sign(txtTex('A',128,128,'#1e3a8a','#ffffff',90),0.8,0.8,-9.68,1.9,3.5,Math.PI/2);solid(-12.7,-9.7,0.9,6.1);
+  [[-5.5,0x1e293b],[1.5,0xf8fafc],[10.5,0xd5dbe3]].forEach(([x,c])=>{B(4,0.85,1.8,S(c,0.35,0.3),x,0.13,3.8);B(2.3,0.7,1.6,S(0x1e293b,0.2,0.3),x-0.2,0.98,3.8);solid(x-2.05,x+2.05,2.85,4.75);});
+  {const g=grp(OX-4.8,OZ-1.5,0.35,scene),y=S(0xfacc15,0.5);bx(0.14,0.03,0.45,y,0,0.05,0,{p:g});cyl(0.015,0.015,0.65,y,0,0.06,-0.18,{p:g});const hb=cyl(0.015,0.015,0.28,S(0x1e293b,0.5),0,0.7,-0.18,{p:g});hb.rotation.z=Math.PI/2;}
+  B(1.2,1.35,10,S(0x78716c,0.95),-15.2,0,-3.5);solid(-15.8,-14.6,-8.5,1.5);
+  const ex=[];[0x1e293b,0xe2e8f0,0x0f172a,0xef4444,0x2f6f9f].forEach((c,i)=>{const g=grp(OX-13.2+(i%2)*1.1,OZ-6.5+i*1.25,Math.PI/2,scene);
+    cyl(0.13,0.13,0.75,S(0x0f172a,0.8),0,0,0,{p:g});const t=new THREE.Group();t.position.y=0.75;g.add(t);bx(0.32,0.55,0.22,S(c,0.7),0,0,0,{p:t});sph(0.14,S(0xf0c8a0,0.7),0,0.7,0,{p:t});ex.push(t);
+    solid(-13.2+(i%2)*1.1-0.3,-13.2+(i%2)*1.1+0.3,-6.5+i*1.25-0.3,-6.5+i*1.25+0.3);});
+  // ---- 行道樹、遠方市政府大樓、兩側七期高樓 ----
+  [[-16.8,-13],[-16.8,-9],[-16.8,-5],[-16.8,-1],[-16.8,3],[-16.8,7],[-14,9],[-9.5,9],[-2,9],[16.8,-13],[16.8,-9],[16.8,-5],[16.8,-1],[16.8,3],[16.8,7],[14,9],[9.5,9],[3.5,9]].forEach(([x,z],i)=>{
+    C(0.18,0.26,2.2,S(0x5c4033,0.9),x,0,z);C(0,1.7,4.4,S(i%2?0x1e4620:0x2a5a2a,0.9),x,1.5,z);solid(x-0.3,x+0.3,z-0.3,z+0.3);});
+  B(26,16,6,TM(glassT,{roughness:0.15,metalness:0.4}),0,0,24);
+  [[-23,-11,8,34,8,0],[-22,-1,7,38,7,0],[-21,9,8,32,8,0],[-16,18,7,26,7,0],[23,-11,8,30,8,1],[22,0,8,33,8,1],[21,11,8,29,8,1],[16,18,7,25,7,1]].forEach(([x,z,w,h,d,warm])=>B(w,h,d,warm?warmM:coolM,x,0,z,{cast:false}));
+  // 走動範圍：雨遮下廣場到車道、草坪前
+  solid(-16.2,-15.8,-20,13.5);solid(15.8,16.2,-20,13.5);solid(-16,16,13.3,13.7);
+  // 回家點：藍色光圈＋招牌
+  C(0.95,1.05,0.06,EM(0x38bdf8,0.8),5.5,0,-15.5);const hg=glow(0x38bdf8,1.6);hg.position.set(OX+5.5,0.8,OZ-15.5);
+  const hs=sign(txtTex('🏠 回家',256,96,'#0284c7','#ffffff',44),1.4,0.52,5.5,1.6,-15.5,Math.PI);
+  // ---- 互動 ----
+  PT(5.5,-15.5,0.9,()=>liftBusy?'':'搭電梯回 16 樓',()=>goHome());
+  PT(-11.6,-4,0.9,()=>'跟大家一起做伸展操',()=>{say('跟著阿姨伯伯一起彎腰、伸展，一、二、三、四……做完全身都暖起來了！');notes([392,440,494,523],'triangle',0.18);});
+  PT(-4.5,6.2,0.9,()=>'看金色展翅雕塑',()=>say('銀金色的流線雕塑像一對張開的翅膀，傍晚的陽光照上去會閃閃發亮。'));
+  PT(0,-11.5,0.9,()=>'在議會廣場拍照打卡',()=>{flash();say('喀嚓！頭頂是超大的雨遮，前面是一排白色盆栽，遠遠看得到市政府。');});
+  PT(-6.2,-6.8,0.7,()=>'看看白色小巴士',()=>say('一台白色小巴士停在雨遮下面，後窗兩扇、紅黃色的圓尾燈。'));
+  PT(-4.8,-2.4,0.6,()=>'看台階旁的黃色滑板車',()=>say('台階旁邊停著一台黃色的兒童滑板車，不知道是哪個小朋友的？'));
+  // 每格更新：做操民眾彎腰、回家招牌浮動
+  VT.plaza=(dt,t)=>{const a=(Math.sin(t*1.8)+1)*0.32;ex.forEach(o=>o.rotation.z=-a);hs.position.y=1.6+Math.sin(t*2.5)*0.06;};
+  VT.plazaDay=(day)=>{drawSky(day);sd.top.material.color.set(day?0x2f6fd8:0x060a1c);sunP.intensity=day?0.9:0.08;dl.forEach(l=>l.intensity=day?0:1.1);};
+  drawSky(true);
+  const RR=[OX-30,OZ-30,OX+30,OZ+30];ROOMS.push({id:'plaza',name:'台中市議會廣場',venue:'plaza',rects:[RR.map(v=>v*80)],m:[RR]});
+  VEN.plaza={x:OX,z:OZ,name:'台中市議會廣場',ax:OX,az:OZ-13.5,ah:0,msg:'到了台中市議會前面的廣場：頭頂是超大的挑高雨遮，前面一排白色方盆栽，走下台階就是車道和市政公園。'};
+  K.done();
+  STAMPS.push(['plaza','台中市議會廣場','🏛️']);
+  const bi=BADGES.findIndex(b=>b[0]==='act30');BADGES.splice(bi<0?BADGES.length:bi,0,['plazaexe','議會廣場晨操','🤸',l=>l==='跟大家一起做伸展操']);
+  OUTDOOR.plaza=1;
+  // 電梯廳旅行畫廊：出大門正對面那面牆再掛一幅「台中市議會廣場」（第 39 版）
+  {const PW=0.56,PH=0.46,Y=1.58,x=P(-96)+0.075,z=5.68;
+    const tex=cTex(320,262,(g,w,h)=>{const sk=g.createLinearGradient(0,0,0,h*0.6);sk.addColorStop(0,'#3a7ad8');sk.addColorStop(1,'#cfe6f4');g.fillStyle=sk;g.fillRect(0,0,w,h);
+      [[10,90,40,170,'#cbd5e1'],[60,60,36,200,'#b8c2cf'],[230,70,40,190,'#f3c9a0'],[276,100,36,160,'#e8b890']].forEach(([x0,y0,bw,bh,c])=>{g.fillStyle=c;g.fillRect(x0,y0,bw,bh);g.fillStyle='rgba(60,70,90,.55)';for(let yy=y0+8;yy<y0+bh;yy+=12)for(let xx=x0+5;xx<x0+bw-6;xx+=9)g.fillRect(xx,yy,5,6);});
+      g.fillStyle='#2a3a5a';g.fillRect(100,120,120,60);g.fillStyle='#cfd6de';g.fillRect(0,h*0.62,w,h);g.strokeStyle='rgba(110,120,135,.6)';g.lineWidth=1.5;for(let i=0;i<8;i++){g.beginPath();g.moveTo(0,h*0.62+i*13);g.lineTo(w,h*0.62+i*13);g.stroke();}
+      g.fillStyle='#9aa4b2';g.fillRect(0,0,w,26);g.fillRect(0,26,26,h*0.62-26);
+      [[60,0.8],[120,0.86],[190,0.8],[250,0.86]].forEach(([px,py])=>{g.fillStyle='#f4f6f8';g.fillRect(px-16,h*py,32,18);g.fillStyle='#3f7a2f';g.beginPath();g.ellipse(px,h*py-4,17,11,0,0,7);g.fill();});
+      g.fillStyle='#d8402a';g.beginPath();g.moveTo(w-58,0);g.lineTo(w,0);g.lineTo(w,58);g.closePath();g.fill();g.save();g.translate(w-22,22);g.rotate(Math.PI/4);g.fillStyle='#fff';g.font='bold 20px sans-serif';g.textAlign='center';g.fillText('新',0,7);g.restore();
+      g.globalAlpha=0.06;for(let i=0;i<400;i++){g.fillStyle=i%2?'#fff':'#000';g.fillRect((i*97)%w,(i*61)%h,2,2);}g.globalAlpha=1;g.strokeStyle='rgba(60,40,20,.35)';g.lineWidth=6;g.strokeRect(0,0,w,h);});
+    const ry=Math.PI/2;const pic=new THREE.Mesh(new THREE.PlaneGeometry(PW,PH),new THREE.MeshBasicMaterial({map:tex,toneMapped:false}));pic.position.set(x+0.02,Y,z);pic.rotation.y=ry;scene.add(pic);
+    const fr=new THREE.Mesh(new THREE.BoxGeometry(PW+0.07,PH+0.07,0.02),S(0xb8913a,0.35,0.7));fr.position.set(x-0.002,Y,z);fr.rotation.y=ry;scene.add(fr);
+    const lb=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.06),new THREE.MeshBasicMaterial({map:txtTex('台中市議會廣場',340,60,'#2a2622','#f2e2b0',30),toneMapped:false}));lb.position.set(x+0.006,Y-PH/2-0.1,z);lb.rotation.y=ry;scene.add(lb);
+    const go=()=>{if(FLY.on)toggleFly();if(sitting){sitting=null;seatAnim=null;}travel('plaza');};
+    clickables.push({mesh:pic,go});things.push({x:x+0.55,z,r:0.32,label:()=>liftBusy?'':'去「台中市議會廣場」（看畫）',go});}
+})();
 netStart();
 requestAnimationFrame(frame);
 })();
