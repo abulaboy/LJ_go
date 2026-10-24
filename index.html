@@ -193,7 +193,7 @@ const colliders=[];
 function col(x0,x1,z0,z1){if(XF){const a=XF.ox+z0,b=XF.ox+z1,e=XF.oz-x1,f=XF.oz-x0;x0=a;x1=b;z0=e;z1=f;}const c={x0:Math.min(x0,x1),x1:Math.max(x0,x1),z0:Math.min(z0,z1),z1:Math.max(z0,z1),on:true};colliders.push(c);return c;}
 function bx(w,h,d,m,x,y0,z,o){o=o||{};const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),typeof m==='number'?S(m):m);
   mesh.position.set(x,y0+h/2,z);mesh.castShadow=o.cast!==false;mesh.receiveShadow=true;(o.p||BASE).add(mesh);
-  if(o.solid){const c=col(x-w/2,x+w/2,z-d/2,z+d/2);c.top=y0+h;}return mesh;}
+  if(o.solid){const c=col(x-w/2,x+w/2,z-d/2,z+d/2);c.top=y0+h;c.bot=y0;}return mesh;}
 function cyl(rt,rb,h,m,x,y0,z,o){o=o||{};const mesh=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,o.seg||24),typeof m==='number'?S(m):m);
   mesh.position.set(x,y0+h/2,z);mesh.castShadow=true;mesh.receiveShadow=true;(o.p||BASE).add(mesh);if(o.solid){const c=col(x-rb,x+rb,z-rb,z+rb);c.top=y0+h;}return mesh;}
 function sph(r,m,x,y,z,o){o=o||{};const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,20,14),typeof m==='number'?S(m):m);mesh.position.set(x,y,z);mesh.castShadow=true;(o.p||BASE).add(mesh);if(o.s)mesh.scale.set(o.s[0],o.s[1],o.s[2]);return mesh;}
@@ -4230,8 +4230,9 @@ stick.addEventListener('pointerdown',e=>{stId=e.pointerId;stick.setPointerCaptur
 stick.addEventListener('pointermove',e=>{if(e.pointerId===stId)stMove(e);});
 const stEnd=e=>{if(e.pointerId===stId){stId=null;sx=sy=0;knob.style.transform='';}};stick.addEventListener('pointerup',stEnd);stick.addEventListener('pointercancel',stEnd);
 
-function supportAt(x,z,h){let t=0;for(const c of colliders){if(!c.on||c.top===undefined||c.top>h+0.08)continue;if(x>=c.x0-0.05&&x<=c.x1+0.05&&z>=c.z0-0.05&&z<=c.z1+0.05&&c.top>t)t=c.top;}return t;}
-function collide(p,h){h=h||0;for(let it=0;it<3;it++)for(const c of colliders){if(!c.on)continue;if(c.top!==undefined&&h>=c.top-0.06)continue;
+function stepUp73(x,z){return (x>-175&&x<175&&z>625&&z<975)?0.45:0.08;}
+function supportAt(x,z,h){let t=0;const su=stepUp73(x,z);for(const c of colliders){if(!c.on||c.top===undefined||c.top>h+su)continue;if(x>=c.x0-0.05&&x<=c.x1+0.05&&z>=c.z0-0.05&&z<=c.z1+0.05&&c.top>t)t=c.top;}return t;}
+function collide(p,h){h=h||0;const su=stepUp73(p.x,p.z);for(let it=0;it<3;it++)for(const c of colliders){if(!c.on)continue;if(c.top!==undefined&&h>=c.top-(su>0.1?su:0.06))continue;if(c.bot!==undefined&&c.bot>h+1.75)continue;
   const cx=Math.max(c.x0,Math.min(c.x1,p.x)),cz=Math.max(c.z0,Math.min(c.z1,p.z));const dx=p.x-cx,dz=p.z-cz,d=Math.hypot(dx,dz);
   if(d>=R)continue;
   if(d>1e-6){p.x=cx+dx/d*R;p.z=cz+dz/d*R;}
@@ -18652,6 +18653,7 @@ function makeMonsterMesh(spOrId, showNameplate) {
 
   // 擊球「鏘」聲
   function playBatHitSound(isSolid) {
+  if (window.__sfx73) { var _k = isSolid ? (Math.random() < 0.5 ? 'solid' : 'line') : ['fly','ground','foul','broken'][Math.floor(Math.random()*4)]; window.__sfx73.bat(_k); return; }
     if (audioState.muted) return;
     var ctx = getAudioCtx();
     if (!ctx) return;
@@ -18681,6 +18683,7 @@ function makeMonsterMesh(spOrId, showNameplate) {
 
   // 捕手手套「啪」聲
   function playGlovePopSound(loud) {
+  if (window.__sfx73) { window.__sfx73.glove(loud ? 'catcher_fast' : ['catcher_break','catcher_dirt','outfield_fly','outfield_run'][Math.floor(Math.random()*4)]); return; }
     if (audioState.muted) return;
     var ctx = getAudioCtx();
     if (!ctx) return;
@@ -25285,6 +25288,7 @@ function makeMonsterMesh(spOrId, showNameplate) {
 
   // --- 6. 擊球與比賽音效 window.__STADIUM_SFX ---
   function sfxBat() {
+  if (window.__sfx73) { window.__sfx73.bat(); return; }
     if ((!inStadium && !isInEscon()) || isMuted) return;
     startCrowdAmbience();
     var ac = getOrInitAudioContext();
@@ -39462,6 +39466,12 @@ function makeMonsterMesh(spOrId, showNameplate) {
         // -----------------------------------------------------
         // A. 自由檢視模式開啟中：鎖定角色、更新自由鏡頭與左下座標
         // -----------------------------------------------------
+        if (freeCam.active && p && Math.hypot((p.x||0) - freeCam.savedPlayer.x, (p.z||0) - freeCam.savedPlayer.z) > 3) {
+          // 第 73 版：自由檢視時用「去哪裡」或傳送到別的場景，就自動結束自由檢視，不再把人拉回原地
+          var _tx = p.x, _tz = p.z;
+          toggleFreeView();
+          safeSetProp(p, 'x', _tx); safeSetProp(p, 'z', _tz);
+        }
         if (freeCam.active) {
           if (p) {
             safeSetProp(p, 'x', freeCam.savedPlayer.x);
@@ -42427,6 +42437,569 @@ function makeMonsterMesh(spOrId, showNameplate) {
     applyV72Fixes();
     setInterval(applyV72Fixes, 500);
   } catch(e) {}
+})();
+// ===== 第 73 版：北海道球場館內（三層環狀大廳、商店、小地圖、真實球員廣播、多種擊球與手套音效）（Gemini 撰寫、Claude 整合） =====
+(function(){
+try{
+  var NX = 0, NZ = 1500;
+  var K = kit(NX, NZ, 'esconIn');
+  ROOMS.push({id:'esconIn',name:'北海道球場館內',venue:'esconIn',rects:[[(NX-130)*80,(NZ-130)*80,(NX+130)*80,(NZ+130)*80]],m:[[NX-130,NZ-130,NX+130,NZ+130]]});
+  VEN.esconIn = {x:NX,z:NZ,name:'北海道球場館內',ax:NX+20,az:NZ-104,ah:0,msg:'走進北海道球場館內：1F、2F、3F 環狀大廳都能繞一圈，東西兩側緩坡上 2F、南北緩坡上 3F。'};
+
+  var M = {
+    turfOut: S(0x236e33), turfIn: S(0x2d823e), dirt: S(0xa67449), warning: S(0x8c5832),
+    white: S(0xf5f5f7), chalk: BM(0xffffff),
+    floor1: S(0xd2cfc8), floor2: S(0xc4c9cf), floor3: S(0xb8c0ca),
+    ramp: S(0x9ca4ae), rampEdge: S(0x3a424c), rail: S(0x28303a),
+    glass: new THREE.MeshStandardMaterial({ color: 0x88ccff, transparent: true, opacity: 0.35, roughness: 0.15 }),
+    wallDark: S(0x1f252e), wallWood: S(0x9c6e44), woodLight: S(0xc79a6b), woodDark: S(0x5a3c22),
+    seatBlue: S(0x154b8c), seatGold: S(0xc99e32), pillar: S(0x303640), roofTruss: S(0x3a414d),
+    gold: S(0xd4af37), red: S(0xcc2929), blue: S(0x1d63b8), yellow: S(0xe5c130), black: S(0x15181c),
+    skin: S(0xf2ccb6), clothBlue: S(0x104a8e), clothRed: S(0xb82828), clothGreen: S(0x246e3a), clothBlack: S(0x22252a),
+    water: EM(0x44bbff, 0.4), glowWarm: EM(0xffdf99, 0.9)
+  };
+
+  function makeSignTex(titleZh, subJa, bgHex, fgHex, accentHex){
+    return cTex(512, 160, function(g, w, h){
+      g.fillStyle = bgHex || '#10243e'; g.fillRect(0, 0, w, h);
+      g.strokeStyle = accentHex || '#d4af37'; g.lineWidth = 8; g.strokeRect(6, 6, w - 12, h - 12);
+      g.fillStyle = accentHex || '#d4af37'; g.fillRect(18, 22, 10, h - 44);
+      g.fillStyle = fgHex || '#ffffff'; g.font = 'bold 42px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
+      g.fillText(titleZh, 44, 58);
+      g.fillStyle = accentHex || '#ffd966'; g.font = 'bold 26px sans-serif'; g.fillText(subJa, 44, 114);
+    });
+  }
+
+  // 中央簡化球場與看台
+  K.ground(260, 260, M.wallDark, 0, 0, -0.05);
+  K.ground(160, 160, M.warning, 0, 0, 0.01);
+  K.ground(146, 146, M.turfOut, 0, 0, 0.03);
+  K.C(28, 28, 0.06, M.dirt, 0, 0.02, -20);
+  K.B(24, 0.06, 24, M.turfIn, 0, 0.04, -20);
+  K.C(3.2, 4.2, 0.25, M.dirt, 0, 0.04, -20);
+  K.B(1.2, 0.06, 0.35, M.white, 0, 0.28, -20);
+  K.B(1.4, 0.06, 1.4, M.white, 0, 0.06, -46);
+  K.B(1.2, 0.08, 1.2, M.white, 18, 0.06, -20);
+  K.B(1.2, 0.08, 1.2, M.white, 0, 0.06, 4);
+  K.B(1.2, 0.08, 1.2, M.white, -18, 0.06, -20);
+  K.B(0.25, 0.05, 95, M.chalk, 32, 0.05, 0);
+  K.B(0.25, 0.05, 95, M.chalk, -32, 0.05, 0);
+  K.B(136, 2.6, 0.8, M.blue, 0, 0, 72, { solid: true });
+  K.B(136, 0.3, 0.9, M.yellow, 0, 2.6, 72);
+  for(var st = 0; st < 5; st++){
+    var sy = st * 0.9, offset = 78 - st * 2.2, sm = st % 2 === 0 ? M.seatBlue : M.seatGold;
+    K.B(120, 0.85, 2.0, sm, 0, sy, -offset);
+    K.B(2.0, 0.85, 120, sm, offset, sy, 0);
+    K.B(2.0, 0.85, 120, sm, -offset, sy, 0);
+  }
+  // 山型屋頂桁架
+  for(var rz = -110; rz <= 110; rz += 44){
+    K.B(4, 28, 4, M.pillar, -124, 0, rz, { solid: true });
+    K.B(4, 28, 4, M.pillar, 124, 0, rz, { solid: true });
+    K.B(252, 2.0, 2.0, M.roofTruss, 0, 28, rz);
+    K.B(180, 1.8, 1.8, M.roofTruss, 0, 33, rz);
+    K.B(100, 1.6, 1.6, M.roofTruss, 0, 37, rz);
+  }
+  for(var gy = 6; gy <= 26; gy += 5) K.B(240, 0.5, 0.5, M.roofTruss, 0, gy, 124);
+
+  // 三層環狀大廳：1F=0、2F=4.2、3F=8.4
+  K.B(248, 0.2, 40, M.floor1, 0, -0.2, -104, { solid: true });
+  K.B(248, 0.2, 40, M.floor1, 0, -0.2, 104, { solid: true });
+  K.B(40, 0.2, 168, M.floor1, -104, -0.2, 0, { solid: true });
+  K.B(40, 0.2, 168, M.floor1, 104, -0.2, 0, { solid: true });
+  // 2F
+  K.B(244, 0.3, 38, M.floor2, 0, 3.9, -103, { solid: true });
+  K.B(244, 0.3, 38, M.floor2, 0, 3.9, 103, { solid: true });
+  K.B(10, 0.3, 168, M.floor2, -89, 3.9, 0, { solid: true });
+  K.B(14, 0.3, 168, M.floor2, -115, 3.9, 0, { solid: true });
+  K.B(10, 0.3, 168, M.floor2, 89, 3.9, 0, { solid: true });
+  K.B(14, 0.3, 168, M.floor2, 115, 3.9, 0, { solid: true });
+  K.B(14, 0.3, 36, M.floor2, -101, 3.9, 0, { solid: true });
+  K.B(14, 0.3, 36, M.floor2, 101, 3.9, 0, { solid: true });
+  K.B(14, 0.3, 24, M.floor2, -101, 3.9, -72, { solid: true });
+  K.B(14, 0.3, 24, M.floor2, -101, 3.9, 72, { solid: true });
+  K.B(14, 0.3, 24, M.floor2, 101, 3.9, -72, { solid: true });
+  K.B(14, 0.3, 24, M.floor2, 101, 3.9, 72, { solid: true });
+  // 3F
+  K.B(38, 0.3, 244, M.floor3, -103, 8.1, 0, { solid: true });
+  K.B(38, 0.3, 244, M.floor3, 103, 8.1, 0, { solid: true });
+  K.B(168, 0.3, 10, M.floor3, 0, 8.1, -89, { solid: true });
+  K.B(168, 0.3, 14, M.floor3, 0, 8.1, -115, { solid: true });
+  K.B(168, 0.3, 10, M.floor3, 0, 8.1, 89, { solid: true });
+  K.B(168, 0.3, 14, M.floor3, 0, 8.1, 115, { solid: true });
+  K.B(36, 0.3, 14, M.floor3, 0, 8.1, -101, { solid: true });
+  K.B(36, 0.3, 14, M.floor3, 0, 8.1, 101, { solid: true });
+  K.B(24, 0.3, 14, M.floor3, -72, 8.1, -101, { solid: true });
+  K.B(24, 0.3, 14, M.floor3, 72, 8.1, -101, { solid: true });
+  K.B(24, 0.3, 14, M.floor3, -72, 8.1, 101, { solid: true });
+  K.B(24, 0.3, 14, M.floor3, 72, 8.1, 101, { solid: true });
+  // 護欄
+  [0, 4.2, 8.4].forEach(function(fy){
+    K.B(168, 1.1, 0.4, M.rail, 0, fy, -84, { solid: true });
+    K.B(168, 1.1, 0.4, M.rail, 0, fy, 84, { solid: true });
+    K.B(0.4, 1.1, 168, M.rail, -84, fy, 0, { solid: true });
+    K.B(0.4, 1.1, 168, M.rail, 84, fy, 0, { solid: true });
+    K.B(244, 1.2, 0.6, M.wallDark, 0, fy, -122, { solid: true });
+    K.B(244, 1.2, 0.6, M.wallDark, 0, fy, 122, { solid: true });
+    K.B(0.6, 1.2, 244, M.wallDark, -122, fy, 0, { solid: true });
+    K.B(0.6, 1.2, 244, M.wallDark, 122, fy, 0, { solid: true });
+  });
+
+  // 8 座緩坡（每片高 0.06、深 0.5）
+  function buildRampZ(cx, width, zStart, zDir, yBase){
+    for(var i = 0; i < 70; i++){
+      var zc = zStart + zDir * (i * 0.5 + 0.25), yTop = yBase + (i + 1) * 0.06;
+      K.B(width, 0.18, 0.52, M.ramp, cx, yTop - 0.18, zc, { solid: true });
+      if(i % 10 === 0){
+        K.B(0.15, 0.9, 0.5, M.rampEdge, cx - width / 2, yTop, zc, { solid: true });
+        K.B(0.15, 0.9, 0.5, M.rampEdge, cx + width / 2, yTop, zc, { solid: true });
+      }
+    }
+  }
+  function buildRampX(cz, width, xStart, xDir, yBase){
+    for(var i = 0; i < 70; i++){
+      var xc = xStart + xDir * (i * 0.5 + 0.25), yTop = yBase + (i + 1) * 0.06;
+      K.B(0.52, 0.18, width, M.ramp, xc, yTop - 0.18, cz, { solid: true });
+      if(i % 10 === 0){
+        K.B(0.5, 0.9, 0.15, M.rampEdge, xc, yTop, cz - width / 2, { solid: true });
+        K.B(0.5, 0.9, 0.15, M.rampEdge, xc, yTop, cz + width / 2, { solid: true });
+      }
+    }
+  }
+  buildRampZ(-101, 5.2, -53, 1, 0.0);
+  buildRampZ(-101, 5.2, 53, -1, 0.0);
+  buildRampZ(101, 5.2, -53, 1, 0.0);
+  buildRampZ(101, 5.2, 53, -1, 0.0);
+  buildRampX(-101, 5.2, -53, 1, 4.2);
+  buildRampX(-101, 5.2, 53, -1, 4.2);
+  buildRampX(101, 5.2, -53, 1, 4.2);
+  buildRampX(101, 5.2, 53, -1, 4.2);
+  var rampSign12 = makeSignTex('往 2F 美食街緩坡', '2F コンコース スロープ ↑', '#16385c', '#ffffff', '#55ccff');
+  var rampSign23 = makeSignTex('往 3F 觀景台緩坡', '3F スターレベル スロープ ↑', '#2c1d4c', '#ffffff', '#ffbb44');
+  K.sign(rampSign12, 3.6, 1.1, -101, 2.5, -54, 0);
+  K.sign(rampSign12, 3.6, 1.1, -101, 2.5, 54, Math.PI);
+  K.sign(rampSign12, 3.6, 1.1, 101, 2.5, -54, 0);
+  K.sign(rampSign12, 3.6, 1.1, 101, 2.5, 54, Math.PI);
+  K.sign(rampSign23, 3.6, 1.1, -54, 6.7, -101, Math.PI / 2);
+  K.sign(rampSign23, 3.6, 1.1, 54, 6.7, -101, -Math.PI / 2);
+  K.sign(rampSign23, 3.6, 1.1, -54, 6.7, 101, Math.PI / 2);
+  K.sign(rampSign23, 3.6, 1.1, 54, 6.7, 101, -Math.PI / 2);
+
+  // 商店
+  function buildClerk(x, y, z, clothMat){
+    K.B(0.22, 0.7, 0.22, M.clothBlack, x - 0.14, y, z);
+    K.B(0.22, 0.7, 0.22, M.clothBlack, x + 0.14, y, z);
+    K.B(0.55, 0.65, 0.32, clothMat || M.clothBlue, x, y + 0.7, z);
+    K.B(0.18, 0.55, 0.18, clothMat || M.clothBlue, x - 0.38, y + 0.75, z);
+    K.B(0.18, 0.55, 0.18, clothMat || M.clothBlue, x + 0.38, y + 0.75, z);
+    K.SP(0.22, M.skin, x, y + 1.55, z);
+    K.B(0.42, 0.12, 0.48, M.blue, x, y + 1.72, z);
+  }
+  function buildDetailedShop(cfg){
+    var x = cfg.x, y = cfg.y, z = cfg.z, w = cfg.w || 14, d = cfg.d || 8, h = cfg.h || 3.6;
+    var dir = cfg.dir || 'N', isZ = (dir === 'N' || dir === 'S'), fSign = (dir === 'N' || dir === 'E') ? 1 : -1;
+    var bw = isZ ? w : d, bd = isZ ? d : w, wm = cfg.wallMat || M.wallWood;
+    if(isZ){
+      K.B(bw, h, 0.35, wm, x, y, z - fSign * (bd / 2), { solid: true });
+      K.B(0.35, h, bd, wm, x - bw / 2, y, z, { solid: true });
+      K.B(0.35, h, bd, wm, x + bw / 2, y, z, { solid: true });
+    } else {
+      K.B(0.35, h, bd, wm, x - fSign * (bw / 2), y, z, { solid: true });
+      K.B(bw, h, 0.35, wm, x, y, z - bd / 2, { solid: true });
+      K.B(bw, h, 0.35, wm, x, y, z + bd / 2, { solid: true });
+    }
+    K.B(bw + 0.6, 0.25, bd + 0.6, M.wallDark, x, y + h, z);
+    K.B(isZ ? bw * 0.7 : 0.4, 0.1, isZ ? 0.4 : bd * 0.7, M.glowWarm, x, y + h - 0.12, z);
+    if(cfg.addLight) K.light(0xffe6bb, 0.85, 22, x, y + h - 0.4, z);
+    var tex = makeSignTex(cfg.zh, cfg.ja, cfg.bgHex, '#ffffff', cfg.accentHex), signY = y + h - 0.55;
+    if(dir === 'N') K.sign(tex, w * 0.85, 1.25, x, signY, z + bd / 2 + 0.15, 0);
+    if(dir === 'S') K.sign(tex, w * 0.85, 1.25, x, signY, z - bd / 2 - 0.15, Math.PI);
+    if(dir === 'E') K.sign(tex, w * 0.85, 1.25, x + bw / 2 + 0.15, signY, z, Math.PI / 2);
+    if(dir === 'W') K.sign(tex, w * 0.85, 1.25, x - bw / 2 - 0.15, signY, z, -Math.PI / 2);
+    var cx = isZ ? x : x + fSign * (bw * 0.22), cz = isZ ? z + fSign * (bd * 0.22) : z;
+    var cw = isZ ? w * 0.65 : 1.1, cd = isZ ? 1.1 : w * 0.65;
+    K.B(cw, 1.05, cd, M.woodLight, cx, y, cz, { solid: true });
+    K.B(cw + 0.1, 0.08, cd + 0.1, M.white, cx, y + 1.05, cz);
+    K.B(0.45, 0.35, 0.4, M.black, cx, y + 1.13, cz);
+    K.B(0.35, 0.25, 0.35, M.gold, cx + (isZ ? 1.2 : 0), y + 1.13, cz + (isZ ? 0 : 1.2));
+    K.C(0.18, 0.15, 0.32, M.red, cx - (isZ ? 1.2 : 0), y + 1.13, cz - (isZ ? 0 : 1.2));
+    var clerkX = isZ ? x - 0.8 : x + fSign * (bw * 0.02), clerkZ = isZ ? z + fSign * (bd * 0.02) : z - 0.8;
+    buildClerk(clerkX, y, clerkZ, cfg.clerkMat || M.clothBlue);
+    if(w >= 14) buildClerk(isZ ? x + 1.5 : clerkX, y, isZ ? clerkZ : z + 1.5, cfg.clerkMat2 || M.clothRed);
+    var sx = isZ ? x : x - fSign * (bw * 0.32), sz = isZ ? z - fSign * (bd * 0.32) : z;
+    var sw = isZ ? w * 0.8 : 0.7, sd = isZ ? 0.7 : w * 0.8;
+    for(var sh = 0; sh < 3; sh++){
+      var shy = y + 0.45 + sh * 0.85;
+      K.B(sw, 0.08, sd, M.woodDark, sx, shy, sz);
+      for(var gi = -2; gi <= 2; gi++){
+        var gx = isZ ? sx + gi * (w * 0.14) : sx, gz = isZ ? sz : sz + gi * (w * 0.14);
+        var prodMat = (gi + sh) % 3 === 0 ? M.blue : ((gi + sh) % 2 === 0 ? M.gold : M.red);
+        K.B(0.42, 0.45, 0.35, prodMat, gx, shy + 0.08, gz);
+      }
+    }
+    var ptx = isZ ? x : x + fSign * (bw / 2 + 1.4), ptz = isZ ? z + fSign * (bd / 2 + 1.4) : z;
+    K.PT(ptx, ptz, 3.8, function(){ return cfg.prompt; }, function(){
+      say(cfg.msg);
+      if(window.__sfx73) window.__sfx73.glove('catcher_fast');
+    });
+  }
+  var shops = [
+    { x: 0, y: 0, z: -115, w: 16, d: 7, dir: 'N', zh: '1F 綜合資訊服務台', ja: 'インフォメーション・案内所', bgHex: '#0f2c52', accentHex: '#66ccff', clerkMat: M.clothBlue, addLight: true,
+      prompt: '詢問【1F 綜合資訊台】', msg: '服務人員：「歡迎來到北海道球場！東西兩側緩坡可上 2F 美食街，再由南北緩坡上 3F 觀景台喔！」' },
+    { x: 52, y: 0, z: -114, w: 18, d: 8, dir: 'N', zh: '鬥士官方旗艦商品店', ja: 'FIGHTERS FLAGSHIP STORE', bgHex: '#0a2546', accentHex: '#d4af37', clerkMat: M.clothBlue, clerkMat2: M.clothBlack, addLight: true,
+      prompt: '逛逛【鬥士官方旗艦店】', msg: '買了主場刺繡球衣和應援加油棒！店員熱血喊道：「Go Fighters！」' },
+    { x: -56, y: 0, z: 114, w: 18, d: 8, dir: 'S', zh: 'TOWER 11 溫泉三溫暖入口', ja: 'TOWER 11 温泉＆サウナ', bgHex: '#1c222b', accentHex: '#ffaa33', clerkMat: M.clothBlack, addLight: true,
+      prompt: '進入【TOWER 11 溫泉三溫暖入口】', msg: '看了背號 11 主題展示牆，還買了「邊看球邊泡湯」毛巾套組！' },
+    { x: 114, y: 0, z: 0, w: 16, d: 8, dir: 'W', zh: '七星橫丁・北海道拉麵酒場', ja: '七つ星横丁・ラーメン＆居酒屋', bgHex: '#5c1919', accentHex: '#ffcc44', clerkMat: M.clothRed, addLight: true,
+      prompt: '點餐【味噌奶油玉米拉麵】', msg: '熱騰騰的北海道味噌拉麵配炙燒叉燒上桌！湯頭濃郁，體力瞬間回滿！' },
+    { x: -114, y: 0, z: 0, w: 14, d: 7, dir: 'E', zh: '1F 洗手間・育嬰室', ja: '1F お手洗い・ベビールーム', bgHex: '#1f423c', accentHex: '#88eedd', clerkMat: M.clothGreen, addLight: false,
+      prompt: '使用【1F 木質調洗手間】', msg: '洗手間用北海道木材裝潢，乾淨寬敞又有淡淡木頭香！' },
+    { x: 0, y: 4.2, z: 114, w: 18, d: 8, dir: 'S', zh: '球場精釀啤酒吧', ja: 'クラフトビール醸造所', bgHex: '#1b4928', accentHex: '#f2c94c', clerkMat: M.clothGreen, addLight: true,
+      prompt: '點一杯【球場現釀精釀啤酒】（大人喝）', msg: '球場裡現釀的柑橘香精釀啤酒，大人喝了說超清爽！小朋友點了柳橙汁。' },
+    { x: -48, y: 4.2, z: -114, w: 15, d: 8, dir: 'N', zh: '鬥士家庭紀念品店', ja: 'FIGHTERS FAMILY SHOP', bgHex: '#143866', accentHex: '#ff99bb', clerkMat: M.clothBlue, addLight: false,
+      prompt: '選購【狐狸耳朵髮箍與應援毛巾】', msg: '買了毛茸茸的狐狸耳朵髮箍和必勝毛巾，準備跟全場一起跳狐狸舞！' },
+    { x: 48, y: 4.2, z: -114, w: 15, d: 8, dir: 'N', zh: '十勝豚丼・北海道霜淇淋', ja: '十勝豚丼＆ソフトクリーム', bgHex: '#613414', accentHex: '#ffd166', clerkMat: M.clothRed, addLight: false,
+      prompt: '品嚐【炭火豚丼與鮮乳霜淇淋】', msg: '炭烤醬香豬肉鋪滿白飯，飯後再來一支北海道鮮乳霜淇淋，幸福破表！' },
+    { x: 0, y: 4.2, z: -114, w: 13, d: 7, dir: 'N', zh: '2F 洗手間・休息區', ja: '2F お手洗い・パウダールーム', bgHex: '#203c4c', accentHex: '#77ddff', clerkMat: M.clothBlue, addLight: false,
+      prompt: '前往【2F 洗手間與休息區】', msg: '休息區牆上的電視同步轉播場內實況，完全不怕漏看好球！' },
+    { x: -114, y: 8.4, z: 0, w: 16, d: 8, dir: 'E', zh: '3F 全景高空餐吧', ja: 'パノラマ スカイバー', bgHex: '#26143b', accentHex: '#f5b041', clerkMat: M.clothBlack, addLight: true,
+      prompt: '點一份【起司拼盤與飲料】', msg: '在 3F 高空餐吧邊吃起司拼盤邊俯瞰整座翠綠球場，視野無敵！' },
+    { x: 114, y: 8.4, z: 0, w: 16, d: 8, dir: 'W', zh: '北海道和牛便當・海鮮攤', ja: '北海道和牛弁当＆海鮮グルメ', bgHex: '#591622', accentHex: '#f7d060', clerkMat: M.clothRed, addLight: true,
+      prompt: '購買【和牛帆立貝豪華便當】', msg: '炙燒和牛配上肥美帆立貝，每一口都是頂級享受！' },
+    { x: 114, y: 8.4, z: -56, w: 13, d: 7, dir: 'W', zh: '3F 洗手間・服務台', ja: '3F お手洗い・案内', bgHex: '#1d3547', accentHex: '#88ccff', clerkMat: M.clothBlue, addLight: false,
+      prompt: '使用【3F 洗手間】', msg: '3F 洗手間整潔明亮，服務台還有球場屋頂結構導覽手冊！' }
+  ];
+  for(var si = 0; si < shops.length; si++) buildDetailedShop(shops[si]);
+
+  // TOWER 11 立柱與溫泉看台
+  K.B(9, 18, 5, M.wallDark, -56, 0, 90, { solid: true });
+  K.sign(makeSignTex('TOWER 11 溫泉看台', 'TOWER 11 SPA & SAUNA', '#11161d', '#ffffff', '#d4af37'), 8.2, 2.6, -56, 13.5, 87.3, Math.PI);
+  K.B(6, 1.2, 3, M.water, -56, 5.5, 86);
+  // 3F 中外野觀景台
+  K.B(26, 0.25, 8, M.woodLight, 0, 8.4, 89, { solid: true });
+  K.B(26, 1.15, 0.25, M.glass, 0, 8.65, 84.8);
+  K.sign(makeSignTex('3F 中外野全景觀景台', '3F パノラマ展望デッキ', '#103454', '#ffffff', '#66eeff'), 8.5, 2.2, 0, 11.8, 92.5, Math.PI);
+  K.PT(0, 88, 4.5, function(){ return '站上【3F 中外野全景觀景台】眺望全場'; }, function(){
+    say('從 3F 觀景台俯瞰整座球場：草皮紋理、三層環狀大廳和玻璃帷幕盡收眼底！');
+    if(window.__sfx73) window.__sfx73.crowd('cheer');
+  });
+  K.PT(0, -100, 3.5, function(){ return '聽【下一棒打者廣播】'; }, function(){ if(window.__announce73) window.__announce73(); });
+  K.PT(20, -118, 3, function(){ return '走出館外，回到北海道棒球場廣場'; }, function(){ travel('escon'); });
+
+  K.done();
+
+  // 舊球場主入口廣場加一個入口，可以走進館內
+  things.push({x:0,z:800-140,r:3.5,label:function(){return '走進【北海道球場館內】（1F～3F 大廳）';},go:function(){travel('esconIn');}});
+  try{
+    var goList = document.getElementById('goList');
+    if(goList){
+      var gb = document.createElement('button'); gb.className = 'tbtn pickb'; gb.textContent = '🏟️ 北海道球場館內';
+      gb.onclick = function(){ var gp = document.getElementById('goPanel'); if(gp) gp.hidden = true; travel('esconIn'); };
+      goList.appendChild(gb);
+    }
+  }catch(e){}
+
+  // 2026 先發名單
+  window.__lineup73 = {
+    fighters: [
+      { no: 53, name: '水谷 瞬', pos: 'レフト' }, { no: 7, name: '松本 剛', pos: 'センター' }, { no: 9, name: '郡司 裕也', pos: 'サード' },
+      { no: 4, name: 'レイエス', pos: '指名打者' }, { no: 66, name: '万波 中正', pos: 'ライト' }, { no: 21, name: '清宮 幸太郎', pos: 'ファースト' },
+      { no: 64, name: '田宮 裕涼', pos: 'キャッチャー' }, { no: 3, name: '水野 達稀', pos: 'ショート' }, { no: 43, name: '上川畑 大悟', pos: 'セカンド' }
+    ],
+    teams: {
+      '福岡ソフトバンクホークス': [
+        { no: 23, name: '周東 佑京', pos: 'センター' }, { no: 6, name: '今宮 健太', pos: 'ショート' }, { no: 9, name: '柳田 悠岐', pos: 'ライト' },
+        { no: 5, name: '山川 穂高', pos: 'ファースト' }, { no: 3, name: '近藤 健介', pos: 'レフト' }, { no: 8, name: '牧原 大成', pos: 'セカンド' },
+        { no: 24, name: '栗原 陵矢', pos: 'サード' }, { no: 12, name: '海野 隆司', pos: 'キャッチャー' }, { no: 31, name: '正木 智也', pos: '指名打者' }],
+      '千葉ロッテマリーンズ': [
+        { no: 63, name: '和田 康士朗', pos: 'センター' }, { no: 7, name: '藤岡 裕大', pos: 'セカンド' }, { no: 51, name: '山口 航輝', pos: 'レフト' },
+        { no: 22, name: 'ポランコ', pos: '指名打者' }, { no: 99, name: 'ソト', pos: 'ファースト' }, { no: 5, name: '安田 尚憲', pos: 'サード' },
+        { no: 32, name: '佐藤 都志也', pos: 'キャッチャー' }, { no: 4, name: '友杉 篤輝', pos: 'ショート' }, { no: 1, name: '藤原 恭大', pos: 'ライト' }],
+      '東北楽天ゴールデンイーグルス': [
+        { no: 0, name: '小深田 大翔', pos: 'セカンド' }, { no: 6, name: '村林 一輝', pos: 'ショート' }, { no: 8, name: '辰己 涼介', pos: 'センター' },
+        { no: 3, name: '浅村 栄斗', pos: 'サード' }, { no: 27, name: '岡島 豪郎', pos: 'レフト' }, { no: 24, name: '黒川 史陽', pos: '指名打者' },
+        { no: 4, name: '阿部 寿樹', pos: 'ファースト' }, { no: 2, name: '太田 光', pos: 'キャッチャー' }, { no: 51, name: '小郷 裕哉', pos: 'ライト' }],
+      'オリックス・バファローズ': [
+        { no: 1, name: '福田 周平', pos: 'センター' }, { no: 5, name: '西野 真弘', pos: 'セカンド' }, { no: 31, name: '太田 椋', pos: 'ファースト' },
+        { no: 4, name: '森 友哉', pos: 'キャッチャー' }, { no: 6, name: '宗 佑磨', pos: 'サード' }, { no: 99, name: '杉本 裕太郎', pos: 'ライト' },
+        { no: 38, name: '来田 涼斗', pos: 'レフト' }, { no: 24, name: '紅林 弘太郎', pos: 'ショート' }, { no: 3, name: '西川 龍馬', pos: '指名打者' }],
+      '埼玉西武ライオンズ': [
+        { no: 6, name: '源田 壮亮', pos: 'ショート' }, { no: 51, name: '西川 愛也', pos: 'センター' }, { no: 5, name: '外崎 修汰', pos: 'セカンド' },
+        { no: 60, name: '中村 剛也', pos: '指名打者' }, { no: 1, name: '栗山 巧', pos: 'レフト' }, { no: 8, name: '渡部 健人', pos: 'ファースト' },
+        { no: 22, name: '古賀 悠斗', pos: 'キャッチャー' }, { no: 30, name: '元山 飛優', pos: 'サード' }, { no: 3, name: '長谷川 信哉', pos: 'ライト' }],
+      '読売ジャイアンツ': [
+        { no: 8, name: '丸 佳浩', pos: 'ライト' }, { no: 0, name: '吉川 尚輝', pos: 'セカンド' }, { no: 25, name: '岡本 和真', pos: 'ファースト' },
+        { no: 6, name: '坂本 勇人', pos: 'サード' }, { no: 24, name: '大城 卓三', pos: '指名打者' }, { no: 5, name: '門脇 誠', pos: 'ショート' },
+        { no: 9, name: 'キャベッジ', pos: 'レフト' }, { no: 27, name: '岸田 行倫', pos: 'キャッチャー' }, { no: 59, name: '萩尾 匡也', pos: 'センター' }],
+      '阪神タイガース': [
+        { no: 5, name: '近本 光司', pos: 'センター' }, { no: 51, name: '中野 拓夢', pos: 'セカンド' }, { no: 1, name: '森下 翔太', pos: 'ライト' },
+        { no: 8, name: '佐藤 輝明', pos: 'サード' }, { no: 3, name: '大山 悠輔', pos: 'ファースト' }, { no: 0, name: '木浪 聖也', pos: 'ショート' },
+        { no: 60, name: '小野寺 暖', pos: 'レフト' }, { no: 12, name: '坂本 誠志郎', pos: 'キャッチャー' }, { no: 94, name: '原口 文仁', pos: '指名打者' }],
+      '横浜DeNAベイスターズ': [
+        { no: 63, name: '関根 大気', pos: 'ライト' }, { no: 50, name: '山本 祐大', pos: 'キャッチャー' }, { no: 7, name: '佐野 恵太', pos: 'レフト' },
+        { no: 2, name: '牧 秀悟', pos: 'セカンド' }, { no: 51, name: '宮﨑 敏郎', pos: 'サード' }, { no: 3, name: 'オースティン', pos: 'ファースト' },
+        { no: 1, name: '桑原 将志', pos: 'センター' }, { no: 5, name: '松尾 汐恩', pos: '指名打者' }, { no: 6, name: '森 敬斗', pos: 'ショート' }],
+      '広島東洋カープ': [
+        { no: 0, name: '上本 崇司', pos: 'センター' }, { no: 61, name: '矢野 雅哉', pos: 'ショート' }, { no: 5, name: '小園 海斗', pos: 'サード' },
+        { no: 9, name: '秋山 翔吾', pos: 'ライト' }, { no: 31, name: '坂倉 将吾', pos: 'キャッチャー' }, { no: 33, name: '菊池 涼介', pos: 'セカンド' },
+        { no: 7, name: '堂林 翔太', pos: 'ファースト' }, { no: 37, name: '野間 峻祥', pos: 'レフト' }, { no: 55, name: '末包 昇大', pos: '指名打者' }],
+      '東京ヤクルトスワローズ': [
+        { no: 7, name: '長岡 秀樹', pos: 'ショート' }, { no: 38, name: '赤羽 由紘', pos: 'レフト' }, { no: 1, name: '山田 哲人', pos: 'セカンド' },
+        { no: 55, name: '村上 宗隆', pos: 'サード' }, { no: 25, name: 'サンタナ', pos: 'ライト' }, { no: 13, name: 'オスナ', pos: 'ファースト' },
+        { no: 27, name: '中村 悠平', pos: 'キャッチャー' }, { no: 9, name: '塩見 泰隆', pos: 'センター' }, { no: 5, name: '川端 慎吾', pos: '指名打者' }],
+      '中日ドラゴンズ': [
+        { no: 8, name: '大島 洋平', pos: 'レフト' }, { no: 2, name: '田中 幹也', pos: 'セカンド' }, { no: 1, name: '岡林 勇希', pos: 'センター' },
+        { no: 55, name: '細川 成也', pos: 'ライト' }, { no: 7, name: '福永 裕基', pos: 'サード' }, { no: 25, name: '石川 昂弥', pos: 'ファースト' },
+        { no: 35, name: '木下 拓哉', pos: 'キャッチャー' }, { no: 5, name: '村松 開人', pos: 'ショート' }, { no: 99, name: 'ボスラー', pos: '指名打者' }]
+    }
+  };
+
+  // 合成音效
+  var _noiseBuf = null;
+  function getNoiseBuffer(ctx){
+    if(_noiseBuf && _noiseBuf.sampleRate === ctx.sampleRate) return _noiseBuf;
+    var len = ctx.sampleRate * 2.5;
+    _noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var data = _noiseBuf.getChannelData(0);
+    for(var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    return _noiseBuf;
+  }
+  function getCtx(){ var ctx = (typeof audio === 'function') ? audio() : null; if(ctx && ctx.state === 'suspended' && ctx.resume) ctx.resume(); return ctx; }
+  window.__sfx73 = {
+    bat: function(kind){
+      var ctx = getCtx(); var kinds = ['solid', 'line', 'fly', 'ground', 'foul', 'broken'];
+      var k = (kind && kinds.indexOf(kind) >= 0) ? kind : kinds[Math.floor(Math.random() * kinds.length)];
+      if(!ctx) return k;
+      var now = ctx.currentTime, detune = 0.92 + Math.random() * 0.16, revDur = 0.22 + Math.random() * 0.25;
+      var osc = ctx.createOscillator(), gOsc = ctx.createGain();
+      var freqs = { solid: [920, 210], line: [1150, 280], fly: [840, 240], ground: [620, 140], foul: [1480, 520], broken: [540, 110] }[k];
+      osc.type = (k === 'foul') ? 'sawtooth' : 'triangle';
+      osc.frequency.setValueAtTime(freqs[0] * detune, now);
+      osc.frequency.exponentialRampToValueAtTime(freqs[1] * detune, now + 0.065);
+      gOsc.gain.setValueAtTime(0.65, now); gOsc.gain.exponentialRampToValueAtTime(0.001, now + 0.085);
+      osc.connect(gOsc); gOsc.connect(ctx.destination); osc.start(now); osc.stop(now + 0.09);
+      var ns = ctx.createBufferSource(); ns.buffer = getNoiseBuffer(ctx);
+      var bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.setValueAtTime((k === 'foul' ? 2800 : (k === 'ground' ? 950 : 1850)) * detune, now);
+      bp.Q.setValueAtTime(k === 'solid' ? 3.5 : 2.2, now);
+      var gNs = ctx.createGain(); gNs.gain.setValueAtTime(0.8, now); gNs.gain.exponentialRampToValueAtTime(0.001, now + revDur);
+      ns.connect(bp); bp.connect(gNs); gNs.connect(ctx.destination); ns.start(now); ns.stop(now + revDur + 0.02);
+      if(k === 'broken'){
+        for(var b = 1; b <= 3; b++){
+          var tCrack = now + b * (0.028 + Math.random() * 0.015), cOsc = ctx.createOscillator(), cGain = ctx.createGain();
+          cOsc.type = 'square'; cOsc.frequency.setValueAtTime((1300 - b * 220) * detune, tCrack);
+          cOsc.frequency.exponentialRampToValueAtTime(180, tCrack + 0.04);
+          cGain.gain.setValueAtTime(0.4, tCrack); cGain.gain.exponentialRampToValueAtTime(0.001, tCrack + 0.045);
+          cOsc.connect(cGain); cGain.connect(ctx.destination); cOsc.start(tCrack); cOsc.stop(tCrack + 0.05);
+        }
+      }
+      return k;
+    },
+    glove: function(kind){
+      var ctx = getCtx(); var kinds = ['catcher_fast', 'catcher_break', 'catcher_dirt', 'outfield_fly', 'outfield_run'];
+      var k = (kind && kinds.indexOf(kind) >= 0) ? kind : kinds[Math.floor(Math.random() * kinds.length)];
+      if(!ctx) return k;
+      var now = ctx.currentTime, pitch = 0.9 + Math.random() * 0.22, isCatcher = k.indexOf('catcher') === 0;
+      var osc = ctx.createOscillator(), gOsc = ctx.createGain(); osc.type = 'sine';
+      var fStart = isCatcher ? (k === 'catcher_fast' ? 280 : (k === 'catcher_break' ? 210 : 140)) : (k === 'outfield_fly' ? 175 : 150);
+      var dur = isCatcher ? 0.09 : 0.13;
+      osc.frequency.setValueAtTime(fStart * pitch, now); osc.frequency.exponentialRampToValueAtTime(42 * pitch, now + dur);
+      gOsc.gain.setValueAtTime(isCatcher ? 0.75 : 0.5, now); gOsc.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      osc.connect(gOsc); gOsc.connect(ctx.destination); osc.start(now); osc.stop(now + dur + 0.01);
+      var ns = ctx.createBufferSource(); ns.buffer = getNoiseBuffer(ctx);
+      var flt = ctx.createBiquadFilter(); flt.type = isCatcher ? 'bandpass' : 'lowpass';
+      flt.frequency.setValueAtTime((isCatcher ? 1350 : 720) * pitch, now);
+      var gNs = ctx.createGain(); gNs.gain.setValueAtTime(isCatcher ? 0.65 : 0.42, now);
+      gNs.gain.exponentialRampToValueAtTime(0.001, now + (isCatcher ? 0.14 : 0.11));
+      ns.connect(flt); flt.connect(gNs); gNs.connect(ctx.destination); ns.start(now); ns.stop(now + 0.16);
+      return k;
+    },
+    crowd: function(kind){
+      var ctx = getCtx(); var kinds = ['cheer', 'gasp'];
+      var k = (kind && kinds.indexOf(kind) >= 0) ? kind : kinds[Math.floor(Math.random() * kinds.length)];
+      if(!ctx) return k;
+      var now = ctx.currentTime, dur = (k === 'cheer' ? 1.8 : 1.1) + Math.random() * 0.6, pitch = 0.88 + Math.random() * 0.24;
+      var ns = ctx.createBufferSource(); ns.buffer = getNoiseBuffer(ctx);
+      var flt = ctx.createBiquadFilter(); flt.type = 'bandpass';
+      if(k === 'cheer'){
+        flt.frequency.setValueAtTime(520 * pitch, now); flt.frequency.linearRampToValueAtTime(1180 * pitch, now + dur * 0.35);
+        flt.frequency.exponentialRampToValueAtTime(640 * pitch, now + dur); flt.Q.setValueAtTime(0.85, now);
+      } else {
+        flt.frequency.setValueAtTime(420 * pitch, now); flt.frequency.exponentialRampToValueAtTime(1350 * pitch, now + 0.18);
+        flt.frequency.exponentialRampToValueAtTime(340 * pitch, now + dur); flt.Q.setValueAtTime(1.6, now);
+      }
+      var gNs = ctx.createGain(); gNs.gain.setValueAtTime(0.01, now);
+      gNs.gain.linearRampToValueAtTime(k === 'cheer' ? 0.45 : 0.38, now + 0.16); gNs.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      ns.connect(flt); flt.connect(gNs); gNs.connect(ctx.destination); ns.start(now); ns.stop(now + dur + 0.05);
+      return k;
+    }
+  };
+
+  // 兩塊 LED 大螢幕
+  var boardCanvas = document.createElement('canvas'); boardCanvas.width = 1024; boardCanvas.height = 512;
+  var boardCtx = boardCanvas.getContext('2d');
+  var boardTex = new THREE.CanvasTexture(boardCanvas);
+  var boardMat = new THREE.MeshBasicMaterial({ map: boardTex, side: THREE.DoubleSide, toneMapped: false });
+  var frameMat = S(0x11151c);
+  function addMesh(geo, mat, x, y, z, ry, grp){ var m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if(ry) m.rotation.y = ry; (grp || scene).add(m); return m; }
+  var gIn = VGRP.esconIn || scene, gOld = VGRP.escon || scene;
+  addMesh(new THREE.BoxGeometry(38, 19, 1.2), frameMat, NX, 21, NZ + 83, 0, gIn);
+  addMesh(new THREE.PlaneGeometry(36, 17.5), boardMat, NX, 21, NZ + 82.3, Math.PI, gIn);
+  addMesh(new THREE.BoxGeometry(40, 20, 1.5), frameMat, 0, 30, 930, 0, gOld);
+  addMesh(new THREE.CylinderGeometry(0.7, 0.9, 22, 8), frameMat, -15, 11, 930, 0, gOld);
+  addMesh(new THREE.CylinderGeometry(0.7, 0.9, 22, 8), frameMat, 15, 11, 930, 0, gOld);
+  addMesh(new THREE.PlaneGeometry(38, 18.5), boardMat, 0, 30, 929.1, Math.PI, gOld);
+
+  var opponentNames = Object.keys(window.__lineup73.teams);
+  var gameState = { opponent: opponentNames[Math.floor(Math.random() * opponentNames.length)], inning: 1, isBottom: true,
+    batterIdxF: 0, batterIdxV: 0, scoreF: 0, scoreV: 0, lastPlayText: 'PLAY BALL! 試合開始', announceTimer: 17 };
+
+  function renderScoreboard(){
+    var g = boardCtx, w = boardCanvas.width, h = boardCanvas.height;
+    g.fillStyle = '#071324'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#d4af37'; g.lineWidth = 8; g.strokeRect(6, 6, w - 12, h - 12);
+    g.fillStyle = '#0f294a'; g.fillRect(12, 12, w - 24, 68);
+    g.fillStyle = '#ffd966'; g.font = 'bold 30px sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'left';
+    g.fillText('ES CON FIELD HOKKAIDO  |  ' + gameState.inning + '回' + (gameState.isBottom ? '裏' : '表'), 28, 46);
+    g.textAlign = 'right'; g.fillStyle = '#ffffff'; g.font = 'bold 30px sans-serif';
+    g.fillText(gameState.opponent.slice(0, 8) + ' ' + gameState.scoreV + ' - ' + gameState.scoreF + ' 日本ハム', w - 28, 46);
+    var fList = window.__lineup73.fighters, vList = window.__lineup73.teams[gameState.opponent];
+    var activeList = gameState.isBottom ? fList : vList, activeIdx = gameState.isBottom ? gameState.batterIdxF : gameState.batterIdxV;
+    var curBatter = activeList[activeIdx] || fList[0];
+    g.textAlign = 'left'; g.fillStyle = '#44bbff'; g.font = 'bold 22px sans-serif';
+    g.fillText('【FIGHTERS 先発】', 26, 108);
+    for(var i = 0; i < 9; i++){
+      var p = fList[i], ry = 142 + i * 38, isCur = (gameState.isBottom && i === gameState.batterIdxF);
+      if(isCur){ g.fillStyle = '#d4af37'; g.fillRect(20, ry - 18, 300, 34); g.fillStyle = '#071324'; } else g.fillStyle = '#dbe9f6';
+      g.font = (isCur ? 'bold ' : '') + '20px sans-serif';
+      g.fillText((i + 1) + ' ' + p.pos + ' ' + p.name + ' #' + p.no, 28, ry);
+    }
+    g.fillStyle = '#ff9966'; g.font = 'bold 22px sans-serif';
+    g.fillText('【' + gameState.opponent.slice(0, 9) + '】', 714, 108);
+    for(var j = 0; j < 9; j++){
+      var vp = vList[j], vry = 142 + j * 38, isVCur = (!gameState.isBottom && j === gameState.batterIdxV);
+      if(isVCur){ g.fillStyle = '#ff8844'; g.fillRect(708, vry - 18, 296, 34); g.fillStyle = '#071324'; } else g.fillStyle = '#cbd5e1';
+      g.font = (isVCur ? 'bold ' : '') + '19px sans-serif';
+      g.fillText((j + 1) + ' ' + vp.pos + ' ' + vp.name + ' #' + vp.no, 714, vry);
+    }
+    g.fillStyle = '#112c4e'; g.fillRect(336, 96, 360, 384);
+    g.strokeStyle = '#44bbff'; g.lineWidth = 4; g.strokeRect(336, 96, 360, 384);
+    g.textAlign = 'center'; g.fillStyle = '#7dd3fc'; g.font = 'bold 24px sans-serif';
+    g.fillText('NOW BATTING', 516, 134);
+    g.fillStyle = '#ffd966'; g.font = 'bold 34px sans-serif'; g.fillText((activeIdx + 1) + '番  ' + curBatter.pos, 516, 192);
+    g.fillStyle = '#ffffff'; g.font = 'bold 52px sans-serif'; g.fillText(curBatter.name, 516, 266);
+    g.fillStyle = '#38bdf8'; g.font = 'bold 40px sans-serif'; g.fillText('背番号 ' + curBatter.no, 516, 336);
+    g.fillStyle = '#09192e'; g.fillRect(350, 382, 332, 76);
+    g.fillStyle = '#fde047'; g.font = 'bold 24px sans-serif'; g.fillText(gameState.lastPlayText, 516, 420);
+    boardTex.needsUpdate = true;
+  }
+  renderScoreboard();
+
+  window.__announce73 = function(){
+    var fList = window.__lineup73.fighters, vList = window.__lineup73.teams[gameState.opponent];
+    var activeList = gameState.isBottom ? fList : vList;
+    var ord = (gameState.isBottom ? gameState.batterIdxF : gameState.batterIdxV) + 1, batter = activeList[ord - 1];
+    var outcomes = [
+      { text: '左中間 二塁打！', bat: 'solid', follow: 'crowd_cheer', runs: 1 },
+      { text: 'ライナー センター前ヒット', bat: 'line', follow: 'outfield_run', runs: 0 },
+      { text: '特大ホームラン！', bat: 'solid', follow: 'crowd_cheer', runs: 1 },
+      { text: '大飛球 外野フライ', bat: 'fly', follow: 'outfield_fly', runs: 0 },
+      { text: '内野ゴロ 一塁アウト', bat: 'ground', follow: 'catcher_fast', runs: 0 },
+      { text: 'ファウルボール！', bat: 'foul', follow: 'crowd_gasp', runs: 0 },
+      { text: 'バットが折れた！内野安打', bat: 'broken', follow: 'crowd_gasp', runs: 0 },
+      { text: '見逃し三振！', bat: null, follow: 'catcher_break', runs: 0 }
+    ];
+    var oc = outcomes[Math.floor(Math.random() * outcomes.length)];
+    gameState.lastPlayText = oc.text;
+    if(oc.runs > 0){ if(gameState.isBottom) gameState.scoreF += oc.runs; else gameState.scoreV += oc.runs; }
+    var speechText = ord + '番、' + batter.pos + '、' + batter.name + '、背番号' + batter.no;
+    try{
+      if(typeof window.speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined'){
+        window.speechSynthesis.cancel();
+        var utter = new SpeechSynthesisUtterance(speechText); utter.lang = 'ja-JP'; utter.rate = 0.95; utter.pitch = 1.05;
+        window.speechSynthesis.speak(utter);
+      }
+    }catch(e){}
+    if(window.__sfx73){
+      setTimeout(function(){
+        renderScoreboard();
+        if(oc.bat) window.__sfx73.bat(oc.bat); else window.__sfx73.glove('catcher_fast');
+        setTimeout(function(){
+          if(oc.follow === 'crowd_cheer') window.__sfx73.crowd('cheer');
+          else if(oc.follow === 'crowd_gasp') window.__sfx73.crowd('gasp');
+          else window.__sfx73.glove(oc.follow);
+        }, 420);
+      }, 3500);
+    }
+    renderScoreboard();
+    if(gameState.isBottom){
+      gameState.batterIdxF = (gameState.batterIdxF + 1) % 9;
+      if(gameState.batterIdxF === 0){ gameState.isBottom = false; gameState.inning = (gameState.inning % 9) + 1; }
+    } else {
+      gameState.batterIdxV = (gameState.batterIdxV + 1) % 9;
+      if(gameState.batterIdxV === 0) gameState.isBottom = true;
+    }
+    return speechText;
+  };
+
+  // 小地圖
+  var miniMapEl = document.getElementById('escon-minimap-73');
+  if(!miniMapEl){
+    miniMapEl = document.createElement('canvas'); miniMapEl.id = 'escon-minimap-73'; miniMapEl.width = 160; miniMapEl.height = 160;
+    miniMapEl.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;width:160px;height:160px;border-radius:12px;border:2px solid rgba(212,175,55,0.85);background:rgba(10,20,34,0.68);z-index:30;pointer-events:none;display:none;box-shadow:0 4px 14px rgba(0,0,0,0.45);';
+    document.body.appendChild(miniMapEl);
+  }
+  var mmCtx = miniMapEl.getContext('2d');
+  function drawMiniMap(px, py, pz, heading, inNew){
+    var g = mmCtx; g.clearRect(0, 0, 160, 160);
+    g.fillStyle = 'rgba(8, 20, 36, 0.72)'; g.fillRect(0, 0, 160, 160);
+    var cx = 80, cy = 84, scale = inNew ? (62 / 125) : (62 / 170), refX = inNew ? NX : 0, refZ = inNew ? NZ : 800;
+    g.strokeStyle = 'rgba(180, 198, 220, 0.55)'; g.lineWidth = 14; g.strokeRect(cx - 52, cy - 52, 104, 104);
+    if(inNew){
+      g.fillStyle = 'rgba(255, 200, 70, 0.75)';
+      g.fillRect(cx - 56, cy - 16, 6, 32); g.fillRect(cx + 50, cy - 16, 6, 32); g.fillRect(cx - 16, cy - 56, 32, 6); g.fillRect(cx - 16, cy + 50, 32, 6);
+    }
+    g.fillStyle = 'rgba(42, 138, 68, 0.85)'; g.fillRect(cx - 36, cy - 36, 72, 72);
+    g.fillStyle = 'rgba(176, 120, 72, 0.9)'; g.beginPath();
+    g.moveTo(cx, cy + 22); g.lineTo(cx + 16, cy + 4); g.lineTo(cx, cy - 12); g.lineTo(cx - 16, cy + 4); g.closePath(); g.fill();
+    var floorLabel = inNew ? (py >= 6.8 ? '館內 3F' : (py >= 2.4 ? '館內 2F' : '館內 1F')) : '北海道棒球場';
+    g.fillStyle = 'rgba(12, 32, 58, 0.88)'; g.fillRect(0, 0, 160, 24);
+    g.fillStyle = '#ffd966'; g.font = 'bold 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(floorLabel, 80, 12);
+    var dx = px - refX, dz = pz - refZ;
+    var mx = Math.max(12, Math.min(148, cx + dx * scale)), my = Math.max(28, Math.min(148, cy - dz * scale));
+    var ang = heading || 0, dirX = Math.sin(ang), dirY = -Math.cos(ang);
+    g.save(); g.translate(mx, my); g.rotate(Math.atan2(dirY, dirX));
+    g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(11, 0); g.lineTo(-4, -5); g.lineTo(-2, 0); g.lineTo(-4, 5); g.closePath(); g.fill();
+    g.restore();
+    g.fillStyle = '#ff2a2a'; g.beginPath(); g.arc(mx, my, 4.5, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#ffffff'; g.lineWidth = 1.5; g.stroke();
+  }
+
+  var nextAnnounceInterval = 24, mmAcc = 0;
+  function tick73(dt){
+    if(typeof A === 'undefined' || !A.pos) return;
+    var px = A.pos.x, pz = A.pos.z, py = A.jh || 0, hd = A.heading || 0;
+    var inNew = (px >= NX - 130 && px <= NX + 130 && pz >= NZ - 130 && pz <= NZ + 130);
+    var inOld = (px >= -170 && px <= 170 && pz >= 630 && pz <= 970);
+    if(inNew || inOld){
+      if(miniMapEl.style.display !== 'block') miniMapEl.style.display = 'block';
+      mmAcc += (dt || 0.016);
+      if(mmAcc > 0.1){ mmAcc = 0; drawMiniMap(px, py, pz, hd, inNew); }
+      gameState.announceTimer += (dt || 0.016);
+      if(gameState.announceTimer >= nextAnnounceInterval){
+        gameState.announceTimer = 0; nextAnnounceInterval = 21 + Math.random() * 8;
+        window.__announce73();
+      }
+    } else if(miniMapEl.style.display !== 'none'){
+      miniMapEl.style.display = 'none';
+      try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){}
+    }
+  }
+  var prevTick73 = window.__moreTick;
+  window.__moreTick = function(dt, t){ if(prevTick73) prevTick73(dt, t); try{ tick73(dt); }catch(e){} };
+
+}catch(e){console.error(e)}
 })();
 netStart();
 requestAnimationFrame(frame);
