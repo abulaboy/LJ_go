@@ -43016,16 +43016,22 @@ try{
       a.sort(function(p, q){ return p.top - q.top; });
       var minGap = 99; for(var i = 1; i < a.length; i++) minGap = Math.min(minGap, a[i].top - a[i - 1].top);
       if(minGap >= 1.8){ a.forEach(function(c, i){ if(i > 0 || c.top > 2.2) c.bot = c.top - 0.5; }); slabs += a.length; return; }
-      var c0 = a[0], alongZ = (c0.z1 - c0.z0) >= (c0.x1 - c0.x0), lo = alongZ ? c0.z0 : c0.x0, hi = alongZ ? c0.z1 : c0.x1;
-      var maxTop = a[a.length - 1].top;
-      function highNear(edge){ // 這一端外面有沒有同樣高度的平台
+      var c0 = a[0], maxTop = a[a.length - 1].top;
+      function highNear(az, edge){ // 這一端外面有沒有同樣高度的平台
         return colliders.some(function(o){
           if(!o.on || o.top === undefined || a.indexOf(o) >= 0 || Math.abs(o.top - maxTop) > 0.6) return false;
-          if(alongZ) return o.x1 > c0.x0 && o.x0 < c0.x1 && o.z0 <= edge + 1.5 && o.z1 >= edge - 1.5;
+          if(az) return o.x1 > c0.x0 && o.x0 < c0.x1 && o.z0 <= edge + 1.5 && o.z1 >= edge - 1.5;
           return o.z1 > c0.z0 && o.z0 < c0.z1 && o.x0 <= edge + 1.5 && o.x1 >= edge - 1.5;
         });
       }
-      var hL = highNear(lo), hH = highNear(hi), highAtLo = hL && !hH; (window.__rampDbg = window.__rampDbg || []).push([alongZ, lo, hi, hL, hH, maxTop]);
+      var pick = null;
+      [true, false].forEach(function(az){
+        if(pick) return;
+        var l = az ? c0.z0 : c0.x0, h = az ? c0.z1 : c0.x1, hl = highNear(az, l), hh = highNear(az, h);
+        if(hl !== hh) pick = { az: az, lo: l, hi: h, highAtLo: hl };
+      });
+      if(!pick){ a.forEach(function(c){ if(c.top > 2.2) c.bot = c.top - 0.5; }); slabs += a.length; return; }
+      var alongZ = pick.az, lo = pick.lo, hi = pick.hi, highAtLo = pick.highAtLo;
       var n = a.length, step = (hi - lo) / n;
       a.forEach(function(c, i){
         var j = highAtLo ? (n - 1 - i) : i, s0 = lo + j * step, s1 = s0 + step;
@@ -43051,7 +43057,7 @@ try{
           if(o.count > 400) cover.push(u);
         } else { boxes.push(tmp.copy(gb).applyMatrix4(o.matrixWorld).clone()); }
       });
-      var off = 0, low = 0, n = 0, ex = [];
+      var off = 0, low = 0, n = 0, ex = []; window.__mb73 = boxes.filter(function(B){ return B.max.x > -73 && B.min.x < -51 && B.max.z > 750 && B.min.z < 778 && B.max.y > 0.08 && (B.max.x - B.min.x) < 60; }).slice(0, 40).map(function(B){ return [B.min.x, B.min.y, B.min.z - 800, B.max.x, B.max.y, B.max.z - 800].map(function(v){ return Math.round(v * 10) / 10; }); });
       for(var k = 0; k < colliders.length; k++){
         var c = colliders[k];
         if(!c.on || c.bot !== undefined) continue;
