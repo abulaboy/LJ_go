@@ -4230,7 +4230,7 @@ stick.addEventListener('pointerdown',e=>{stId=e.pointerId;stick.setPointerCaptur
 stick.addEventListener('pointermove',e=>{if(e.pointerId===stId)stMove(e);});
 const stEnd=e=>{if(e.pointerId===stId){stId=null;sx=sy=0;knob.style.transform='';}};stick.addEventListener('pointerup',stEnd);stick.addEventListener('pointercancel',stEnd);
 
-function stepUp73(x,z){return (x>-175&&x<175&&z>625&&z<975)?0.45:0.08;}
+function stepUp73(x,z){return (x>-175&&x<175&&z>625&&z<975)?0.75:0.08;}
 function supportAt(x,z,h){let t=0;const su=stepUp73(x,z);for(const c of colliders){if(!c.on||c.top===undefined||c.top>h+su)continue;if(x>=c.x0-0.05&&x<=c.x1+0.05&&z>=c.z0-0.05&&z<=c.z1+0.05&&c.top>t)t=c.top;}return t;}
 function collide(p,h){h=h||0;const su=stepUp73(p.x,p.z);for(let it=0;it<3;it++)for(const c of colliders){if(!c.on)continue;if(c.top!==undefined&&h>=c.top-(su>0.1?su:0.06))continue;if(c.bot!==undefined&&c.bot>h+1.75)continue;
   const cx=Math.max(c.x0,Math.min(c.x1,p.x)),cz=Math.max(c.z0,Math.min(c.z1,p.z));const dx=p.x-cx,dz=p.z-cz,d=Math.hypot(dx,dz);
@@ -43000,6 +43000,110 @@ try{
   window.__moreTick = function(dt, t){ if(prevTick73) prevTick73(dt, t); try{ tick73(dt); }catch(e){} };
 
 }catch(e){console.error(e)}
+})();
+// ===== 第 74 版：北海道球場碰撞整理（隱形牆、高架平台底下走不過去）（Claude 撰寫） =====
+(function(){
+  // 同一塊範圍疊了好幾個不同高度的碰撞：間距大的是多層樓板（改成薄板，底下可以走），間距小的是坡道（切成一條一條的緩坡）
+  var pend = [];
+  // 斜放的看台被寫成一疊同範圍的碰撞，會變成一大片隱形牆：照實際看得到的座位和平台，改成 1 公尺一格的高度
+  function heightField(boxes){
+    var made = 0;
+    pend.forEach(function(a){
+      var c0 = a[0], maxTop = a[a.length - 1].top;
+      a.forEach(function(c){ c.on = false; });
+      for(var x = c0.x0; x < c0.x1 - 0.01; x += 1){
+        for(var z = c0.z0; z < c0.z1 - 0.01; z += 1){
+          var x1 = Math.min(x + 1, c0.x1), z1 = Math.min(z + 1, c0.z1), top = 0, bot = 0;
+          for(var b = 0; b < boxes.length; b++){
+            var B = boxes[b];
+            if(B.max.x < x + 0.15 || B.min.x > x1 - 0.15 || B.max.z < z + 0.15 || B.min.z > z1 - 0.15) continue;
+            if(B.max.y < 0.08 || B.max.y > maxTop + 0.3 || B.max.y - B.min.y > 2) continue;
+            if(B.max.y > top){ top = B.max.y; bot = Math.max(0, B.min.y); }
+          }
+          if(top > 0.1){ colliders.push({ x0: x, x1: x1, z0: z, z1: z1, on: true, top: top, bot: top > 2.5 ? bot : undefined }); made++; }
+        }
+      }
+    });
+    return made;
+  }
+  function fixStacks(){
+    var g = {}, R = function(v){ return Math.round(v * 10) / 10; }, ramps = 0, slabs = 0; pend = [];
+    colliders.forEach(function(c){
+      if(!c.on || c.top === undefined || c.bot !== undefined) return;
+      if(c.x1 < -170 || c.x0 > 170 || c.z1 < 630 || c.z0 > 970) return;
+      var k = [R(c.x0), R(c.z0), R(c.x1), R(c.z1)].join(','); (g[k] = g[k] || []).push(c);
+    });
+    Object.keys(g).forEach(function(k){
+      var a = g[k]; if(a.length < 2) return;
+      a.sort(function(p, q){ return p.top - q.top; });
+      var minGap = 99; for(var i = 1; i < a.length; i++) minGap = Math.min(minGap, a[i].top - a[i - 1].top);
+      if(minGap >= 1.8){ a.forEach(function(c, i){ if(i > 0 || c.top > 2.2) c.bot = c.top - 0.5; }); slabs += a.length; return; }
+      var c0 = a[0], maxTop = a[a.length - 1].top;
+      function highNear(az, edge){ // 這一端外面有沒有同樣高度的平台
+        return colliders.some(function(o){
+          if(!o.on || o.top === undefined || a.indexOf(o) >= 0 || Math.abs(o.top - maxTop) > 0.6) return false;
+          if(az) return o.x1 > c0.x0 && o.x0 < c0.x1 && o.z0 <= edge + 1.5 && o.z1 >= edge - 1.5;
+          return o.z1 > c0.z0 && o.z0 < c0.z1 && o.x0 <= edge + 1.5 && o.x1 >= edge - 1.5;
+        });
+      }
+      var pick = null;
+      [true, false].forEach(function(az){
+        if(pick) return;
+        var l = az ? c0.z0 : c0.x0, h = az ? c0.z1 : c0.x1, hl = highNear(az, l), hh = highNear(az, h);
+        if(hl !== hh) pick = { az: az, lo: l, hi: h, highAtLo: hl };
+      });
+      if(!pick){ pend.push(a); return; }
+      var alongZ = pick.az, lo = pick.lo, hi = pick.hi, highAtLo = pick.highAtLo;
+      var n = a.length, step = (hi - lo) / n;
+      a.forEach(function(c, i){
+        var j = highAtLo ? (n - 1 - i) : i, s0 = lo + j * step, s1 = s0 + step;
+        if(alongZ){ c.z0 = s0; c.z1 = s1; } else { c.x0 = s0; c.x1 = s1; }
+      });
+      ramps++;
+    });
+    return { ramps: ramps, slabs: slabs };
+  }
+  function fixEscon(){
+    var st = {}; try{ st = fixStacks(); }catch(e){ st = { err: String(e) }; }
+    try{
+      var G = VGRP.escon; if(!G || !THREE.Box3) return;
+      G.updateMatrixWorld(true);
+      var boxes = [], cover = [], tmp = new THREE.Box3(), m4 = new THREE.Matrix4();
+      G.traverse(function(o){
+        if(!o.isMesh || !o.geometry) return;
+        if(!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        var gb = o.geometry.boundingBox; if(!gb) return;
+        if(o.isInstancedMesh){
+          var u = new THREE.Box3();
+          for(var i = 0; i < o.count; i++){ o.getMatrixAt(i, m4); tmp.copy(gb).applyMatrix4(m4).applyMatrix4(o.matrixWorld); if(o.count <= 400) boxes.push(tmp.clone()); u.union(tmp); }
+          if(o.count > 400) cover.push(u);
+        } else { boxes.push(tmp.copy(gb).applyMatrix4(o.matrixWorld).clone()); }
+      });
+      var hf = heightField(boxes); st.cells = hf;
+      var off = 0, low = 0, n = 0, ex = [];
+      for(var k = 0; k < colliders.length; k++){
+        var c = colliders[k];
+        if(!c.on || c.bot !== undefined) continue;
+        if(c.x1 < -168 || c.x0 > 168 || c.z1 < 632 || c.z0 > 968) continue;
+        var hit = false, body = false, bot = Infinity; n++;
+        for(var b = 0; b < boxes.length; b++){
+          var B = boxes[b];
+          if(B.max.x < c.x0 - 0.3 || B.min.x > c.x1 + 0.3 || B.max.z < c.z0 - 0.3 || B.min.z > c.z1 + 0.3) continue;
+          if(B.max.y < 0.08) continue; // 地面貼圖不算
+          hit = true;
+          if(B.min.y < 1.7 && B.max.y > 0.08) { body = true; break; }
+          if(B.min.y < bot) bot = B.min.y;
+        }
+        if(!hit){
+          for(var q = 0; q < cover.length; q++){ var Cv = cover[q]; if(!(Cv.max.x < c.x0 || Cv.min.x > c.x1 || Cv.max.z < c.z0 || Cv.min.z > c.z1)){ hit = true; body = true; break; } }
+          if(!hit){ c.on = false; off++; if(ex.length < 8) ex.push([Math.round(c.x0), Math.round(c.z0 - 800), Math.round(c.x1), Math.round(c.z1 - 800), c.top]); continue; }
+        }
+        if(!body && bot !== Infinity){ c.bot = bot; low++; }
+      }
+      window.__inv73 = { stacks: st, checked: n, disabled: off, lowered: low, ex: ex };
+    }catch(e){ window.__inv73 = { err: String(e) }; }
+  }
+  setTimeout(fixEscon, 1200);
 })();
 netStart();
 requestAnimationFrame(frame);
