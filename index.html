@@ -43003,7 +43003,40 @@ try{
 })();
 // ===== 第 74 版：北海道球場碰撞整理（隱形牆、高架平台底下走不過去）（Claude 撰寫） =====
 (function(){
+  // 同一塊範圍疊了好幾個不同高度的碰撞：間距大的是多層樓板（改成薄板，底下可以走），間距小的是坡道（切成一條一條的緩坡）
+  function fixStacks(){
+    var g = {}, R = function(v){ return Math.round(v * 10) / 10; }, ramps = 0, slabs = 0;
+    colliders.forEach(function(c){
+      if(!c.on || c.top === undefined || c.bot !== undefined) return;
+      if(c.x1 < -170 || c.x0 > 170 || c.z1 < 630 || c.z0 > 970) return;
+      var k = [R(c.x0), R(c.z0), R(c.x1), R(c.z1)].join(','); (g[k] = g[k] || []).push(c);
+    });
+    Object.keys(g).forEach(function(k){
+      var a = g[k]; if(a.length < 2) return;
+      a.sort(function(p, q){ return p.top - q.top; });
+      var minGap = 99; for(var i = 1; i < a.length; i++) minGap = Math.min(minGap, a[i].top - a[i - 1].top);
+      if(minGap >= 1.8){ a.forEach(function(c, i){ if(i > 0 || c.top > 2.2) c.bot = c.top - 0.5; }); slabs += a.length; return; }
+      var c0 = a[0], alongZ = (c0.z1 - c0.z0) >= (c0.x1 - c0.x0), lo = alongZ ? c0.z0 : c0.x0, hi = alongZ ? c0.z1 : c0.x1;
+      var maxTop = a[a.length - 1].top;
+      function highNear(edge){ // 這一端外面有沒有同樣高度的平台
+        return colliders.some(function(o){
+          if(!o.on || o.top === undefined || a.indexOf(o) >= 0 || Math.abs(o.top - maxTop) > 0.6) return false;
+          if(alongZ) return o.x1 > c0.x0 && o.x0 < c0.x1 && o.z0 <= edge + 1.5 && o.z1 >= edge - 1.5;
+          return o.z1 > c0.z0 && o.z0 < c0.z1 && o.x0 <= edge + 1.5 && o.x1 >= edge - 1.5;
+        });
+      }
+      var highAtLo = highNear(lo) && !highNear(hi);
+      var n = a.length, step = (hi - lo) / n;
+      a.forEach(function(c, i){
+        var j = highAtLo ? (n - 1 - i) : i, s0 = lo + j * step, s1 = s0 + step;
+        if(alongZ){ c.z0 = s0; c.z1 = s1; } else { c.x0 = s0; c.x1 = s1; }
+      });
+      ramps++;
+    });
+    return { ramps: ramps, slabs: slabs };
+  }
   function fixEscon(){
+    var st = {}; try{ st = fixStacks(); }catch(e){ st = { err: String(e) }; }
     try{
       var G = VGRP.escon; if(!G || !THREE.Box3) return;
       G.updateMatrixWorld(true);
@@ -43018,12 +43051,12 @@ try{
           if(o.count > 400) cover.push(u);
         } else { boxes.push(tmp.copy(gb).applyMatrix4(o.matrixWorld).clone()); }
       });
-      var off = 0, low = 0, n = 0, ex = []; window.__b73d = boxes;
+      var off = 0, low = 0, n = 0, ex = [];
       for(var k = 0; k < colliders.length; k++){
         var c = colliders[k];
         if(!c.on || c.bot !== undefined) continue;
         if(c.x1 < -168 || c.x0 > 168 || c.z1 < 632 || c.z0 > 968) continue;
-        var hit = false, body = false, bot = Infinity; n++; (window.__c73d = window.__c73d || []).push(c);
+        var hit = false, body = false, bot = Infinity; n++;
         for(var b = 0; b < boxes.length; b++){
           var B = boxes[b];
           if(B.max.x < c.x0 - 0.3 || B.min.x > c.x1 + 0.3 || B.max.z < c.z0 - 0.3 || B.min.z > c.z1 + 0.3) continue;
@@ -43038,7 +43071,7 @@ try{
         }
         if(!body && bot !== Infinity){ c.bot = bot; low++; }
       }
-      window.__inv73 = { checked: n, disabled: off, lowered: low, boxes: boxes.length, ex: ex };
+      window.__inv73 = { stacks: st, checked: n, disabled: off, lowered: low, ex: ex };
     }catch(e){ window.__inv73 = { err: String(e) }; }
   }
   setTimeout(fixEscon, 1200);
