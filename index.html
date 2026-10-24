@@ -43018,12 +43018,12 @@ try{
           if(o.count > 400) cover.push(u);
         } else { boxes.push(tmp.copy(gb).applyMatrix4(o.matrixWorld).clone()); }
       });
-      var off = 0, low = 0, n = 0, ex = [];
+      var off = 0, low = 0, n = 0, ex = []; window.__b73d = boxes;
       for(var k = 0; k < colliders.length; k++){
         var c = colliders[k];
         if(!c.on || c.bot !== undefined) continue;
         if(c.x1 < -168 || c.x0 > 168 || c.z1 < 632 || c.z0 > 968) continue;
-        var hit = false, body = false, bot = Infinity; n++;
+        var hit = false, body = false, bot = Infinity; n++; (window.__c73d = window.__c73d || []).push(c);
         for(var b = 0; b < boxes.length; b++){
           var B = boxes[b];
           if(B.max.x < c.x0 - 0.3 || B.min.x > c.x1 + 0.3 || B.max.z < c.z0 - 0.3 || B.min.z > c.z1 + 0.3) continue;
