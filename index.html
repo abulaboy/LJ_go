@@ -43025,7 +43025,7 @@ try{
           return o.z1 > c0.z0 && o.z0 < c0.z1 && o.x0 <= edge + 1.5 && o.x1 >= edge - 1.5;
         });
       }
-      var highAtLo = highNear(lo) && !highNear(hi);
+      var hL = highNear(lo), hH = highNear(hi), highAtLo = hL && !hH; (window.__rampDbg = window.__rampDbg || []).push([alongZ, lo, hi, hL, hH, maxTop]);
       var n = a.length, step = (hi - lo) / n;
       a.forEach(function(c, i){
         var j = highAtLo ? (n - 1 - i) : i, s0 = lo + j * step, s1 = s0 + step;
