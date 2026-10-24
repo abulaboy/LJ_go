@@ -43001,6 +43001,47 @@ try{
 
 }catch(e){console.error(e)}
 })();
+// ===== 第 74 版：北海道球場碰撞整理（隱形牆、高架平台底下走不過去）（Claude 撰寫） =====
+(function(){
+  function fixEscon(){
+    try{
+      var G = VGRP.escon; if(!G || !THREE.Box3) return;
+      G.updateMatrixWorld(true);
+      var boxes = [], cover = [], tmp = new THREE.Box3(), m4 = new THREE.Matrix4();
+      G.traverse(function(o){
+        if(!o.isMesh || !o.geometry) return;
+        if(!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        var gb = o.geometry.boundingBox; if(!gb) return;
+        if(o.isInstancedMesh){
+          var u = new THREE.Box3();
+          for(var i = 0; i < o.count; i++){ o.getMatrixAt(i, m4); tmp.copy(gb).applyMatrix4(m4).applyMatrix4(o.matrixWorld); if(o.count <= 400) boxes.push(tmp.clone()); u.union(tmp); }
+          if(o.count > 400) cover.push(u);
+        } else { boxes.push(tmp.copy(gb).applyMatrix4(o.matrixWorld).clone()); }
+      });
+      var off = 0, low = 0;
+      for(var k = 0; k < colliders.length; k++){
+        var c = colliders[k];
+        if(!c.on || c.bot !== undefined) continue;
+        if(c.x1 < -168 || c.x0 > 168 || c.z1 < 632 || c.z0 > 968) continue;
+        var hit = false, bot = Infinity, top = c.top === undefined ? 99 : c.top;
+        for(var b = 0; b < boxes.length; b++){
+          var B = boxes[b];
+          if(B.max.x < c.x0 - 0.3 || B.min.x > c.x1 + 0.3 || B.max.z < c.z0 - 0.3 || B.min.z > c.z1 + 0.3) continue;
+          if(B.max.y - B.min.y < 0.02 && B.max.y < 0.1) continue; // 地面貼圖不算
+          hit = true;
+          if(B.max.y >= top - 0.6 && B.min.y < bot) bot = B.min.y;
+        }
+        if(!hit){
+          for(var q = 0; q < cover.length; q++){ var Cv = cover[q]; if(!(Cv.max.x < c.x0 || Cv.min.x > c.x1 || Cv.max.z < c.z0 || Cv.min.z > c.z1)){ hit = true; break; } }
+          if(!hit){ c.on = false; off++; continue; }
+        }
+        if(c.top !== undefined && c.top > 2.2 && bot !== Infinity && bot > 1.9){ c.bot = bot; low++; }
+      }
+      window.__inv73 = { disabled: off, lowered: low, boxes: boxes.length };
+    }catch(e){ window.__inv73 = { err: String(e) }; }
+  }
+  setTimeout(fixEscon, 1200);
+})();
 netStart();
 requestAnimationFrame(frame);
 })();
