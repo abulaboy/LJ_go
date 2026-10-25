@@ -1,0 +1,20 @@
+module.exports = async (p, errs) => {
+  const W = ms => p.waitForTimeout(ms);
+  await p.evaluate(() => window.__T.travel('escon')); await W(12000);
+  const tick = async n => { for (let i=0;i<n;i++){ await p.evaluate(()=>{ if(window.__moreTick2) window.__moreTick2(0.1, performance.now()/1000); }); } };
+  const cols = (x,z,r) => p.evaluate(([x,z,r]) => window.__T.colliders.filter(c=>c.on!==false&&c.x1>x-r&&c.x0<x+r&&c.z1>z-r&&c.z0<z+r).map(c=>[+c.x0.toFixed(1),+c.x1.toFixed(1),+c.z0.toFixed(1),+c.z1.toFixed(1),c.top===undefined?null:+c.top.toFixed(1),c.bot===undefined?null:+c.bot.toFixed(1)]).slice(0,12), [x,z,r]);
+  console.log('applause plat', JSON.stringify(await cols(-15.6,752.3,3)));
+  console.log('strikeout', JSON.stringify(await cols(3,763.4,3)));
+  await p.evaluate(() => window.__dbg.tp(78, 940, 0)); await W(8000); await tick(10);
+  const e0 = errs.length;
+  console.log('gh cols start', JSON.stringify(await cols(78,947,3)));
+  await p.evaluate(() => window.__dbg.tp(78, 945.5, 0)); await W(3000);
+  await p.screenshot({ path: 'gh-near.png' });
+  await p.evaluate(() => { const t=window.__T.things.find(t=>{try{return /開始採收/.test(t.label())}catch(e){}}); t.go(); }); await W(3000); await tick(30);
+  await p.screenshot({ path: 'gh-start.png' });
+  const picks = await p.evaluate(() => { const t=window.__T.things.find(t=>{try{return /採收作物/.test(t.label())}catch(e){}}); return t?[t.x,t.z]:null; });
+  console.log('pick thing at', JSON.stringify(picks));
+  await p.evaluate(() => { const t=window.__T.things.find(t=>{try{return /採收作物/.test(t.label())}catch(e){}}); try{t.go()}catch(e){console.error('go',e.message)} }); await tick(20); await W(1500);
+  await p.screenshot({ path: 'gh-play.png' });
+  console.log('gh errors', JSON.stringify(errs.slice(e0).filter(x=>!/Failed to load/.test(x))));
+};
