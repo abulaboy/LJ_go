@@ -48,6 +48,15 @@
 4. 沒通過：寫修正單，停下來告訴使用者。
 - `tools/gemini/dispatch.js`（API 金鑰派工）保留但停用；使用者明說要用時才用，用法見 SETUP.md。
 
+## 「提交並推送昨晚的版本」（每晚排程直接寫進 index.html）
+每晚排程的 Gemini 會把測好的新版**直接寫進 `index.html`**（不是交 block.js）。使用者說「提交並推送昨晚的版本」時，依序做：
+1. `git diff HEAD -- index.html` 列出新增了哪幾版（看新增行裡的「// ===== 第 XX 版」標頭），告訴使用者版號與標題。
+2. 確認只在檔尾（`netStart();` 之前）新增區塊、沒有改到舊版：diff 只能有新增行，且都在最後一個 hunk；如果有刪除行或改到舊區塊，視為異常。
+3. 跑 smoke 測試（電腦版與手機版，見下方「測試」），錯誤只能是既有的 `Failed to load resource`。
+4. 用「第 XX～YY 版：各版標題」提交（只有一版就寫「第 XX 版：標題」），然後推送到 GitHub。
+- 任何一步有異常（改到舊版、版號撞號、smoke 有新錯誤等），**停下來告訴使用者**，不要自己修、不要提交。
+
+
 ## 可以使用的全域介面（在 IIFE 內可直接呼叫）
 - `scene, camera, renderer, THREE`；`pos`（玩家位置 {x,z}，就是 `A.pos`）；`A`（玩家：`A.pos`、`A.heading`、`A.g` 群組、`A.jh` 跳躍高度）
 - `things`：互動點陣列，`push({x,z,r,label:()=>'文字',go(){...}})`，玩家靠近按 E／互動鍵觸發
