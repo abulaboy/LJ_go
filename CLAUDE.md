@@ -31,22 +31,22 @@
 
 
 ## 工作分工（一定要遵守）
-- **Claude 是主管**：拆任務、寫任務單、派工給 Gemini、整合、實機測試、提交 GitHub。
-- **功能程式一律由 Gemini 撰寫**，Claude 不自己寫功能程式；有錯誤時把測試結果寫成修正單交回 Gemini 修。
-- Claude 只可以做整合用的最小改動（插入區塊、測試用情境檔），並在回報中說明。
-- 為了節省 Claude 的用量：不要整份讀 `index.html`，用 grep／指定行數讀需要的部分；自我測試盡量交給 Gemini（它會跑 sim.js），Claude 只做必要的實機測試。
+- **功能程式一律由每晚排程的「瀏覽器版 Gemini」撰寫**。Claude 不寫功能程式，也不自己派工（API 金鑰派工目前停用）。
+- **Claude 只負責**：提交、推送、合併、測試。
+  - 合併：把 Gemini 交出的區塊（`block.js`）接進 `index.html`，遇到版本編號撞號時，本機的改成接在遠端最新版之後。
+  - 測試：跑 smoke 與實機測試（電腦版、手機版、截圖看位置有沒有和既有結構重疊），把結果回報給使用者。
+  - 提交與推送：訊息寫「第 XX 版：標題」。推到 GitHub 前要先測過；有問題先停下來告訴使用者。
+- 測試有問題時，把測試結果、錯誤訊息、截圖觀察寫成修正單（`tasks/vXX-fix.md`），交給使用者帶回 Gemini 修；Claude 不自己改功能程式。
+- Claude 只可以做整合用的最小改動（插入區塊、改版本編號、測試用情境檔），並在回報中說明。
+- 任務單（`tasks/vXX.md`）由使用者或 Gemini 準備；Claude 只在使用者要求時協助整理。
+- 為了節省 Claude 的用量：不要整份讀 `index.html`，用 grep／指定行數讀需要的部分。
 
-## 派工流程（Gemini CLI）
-1. 寫任務單：`tasks/vXX.md`（繁體中文，條列要做的事；能查到的座標、選擇器、錯誤原因都寫進去）。
-2. 派工：`node tools/gemini/dispatch.js run vXX tasks/vXX.md`
-   - 用環境變數 `GEMINI_API_KEY`（只有一組，不可寫進任何檔案或顯示出來），不再切換 Google 帳號。
-   - 可用 `GEMINI_MODEL` 指定模型；模型忙線（503）會自動重試，結束代碼 4 = 重試後仍忙線。
-   - 結束代碼 3 = 額度用完 → 停止，告訴使用者，不要自己改寫程式。
-3. 看結果：`tools/gemini/work/vXX/block.js`、`report.md`；`node tools/gemini/dispatch.js status` 看全部、`check` 檢查金鑰是否設定。
-4. 先試整合：`node tools/integrate.js tools/gemini/work/vXX/block.js --dry`，再實機測試（見下方「測試」），測試時用暫存副本，不要直接改 index.html。
-5. 有問題：寫 `tasks/vXX-fix.md`（測試結果、錯誤訊息、截圖觀察），執行 `node tools/gemini/dispatch.js fix vXX tasks/vXX-fix.md`。
-6. 通過：`node tools/integrate.js tools/gemini/work/vXX/block.js`，提交「第 XX 版：標題」並推到 GitHub。
-- 如果 `gemini` 指令不存在或 `GEMINI_API_KEY` 沒設定，停下來請使用者照 SETUP.md 設定，不要改成自己寫程式。
+## 整合流程（Gemini 交件之後）
+1. 把 Gemini 交出的 `block.js`（以及 `report.md`）放到 `tools/gemini/work/vXX/`。
+2. 先試整合：`node tools/integrate.js tools/gemini/work/vXX/block.js --dry`；實機測試用暫存副本，不要直接改 index.html（見下方「測試」）。
+3. 通過：`node tools/integrate.js tools/gemini/work/vXX/block.js`，提交「第 XX 版：標題」並推到 GitHub。
+4. 沒通過：寫修正單，停下來告訴使用者。
+- `tools/gemini/dispatch.js`（API 金鑰派工）保留但停用；使用者明說要用時才用，用法見 SETUP.md。
 
 ## 可以使用的全域介面（在 IIFE 內可直接呼叫）
 - `scene, camera, renderer, THREE`；`pos`（玩家位置 {x,z}，就是 `A.pos`）；`A`（玩家：`A.pos`、`A.heading`、`A.g` 群組、`A.jh` 跳躍高度）
