@@ -43105,6 +43105,5290 @@ try{
   }
   setTimeout(fixEscon, 1200);
 })();
+// ===== 第 75 版：手機版全壘打計分卡位置修正（Gemini 撰寫） =====
+(function () {
+  try {
+    function isMobile() {
+      return (
+        (window.matchMedia && window.matchMedia('(hover: none)').matches) ||
+        window.innerWidth <= 560
+      );
+    }
+
+    function getTargetScorecard() {
+      var marked = document.querySelector('div[data-v73="1"]');
+      if (marked) return marked;
+
+      var divs = document.getElementsByTagName('div');
+      for (var i = 0; i < divs.length; i++) {
+        var el = divs[i];
+        var pos = el.style.position;
+        var minW = el.style.minWidth;
+        var maxW = el.style.maxWidth;
+        var border = el.style.border || '';
+
+        if (
+          pos === 'fixed' &&
+          minW === '175px' &&
+          maxW === '250px' &&
+          (border.indexOf('255, 209, 102') !== -1 ||
+            border.indexOf('#ffd166') !== -1 ||
+            border.indexOf('rgb(255, 209, 102)') !== -1)
+        ) {
+          el.dataset.v73 = '1';
+          el.__v73orig = {
+            top: el.style.getPropertyValue('top'),
+            right: el.style.getPropertyValue('right'),
+            'min-width': el.style.getPropertyValue('min-width'),
+            'max-width': el.style.getPropertyValue('max-width'),
+            padding: el.style.getPropertyValue('padding'),
+            'font-size': el.style.getPropertyValue('font-size')
+          };
+          return el;
+        }
+      }
+      return null;
+    }
+
+    function updateScorecardPosition() {
+      var card = getTargetScorecard();
+      if (!card) return;
+
+      if (isMobile()) {
+        card.style.setProperty('top', '142px', 'important');
+        card.style.setProperty('right', '8px', 'important');
+        card.style.setProperty('min-width', '150px', 'important');
+        card.style.setProperty('max-width', '190px', 'important');
+        card.style.setProperty('padding', '8px 10px', 'important');
+        card.style.setProperty('font-size', '12px', 'important');
+      } else if (card.__v73orig) {
+        var props = ['top', 'right', 'min-width', 'max-width', 'padding', 'font-size'];
+        for (var i = 0; i < props.length; i++) {
+          var prop = props[i];
+          var origVal = card.__v73orig[prop];
+          if (origVal) {
+            card.style.setProperty(prop, origVal);
+          } else {
+            card.style.removeProperty(prop);
+          }
+        }
+      }
+    }
+
+    setInterval(updateScorecardPosition, 500);
+    window.addEventListener('resize', updateScorecardPosition);
+  } catch (e) {}
+})();
+// ===== 第 76 版：北海道棒球場「球員見面會：簽名與合照」（Gemini 撰寫） =====
+(function() {
+  try {
+    if (typeof THREE === 'undefined' || typeof scene === 'undefined') return;
+
+    // 1. 決定地點與碰撞避開
+    var escon = (typeof VEN !== 'undefined' && VEN && VEN.escon) ? VEN.escon : {};
+    var ax = (typeof escon.ax === 'number') ? escon.ax : ((typeof window !== 'undefined' && window.__ESCON && typeof window.__ESCON.OX === 'number') ? window.__ESCON.OX : 0);
+    var az = (typeof escon.az === 'number') ? escon.az : ((typeof window !== 'undefined' && window.__ESCON && typeof window.__ESCON.OZ === 'number') ? window.__ESCON.OZ + 120 : 920);
+    var ay = (typeof escon.ay === 'number') ? escon.ay : ((typeof window !== 'undefined' && window.__ESCON && typeof window.__ESCON.fieldY === 'number') ? window.__ESCON.fieldY : 0);
+
+    var baseX = ax + 12;
+    var baseZ = az + 4;
+    var boothW = 8;
+    var boothD = 4;
+
+    function isOverlapping(cx, cz) {
+      if (typeof colliders === 'undefined' || !Array.isArray(colliders)) return false;
+      var x0 = cx - boothW / 2;
+      var x1 = cx + boothW / 2;
+      var z0 = cz - boothD / 2;
+      var z1 = cz + boothD / 2;
+      for (var i = 0; i < colliders.length; i++) {
+        var c = colliders[i];
+        if (!c || c.on === false) continue;
+        var cx0 = (typeof c.x0 === 'number') ? c.x0 : (typeof c.minX === 'number' ? c.minX : undefined);
+        var cx1 = (typeof c.x1 === 'number') ? c.x1 : (typeof c.maxX === 'number' ? c.maxX : undefined);
+        var cz0 = (typeof c.z0 === 'number') ? c.z0 : (typeof c.minZ === 'number' ? c.minZ : undefined);
+        var cz1 = (typeof c.z1 === 'number') ? c.z1 : (typeof c.maxZ === 'number' ? c.maxZ : undefined);
+        if (cx0 !== undefined && cx1 !== undefined && cz0 !== undefined && cz1 !== undefined) {
+          if (x0 < cx1 && x1 > cx0 && z0 < cz1 && z1 > cz0) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    var boothX = baseX;
+    var boothZ = baseZ;
+    var offsets = [3, -3, 6, -6, 9, -9, 12, -12];
+    if (isOverlapping(boothX, boothZ)) {
+      for (var step = 0; step < offsets.length; step++) {
+        var tryX = baseX + offsets[step];
+        if (!isOverlapping(tryX, boothZ)) {
+          boothX = tryX;
+          break;
+        }
+      }
+    }
+
+    // 放入 VGRP.escon（若不存在就放 scene）
+    var parentGrp = (typeof VGRP !== 'undefined' && VGRP && VGRP.escon) ? VGRP.escon : scene;
+    var root = new THREE.Group();
+    root.position.set(boothX, ay, boothZ);
+    parentGrp.add(root);
+
+    // 註冊長桌碰撞方塊
+    if (typeof col === 'function') {
+      try {
+        col(boothX - 3.3, boothX + 3.3, boothZ - 0.5, boothZ + 0.5);
+      } catch (e) {}
+    }
+
+    // 註冊徽章 ['sign3','簽名收藏家','✍️',function(){return false;}]
+    if (typeof BADGES !== 'undefined' && Array.isArray(BADGES)) {
+      var hasSign3 = false;
+      for (var bIdx = 0; bIdx < BADGES.length; bIdx++) {
+        if (BADGES[bIdx] && BADGES[bIdx][0] === 'sign3') {
+          hasSign3 = true;
+          break;
+        }
+      }
+      if (!hasSign3) {
+        BADGES.push(['sign3', '簽名收藏家', '✍️', function() { return false; }]);
+      }
+    }
+
+    // 工具：產生 Canvas Texture
+    function makeCanvasTex(w, h, drawFn) {
+      try {
+        if (typeof document === 'undefined') return null;
+        var cvs = document.createElement('canvas');
+        cvs.width = w;
+        cvs.height = h;
+        var ctx = cvs.getContext('2d');
+        if (ctx) drawFn(ctx, w, h);
+        var tex = new THREE.CanvasTexture(cvs);
+        tex.needsUpdate = true;
+        return tex;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // 2. 外觀：帳篷頂（藍白條紋）、長桌、桌上簽名球、立牌「⚾ 球員見面會」、地上排隊線
+    var stripeTex = makeCanvasTex(512, 512, function(ctx, w, h) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#1e50a2';
+      var stripes = 8;
+      var sw = w / (stripes * 2);
+      for (var i = 0; i < stripes; i++) {
+        ctx.fillRect(i * sw * 2, 0, sw, h);
+      }
+    });
+
+    var poleMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.4, metalness: 0.6 });
+    var roofMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      map: stripeTex || null,
+      roughness: 0.6,
+      side: THREE.DoubleSide
+    });
+
+    // 四根帳篷柱子
+    var poleCoords = [[-3.8, -1.8], [3.8, -1.8], [-3.8, 1.8], [3.8, 1.8]];
+    for (var pIdx = 0; pIdx < poleCoords.length; pIdx++) {
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.8, 10), poleMat);
+      pole.position.set(poleCoords[pIdx][0], 1.4, poleCoords[pIdx][1]);
+      root.add(pole);
+    }
+
+    // 帳篷頂簷與斜屋頂
+    var valance = new THREE.Mesh(new THREE.BoxGeometry(8.0, 0.28, 4.0), roofMat);
+    valance.position.set(0, 2.85, 0);
+    root.add(valance);
+
+    var roofPeak = new THREE.Mesh(new THREE.ConeGeometry(4.6, 0.9, 4), roofMat);
+    roofPeak.position.set(0, 3.44, 0);
+    roofPeak.rotation.y = Math.PI / 4;
+    roofPeak.scale.set(1.25, 1, 0.65);
+    root.add(roofPeak);
+
+    // 長桌（鋪深藍桌巾＋金色滾邊）
+    var tableClothMat = new THREE.MeshStandardMaterial({ color: 0x162a5a, roughness: 0.7 });
+    var goldTrimMat = new THREE.MeshStandardMaterial({ color: 0xf5c542, roughness: 0.3, metalness: 0.4 });
+    var tableTopMat = new THREE.MeshStandardMaterial({ color: 0xf8f9fa, roughness: 0.5 });
+
+    var tableBody = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.76, 0.9), tableClothMat);
+    tableBody.position.set(0, 0.38, 0);
+    root.add(tableBody);
+
+    var tableTop = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.06, 0.96), tableTopMat);
+    tableTop.position.set(0, 0.78, 0);
+    root.add(tableTop);
+
+    var goldTrim = new THREE.Mesh(new THREE.BoxGeometry(6.44, 0.08, 0.92), goldTrimMat);
+    goldTrim.position.set(0, 0.65, 0);
+    root.add(goldTrim);
+
+    // 桌上簽名球與小球座
+    var ballMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+    var standMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.4 });
+    var ballOffsets = [-2.3, -2.0, -1.7, -0.3, 0.0, 0.3, 1.7, 2.0, 2.3];
+    for (var b = 0; b < ballOffsets.length; b++) {
+      var bx = ballOffsets[b];
+      var bz = (b % 2 === 0) ? 0.16 : -0.05;
+      var stand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.04, 8), standMat);
+      stand.position.set(bx, 0.83, bz);
+      root.add(stand);
+      var ball = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), ballMat);
+      ball.position.set(bx, 0.90, bz);
+      root.add(ball);
+    }
+
+    // 立牌「⚾ 球員見面會」
+    var signTex = makeCanvasTex(512, 256, function(ctx, w, h) {
+      ctx.fillStyle = '#0f2350';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#f5c542';
+      ctx.lineWidth = 14;
+      ctx.strokeRect(10, 10, w - 20, h - 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 54px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚾ 球員見面會', w / 2, h / 2 - 22);
+      ctx.fillStyle = '#f5c542';
+      ctx.font = 'bold 34px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillText('簽名 ＆ 開心合照', w / 2, h / 2 + 48);
+    });
+
+    var signBoardGrp = new THREE.Group();
+    signBoardGrp.position.set(-4.3, 0, 1.6);
+    signBoardGrp.rotation.y = 0.25;
+    var signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 8), poleMat);
+    signPost.position.set(0, 0.8, 0);
+    signBoardGrp.add(signPost);
+    var signBase = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.36, 0.08, 12), poleMat);
+    signBase.position.set(0, 0.04, 0);
+    signBoardGrp.add(signBase);
+    var signFaceMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      map: signTex || null,
+      roughness: 0.4
+    });
+    var signBoard = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.78, 0.08), signFaceMat);
+    signBoard.position.set(0, 1.55, 0);
+    signBoardGrp.add(signBoard);
+    root.add(signBoardGrp);
+
+    // 地上排隊線（地上黃白標線＋紅龍柱）
+    var lineMat = new THREE.MeshStandardMaterial({ color: 0xf5c542, roughness: 0.5 });
+    var ropeMat = new THREE.MeshStandardMaterial({ color: 0xd9383a, roughness: 0.5 });
+
+    for (var lane = -1; lane <= 1; lane++) {
+      var lx = lane * 2.0;
+      // 地板等待腳印線
+      var floorStrip = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.02, 0.12), lineMat);
+      floorStrip.position.set(lx, 0.01, 1.35);
+      root.add(floorStrip);
+      var floorStrip2 = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.02, 0.12), lineMat);
+      floorStrip2.position.set(lx, 0.01, 2.25);
+      root.add(floorStrip2);
+    }
+
+    var dividerXs = [-3.0, -1.0, 1.0, 3.0];
+    for (var d = 0; d < dividerXs.length; d++) {
+      var dx = dividerXs[d];
+      var sideLine = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 1.4), lineMat);
+      sideLine.position.set(dx, 0.01, 1.8);
+      root.add(sideLine);
+
+      // 紅龍柱與紅絨繩
+      var st1 = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.85, 8), poleMat);
+      st1.position.set(dx, 0.425, 1.15);
+      root.add(st1);
+      var st2 = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.85, 8), poleMat);
+      st2.position.set(dx, 0.425, 2.45);
+      root.add(st2);
+      var rope = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 1.3), ropeMat);
+      rope.position.set(dx, 0.72, 1.8);
+      root.add(rope);
+    }
+
+    // 3. 三位原創球員（深藍＋金色隊服、帽子、背號、頭上名牌 Sprite）
+    var playersData = [
+      { id: 'kitakawa_18', posTitle: '投手', name: '北川蒼太', num: '18', lx: -2.0, lz: -0.85, phase: 0.0 },
+      { id: 'fuji_27',     posTitle: '捕手', name: '藤原大樹', num: '27', lx:  0.0, lz: -0.85, phase: 2.1 },
+      { id: 'amamiya_51',  posTitle: '外野手', name: '天宮颯', num: '51', lx:  2.0, lz: -0.85, phase: 4.2 }
+    ];
+
+    var navyMat = new THREE.MeshStandardMaterial({ color: 0x10254c, roughness: 0.6 });
+    var goldMat = new THREE.MeshStandardMaterial({ color: 0xf4c430, roughness: 0.4, metalness: 0.3 });
+    var skinMat = new THREE.MeshStandardMaterial({ color: 0xffdfc4, roughness: 0.6 });
+    var pantsMat = new THREE.MeshStandardMaterial({ color: 0xf2f4f8, roughness: 0.7 });
+    var eyeMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3 });
+    var penMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
+
+    var playerObjs = [];
+
+    function buildPlayer(p) {
+      var pGrp = new THREE.Group();
+      pGrp.position.set(p.lx, 0, p.lz);
+
+      // 雙腳
+      var leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.68, 0.18), pantsMat);
+      leftLeg.position.set(-0.11, 0.34, 0);
+      pGrp.add(leftLeg);
+
+      var rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.68, 0.18), pantsMat);
+      rightLeg.position.set(0.11, 0.34, 0);
+      pGrp.add(rightLeg);
+
+      // 球鞋（深藍＋金底）
+      var shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.24), navyMat);
+      shoeL.position.set(-0.11, 0.05, 0.03);
+      pGrp.add(shoeL);
+      var shoeR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.24), navyMat);
+      shoeR.position.set(0.11, 0.05, 0.03);
+      pGrp.add(shoeR);
+
+      // 上半身群組（呼吸晃動與低頭簽名）
+      var upperGrp = new THREE.Group();
+      upperGrp.position.set(0, 0.68, 0);
+      pGrp.add(upperGrp);
+
+      // 球衣身體（深藍＋金色線條）
+      var torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.62, 0.26), navyMat);
+      torso.position.set(0, 0.31, 0);
+      upperGrp.add(torso);
+
+      var belt = new THREE.Mesh(new THREE.BoxGeometry(0.47, 0.06, 0.27), goldMat);
+      belt.position.set(0, 0.03, 0);
+      upperGrp.add(belt);
+
+      var chestStripe = new THREE.Mesh(new THREE.BoxGeometry(0.47, 0.07, 0.27), goldMat);
+      chestStripe.position.set(0, 0.44, 0);
+      upperGrp.add(chestStripe);
+
+      // 背號貼圖（貼在背上 -z 面，與正面小號）
+      var numTex = makeCanvasTex(256, 256, function(ctx, w, h) {
+        ctx.fillStyle = '#10254c';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#f4c430';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(12, 12, w - 24, h - 24);
+        ctx.fillStyle = '#f4c430';
+        ctx.font = 'bold 130px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.num, w / 2, h / 2 + 8);
+      });
+      var numMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        map: numTex || null,
+        roughness: 0.4
+      });
+      var backPatch = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.32), numMat);
+      backPatch.position.set(0, 0.33, -0.135);
+      backPatch.rotation.y = Math.PI;
+      upperGrp.add(backPatch);
+
+      var frontPatch = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.16), numMat);
+      frontPatch.position.set(-0.11, 0.30, 0.135);
+      upperGrp.add(frontPatch);
+
+      // 頭部群組
+      var headGrp = new THREE.Group();
+      headGrp.position.set(0, 0.66, 0);
+      upperGrp.add(headGrp);
+
+      var headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.19, 14, 14), skinMat);
+      headMesh.position.set(0, 0.16, 0);
+      headGrp.add(headMesh);
+
+      // 眼睛
+      var eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 8), eyeMat);
+      eyeL.position.set(-0.065, 0.17, 0.17);
+      headGrp.add(eyeL);
+      var eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 8), eyeMat);
+      eyeR.position.set(0.065, 0.17, 0.17);
+      headGrp.add(eyeR);
+
+      // 球帽（深藍帽身＋金色帽簷與金色帽徽）
+      var capDome = new THREE.Mesh(new THREE.SphereGeometry(0.198, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), navyMat);
+      capDome.position.set(0, 0.18, 0);
+      headGrp.add(capDome);
+
+      var capVisor = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.03, 0.20), goldMat);
+      capVisor.position.set(0, 0.21, 0.15);
+      headGrp.add(capVisor);
+
+      var capEmblem = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.02), goldMat);
+      capEmblem.position.set(0, 0.28, 0.185);
+      headGrp.add(capEmblem);
+
+      // 左手與右手（肩膀為旋轉軸）
+      var leftArmPivot = new THREE.Group();
+      leftArmPivot.position.set(-0.29, 0.56, 0);
+      upperGrp.add(leftArmPivot);
+      var leftArmSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.22, 0.14), navyMat);
+      leftArmSleeve.position.set(0, -0.09, 0);
+      leftArmPivot.add(leftArmSleeve);
+      var leftArmLimb = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.34, 0.11), skinMat);
+      leftArmLimb.position.set(0, -0.28, 0);
+      leftArmPivot.add(leftArmLimb);
+
+      var rightArmPivot = new THREE.Group();
+      rightArmPivot.position.set(0.29, 0.56, 0);
+      upperGrp.add(rightArmPivot);
+      var rightArmSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.22, 0.14), navyMat);
+      rightArmSleeve.position.set(0, -0.09, 0);
+      rightArmPivot.add(rightArmSleeve);
+      var rightArmLimb = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.34, 0.11), skinMat);
+      rightArmLimb.position.set(0, -0.28, 0);
+      rightArmPivot.add(rightArmLimb);
+
+      // 右手握簽名筆與比讚大拇指
+      var markerPen = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.14, 6), penMat);
+      markerPen.position.set(0, -0.44, 0.06);
+      markerPen.rotation.x = Math.PI / 2;
+      rightArmPivot.add(markerPen);
+
+      var thumbMesh = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.09, 0.04), skinMat);
+      thumbMesh.position.set(-0.05, -0.44, 0.05);
+      rightArmPivot.add(thumbMesh);
+
+      // 5. 頭上名牌（Sprite，名字＋背號，手機也清楚）
+      var isMobile = false;
+      try {
+        isMobile = (typeof matchMedia === 'function' && matchMedia('(hover:none)').matches) ||
+                   (typeof innerWidth === 'number' && innerWidth <= 560);
+      } catch (e) {}
+
+      var tagTex = makeCanvasTex(512, 160, function(ctx, w, h) {
+        ctx.fillStyle = 'rgba(12, 28, 64, 0.92)';
+        ctx.fillRect(6, 6, w - 12, h - 12);
+        ctx.strokeStyle = '#f5c542';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(6, 6, w - 12, h - 12);
+
+        ctx.fillStyle = '#f5c542';
+        ctx.font = 'bold 34px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.posTitle + '  #' + p.num, w / 2, 46);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 52px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+        ctx.fillText(p.name, w / 2, 110);
+      });
+
+      var spriteMat = new THREE.SpriteMaterial({
+        map: tagTex || null,
+        transparent: true,
+        depthTest: false
+      });
+      var nameSprite = new THREE.Sprite(spriteMat);
+      nameSprite.position.set(0, 2.22, 0);
+      var spScale = isMobile ? 1.85 : 1.5;
+      nameSprite.scale.set(spScale, spScale * (160 / 512), 1);
+      pGrp.add(nameSprite);
+
+      root.add(pGrp);
+
+      return {
+        data: p,
+        grp: pGrp,
+        upperGrp: upperGrp,
+        headGrp: headGrp,
+        leftArmPivot: leftArmPivot,
+        rightArmPivot: rightArmPivot,
+        signUntil: 0,
+        poseUntil: 0
+      };
+    }
+
+    for (var i = 0; i < playersData.length; i++) {
+      playerObjs.push(buildPlayer(playersData[i]));
+    }
+
+    // 4. 互動點註冊（things.push，r 約 1.6）
+    function getSignedList() {
+      if (typeof BK === 'undefined' || !BK) return [];
+      if (!Array.isArray(BK.signs)) BK.signs = [];
+      return BK.signs;
+    }
+
+    function playSignTune() {
+      try {
+        if (typeof notes === 'function') {
+          notes([523.25, 659.25, 783.99, 1046.5], 'triangle', 0.12);
+        }
+      } catch (e) {}
+    }
+
+    function registerPlayerInteractions(pObj) {
+      var p = pObj.data;
+      var worldX = boothX + p.lx;
+      var worldZ = boothZ + 0.85;
+
+      if (typeof things === 'undefined' || !Array.isArray(things)) return;
+
+      // 互動 A：「✍️ 請 OOO 簽名」
+      things.push({
+        x: worldX - 0.35,
+        z: worldZ,
+        r: 1.6,
+        label: function() {
+          return '✍️ 請 ' + p.name + ' 簽名';
+        },
+        go: function() {
+          try {
+            var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() / 1000 : Date.now() / 1000;
+            pObj.signUntil = now + 1.5;
+
+            playSignTune();
+
+            var signs = getSignedList();
+            var already = signs.indexOf(p.id) !== -1;
+            if (!already) {
+              signs.push(p.id);
+              if (typeof saveBK === 'function') {
+                try { saveBK(); } catch (e) {}
+              }
+            }
+
+            // 檢查三位是否都簽完
+            var allSigned = true;
+            for (var k = 0; k < playersData.length; k++) {
+              if (signs.indexOf(playersData[k].id) === -1) {
+                allSigned = false;
+                break;
+              }
+            }
+
+            if (typeof say === 'function') {
+              if (already) {
+                say(p.posTitle + '「' + p.name + '（背號 ' + p.num + '）」微笑著在棒球上又幫你簽了一次名！（已收集 ' + signs.length + '/3 位）');
+              } else {
+                say('太棒了！拿到' + p.posTitle + '「' + p.name + '（背號 ' + p.num + '）」的親筆簽名球！（已收集 ' + signs.length + '/3 位）');
+              }
+            }
+
+            if (allSigned && typeof award === 'function') {
+              try { award('sign3'); } catch (e) {}
+            }
+          } catch (e) {}
+        }
+      });
+
+      // 互動 B：「📸 跟 OOO 合照」
+      things.push({
+        x: worldX + 0.35,
+        z: worldZ,
+        r: 1.6,
+        label: function() {
+          return '📸 跟 ' + p.name + ' 合照';
+        },
+        go: function() {
+          try {
+            var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() / 1000 : Date.now() / 1000;
+            pObj.poseUntil = now + 1.8;
+
+            // 把玩家移到球員旁邊並面向鏡頭方向（+z 方向，heading = 0）
+            var targetX = boothX + p.lx + 0.55;
+            var targetZ = boothZ + 0.55;
+            if (typeof tpTo === 'function') {
+              try { tpTo(targetX, targetZ, 0); } catch (e) {}
+            } else if (typeof pos !== 'undefined' && pos) {
+              pos.x = targetX;
+              pos.z = targetZ;
+              if (typeof A !== 'undefined' && A) A.heading = 0;
+            }
+
+            if (typeof say === 'function') {
+              say('站到 ' + p.name + ' 旁邊準備拍照囉！三、二、一，笑一個～');
+            }
+
+            setTimeout(function() {
+              try {
+                if (typeof takePhoto === 'function') {
+                  takePhoto();
+                } else {
+                  if (typeof flash === 'function') {
+                    try { flash(); } catch (e) {}
+                  }
+                  if (typeof say === 'function') {
+                    say('咔嚓！跟' + p.posTitle + '「' + p.name + '（背號 ' + p.num + '）」拍好合照了！');
+                  }
+                }
+              } catch (e) {}
+            }, 600);
+          } catch (e) {}
+        }
+      });
+    }
+
+    for (var j = 0; j < playerObjs.length; j++) {
+      registerPlayerInteractions(playerObjs[j]);
+    }
+
+    // 互動 C：「🎾 看我的簽名球收藏」
+    if (typeof things !== 'undefined' && Array.isArray(things)) {
+      things.push({
+        x: boothX - 3.6,
+        z: boothZ + 1.1,
+        r: 1.6,
+        label: function() {
+          return '🎾 看我的簽名球收藏';
+        },
+        go: function() {
+          try {
+            var signs = getSignedList();
+            var collectedNames = [];
+            for (var i = 0; i < playersData.length; i++) {
+              var pd = playersData[i];
+              if (signs.indexOf(pd.id) !== -1) {
+                collectedNames.push(pd.posTitle + ' ' + pd.name + '（#' + pd.num + '）');
+              }
+            }
+            if (typeof say === 'function') {
+              if (collectedNames.length === 0) {
+                say('你的簽名球盒裡還是空的喔！快去跟桌前的三位球員要簽名吧！');
+              } else if (collectedNames.length < playersData.length) {
+                say('目前已收集到 ' + collectedNames.length + '/3 顆簽名球：' + collectedNames.join('、') + '。繼續加油！');
+              } else {
+                say('太厲害了！你已經收集齊全全部 3 顆簽名球：' + collectedNames.join('、') + '！你是真正的簽名收藏家！');
+              }
+            }
+          } catch (e) {}
+        }
+      });
+    }
+
+    // 6. 每格更新：串接 window.__moreTick2，距離 60 公尺內才顯示與跑動畫
+    var prevTick = (typeof window !== 'undefined') ? window.__moreTick2 : undefined;
+    var tickFn = function(dt, t) {
+      if (typeof prevTick === 'function') {
+        try { prevTick(dt, t); } catch (e) {}
+      }
+      try {
+        var px = (typeof pos !== 'undefined' && pos && typeof pos.x === 'number') ? pos.x :
+                 ((typeof A !== 'undefined' && A && A.pos && typeof A.pos.x === 'number') ? A.pos.x : boothX);
+        var pz = (typeof pos !== 'undefined' && pos && typeof pos.z === 'number') ? pos.z :
+                 ((typeof A !== 'undefined' && A && A.pos && typeof A.pos.z === 'number') ? A.pos.z : boothZ);
+
+        var dx = px - boothX;
+        var dz = pz - boothZ;
+        var distSq = dx * dx + dz * dz;
+
+        // 距離超過 60 公尺時隱藏並跳過動畫
+        if (distSq > 3600) {
+          if (root.visible) root.visible = false;
+          return;
+        }
+        if (!root.visible) root.visible = true;
+
+        var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() / 1000 :
+                  ((typeof t === 'number') ? t : Date.now() / 1000);
+        var timeSec = (typeof t === 'number') ? t : now;
+
+        for (var i = 0; i < playerObjs.length; i++) {
+          var po = playerObjs[i];
+          var ph = po.data.phase;
+
+          // 輕微呼吸上下與左右搖擺
+          po.upperGrp.position.y = 0.68 + Math.sin(timeSec * 2.4 + ph) * 0.015;
+
+          if (now < po.signUntil) {
+            // 簽名動畫：低頭、右手在球上左右快速動 1.5 秒
+            po.headGrp.rotation.x = 0.42;
+            po.headGrp.rotation.y = Math.sin(timeSec * 14) * 0.12;
+            po.upperGrp.rotation.x = 0.18;
+            po.rightArmPivot.rotation.x = -1.15;
+            po.rightArmPivot.rotation.z = Math.sin(timeSec * 22) * 0.28;
+            po.leftArmPivot.rotation.x = -0.65;
+            po.leftArmPivot.rotation.z = 0.15;
+          } else if (now < po.poseUntil) {
+            // 合照比讚動畫：手舉高比讚、抬頭微笑看鏡頭
+            po.headGrp.rotation.x = -0.06;
+            po.headGrp.rotation.y = 0;
+            po.upperGrp.rotation.x = 0;
+            po.rightArmPivot.rotation.x = -2.35;
+            po.rightArmPivot.rotation.z = -0.18 + Math.sin(timeSec * 6) * 0.05;
+            po.leftArmPivot.rotation.x = -0.2;
+            po.leftArmPivot.rotation.z = 0.12;
+          } else {
+            // 待機動畫：自然呼吸晃動，偶爾揮手
+            po.headGrp.rotation.x = Math.sin(timeSec * 1.5 + ph) * 0.04;
+            po.headGrp.rotation.y = Math.sin(timeSec * 0.9 + ph) * 0.12;
+            po.upperGrp.rotation.x = 0;
+            po.leftArmPivot.rotation.x = Math.sin(timeSec * 1.8 + ph) * 0.06;
+            po.leftArmPivot.rotation.z = 0.06;
+
+            // 每 6 秒週期中揮手約 1.6 秒
+            var cycle = (timeSec + ph) % 6.0;
+            if (cycle < 1.6) {
+              po.rightArmPivot.rotation.x = -2.45;
+              po.rightArmPivot.rotation.z = -0.25 + Math.sin(timeSec * 10) * 0.25;
+            } else {
+              po.rightArmPivot.rotation.x = Math.sin(timeSec * 1.8 + ph + 1.0) * 0.06;
+              po.rightArmPivot.rotation.z = -0.06;
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    if (typeof window !== 'undefined') {
+      window.__moreTick2 = tickFn;
+    }
+  } catch (err) {}
+})();
+// ===== 第 79 版：北海道棒球場「內野守備挑戰：接滾地球、傳一壘」（Gemini 撰寫） =====
+(function() {
+  try {
+    // 1. 註冊徽章 ['if7','鐵壁游擊手','🛡️',function(){return false;}]
+    try {
+      if (typeof BADGES !== 'undefined' && Array.isArray(BADGES)) {
+        var hasIf7 = false;
+        for (var i = 0; i < BADGES.length; i++) {
+          if (BADGES[i] && BADGES[i][0] === 'if7') {
+            hasIf7 = true;
+            break;
+          }
+        }
+        if (!hasIf7) {
+          BADGES.push(['if7', '鐵壁游擊手', '🛡️', function() { return false; }]);
+        }
+      }
+    } catch (e) {}
+
+    // 2. 取得棒球場座標（相容陣列與物件格式，並備妥預設值）
+    function getEsconCoords() {
+      var E = (typeof window !== 'undefined' && window.__ESCON) ? window.__ESCON : {};
+      var ox = (typeof E.OX === 'number') ? E.OX : 0;
+      var oz = (typeof E.OZ === 'number') ? E.OZ : 800;
+      var fy = (typeof E.fieldY === 'number') ? E.fieldY : 0;
+
+      var home = (E.home && typeof E.home.x === 'number' && typeof E.home.z === 'number')
+        ? { x: E.home.x, z: E.home.z }
+        : { x: ox, z: oz + 20 };
+
+      var mound = (E.mound && typeof E.mound.x === 'number' && typeof E.mound.z === 'number')
+        ? { x: E.mound.x, z: E.mound.z }
+        : { x: home.x, z: home.z - 18.44 };
+
+      var b1 = null, b2 = null, b3 = null;
+      var bases = E.bases;
+      if (Array.isArray(bases)) {
+        if (bases.length >= 4 && bases[1] && bases[2] && bases[3] && typeof bases[1].x === 'number') {
+          b1 = bases[1];
+          b2 = bases[2];
+          b3 = bases[3];
+        } else if (bases.length >= 3 && bases[0] && bases[1] && bases[2]) {
+          b1 = bases[0];
+          b2 = bases[1];
+          b3 = bases[2];
+        }
+      } else if (bases && typeof bases === 'object') {
+        b1 = bases.first || bases.b1 || bases[1] || bases['1'] || bases.one;
+        b2 = bases.second || bases.b2 || bases[2] || bases['2'] || bases.two;
+        b3 = bases.third || bases.b3 || bases[3] || bases['3'] || bases.three;
+      }
+
+      if (!b1 || typeof b1.x !== 'number' || typeof b1.z !== 'number') {
+        b1 = { x: home.x + 19.4, z: home.z - 19.4 };
+      }
+      if (!b2 || typeof b2.x !== 'number' || typeof b2.z !== 'number') {
+        b2 = { x: home.x, z: home.z - 38.8 };
+      }
+      if (!b3 || typeof b3.x !== 'number' || typeof b3.z !== 'number') {
+        b3 = { x: home.x - 19.4, z: home.z - 19.4 };
+      }
+
+      // 游擊手位置 = 二壘與三壘中間再往外野退 4 公尺（從本壘往二三壘中點方向延伸 4 公尺）
+      var midX = (b2.x + b3.x) * 0.5;
+      var midZ = (b2.z + b3.z) * 0.5;
+      var dx = midX - home.x;
+      var dz = midZ - home.z;
+      var len = Math.hypot(dx, dz) || 1;
+      var ssX = midX + (dx / len) * 4;
+      var ssZ = midZ + (dz / len) * 4;
+
+      return {
+        fieldY: fy,
+        home: { x: home.x, z: home.z },
+        mound: { x: mound.x, z: mound.z },
+        b1: { x: b1.x, z: b1.z },
+        b2: { x: b2.x, z: b2.z },
+        b3: { x: b3.x, z: b3.z },
+        ss: { x: ssX, z: ssZ }
+      };
+    }
+
+    function isMobile() {
+      try {
+        if (typeof window !== 'undefined') {
+          if (window.matchMedia && window.matchMedia('(hover:none)').matches) return true;
+          if (window.innerWidth <= 560) return true;
+        }
+      } catch (e) {}
+      return false;
+    }
+
+    function getPlayerPos() {
+      if (typeof A !== 'undefined' && A && A.pos && typeof A.pos.x === 'number') return A.pos;
+      if (typeof pos !== 'undefined' && pos && typeof pos.x === 'number') return pos;
+      return { x: 0, z: 0 };
+    }
+
+    // 音效輔助
+    function sfxHit() {
+      try { if (typeof noiseBurst === 'function') noiseBurst(0.08, 1200, 0.35, 'bandpass'); } catch (e) {}
+      try { if (typeof notes === 'function') notes([320, 480], 'triangle', 0.06); } catch (e) {}
+    }
+    function sfxCatch() {
+      try { if (typeof noiseBurst === 'function') noiseBurst(0.06, 900, 0.25, 'lowpass'); } catch (e) {}
+      try { if (typeof notes === 'function') notes([523, 659], 'sine', 0.08); } catch (e) {}
+    }
+    function sfxPerfect() {
+      try { if (typeof notes === 'function') notes([523, 659, 784, 1046], 'triangle', 0.09); } catch (e) {}
+    }
+    function sfxGood() {
+      try { if (typeof notes === 'function') notes([440, 554, 659], 'sine', 0.09); } catch (e) {}
+    }
+    function sfxMiss() {
+      try { if (typeof notes === 'function') notes([300, 220], 'sawtooth', 0.14); } catch (e) {}
+    }
+
+    // 3. 建立地面上的發光手套開始點與互動點
+    var startMarkerGroup = null;
+    var startGlowRing = null;
+    var thingObj = null;
+
+    function buildStartMarker() {
+      if (typeof THREE === 'undefined' || typeof scene === 'undefined' || !scene) return;
+      try {
+        var c = getEsconCoords();
+        startMarkerGroup = new THREE.Group();
+        startMarkerGroup.position.set(c.ss.x, c.fieldY + 0.05, c.ss.z);
+
+        // 發光底圈
+        var ringGeo = new THREE.RingGeometry(0.9, 1.35, 28);
+        var ringMat = new THREE.MeshBasicMaterial({
+          color: 0xffdd44,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.75
+        });
+        startGlowRing = new THREE.Mesh(ringGeo, ringMat);
+        startGlowRing.rotation.x = -Math.PI / 2;
+        startGlowRing.position.y = 0.02;
+        startMarkerGroup.add(startGlowRing);
+
+        // 咖啡色手套造型
+        var gloveGroup = new THREE.Group();
+        gloveGroup.position.y = 0.35;
+        var leatherMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+        var goldMat = new THREE.MeshBasicMaterial({ color: 0xffe066 });
+
+        var palm = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), leatherMat);
+        palm.scale.set(1.1, 0.45, 1.2);
+        gloveGroup.add(palm);
+
+        for (var fi = 0; fi < 4; fi++) {
+          var finger = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.28, 8), leatherMat);
+          finger.position.set(-0.18 + fi * 0.12, 0.08, -0.28);
+          finger.rotation.x = Math.PI / 3;
+          gloveGroup.add(finger);
+        }
+        var thumb = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.26, 8), leatherMat);
+        thumb.position.set(0.28, 0.06, -0.1);
+        thumb.rotation.z = -Math.PI / 4;
+        thumb.rotation.x = Math.PI / 4;
+        gloveGroup.add(thumb);
+
+        var innerBall = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), goldMat);
+        innerBall.position.set(0, 0.12, -0.05);
+        gloveGroup.add(innerBall);
+
+        startMarkerGroup.add(gloveGroup);
+        startMarkerGroup.visible = false;
+        scene.add(startMarkerGroup);
+      } catch (e) {}
+    }
+
+    function registerThing() {
+      try {
+        var c = getEsconCoords();
+        thingObj = {
+          x: c.ss.x,
+          z: c.ss.z,
+          r: 2,
+          label: function() {
+            return '🧤 內野守備挑戰（接滾地球傳一壘）';
+          },
+          go: function() {
+            startGame();
+          }
+        };
+        if (typeof things !== 'undefined' && Array.isArray(things)) {
+          things.push(thingObj);
+        }
+      } catch (e) {}
+    }
+
+    buildStartMarker();
+    registerThing();
+
+    // 4. 建立原創幾何人形（打者：灰色球衣；一壘手：藍白原創球衣）
+    function createFielderModel(shirtHex, capHex, withBat, withMitt) {
+      if (typeof THREE === 'undefined') return null;
+      var g = new THREE.Group();
+      try {
+        var skinMat = new THREE.MeshLambertMaterial({ color: 0xffdcb1 });
+        var shirtMat = new THREE.MeshLambertMaterial({ color: shirtHex });
+        var pantsMat = new THREE.MeshLambertMaterial({ color: 0xe6e6e6 });
+        var capMat = new THREE.MeshLambertMaterial({ color: capHex });
+
+        // 雙腳
+        var legGeo = new THREE.CylinderGeometry(0.11, 0.1, 0.7, 8);
+        var legL = new THREE.Mesh(legGeo, pantsMat);
+        legL.position.set(-0.15, 0.35, 0);
+        var legR = new THREE.Mesh(legGeo, pantsMat);
+        legR.position.set(0.15, 0.35, 0);
+        g.add(legL);
+        g.add(legR);
+
+        // 身體
+        var body = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.22, 0.75, 10), shirtMat);
+        body.position.set(0, 1.05, 0);
+        g.add(body);
+
+        // 頭與球帽
+        var head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), skinMat);
+        head.position.set(0, 1.62, 0);
+        g.add(head);
+
+        var cap = new THREE.Mesh(new THREE.SphereGeometry(0.23, 12, 8), capMat);
+        cap.scale.set(1, 0.6, 1);
+        cap.position.set(0, 1.7, 0);
+        g.add(cap);
+
+        var visor = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.04, 0.22), capMat);
+        visor.position.set(0, 1.66, 0.18);
+        g.add(visor);
+
+        // 手臂與球棒或手套
+        var armPivot = new THREE.Group();
+        armPivot.position.set(0, 1.32, 0);
+        var armGeo = new THREE.CylinderGeometry(0.08, 0.07, 0.55, 8);
+        var armL = new THREE.Mesh(armGeo, shirtMat);
+        armL.position.set(-0.32, -0.15, 0.15);
+        armL.rotation.x = -Math.PI / 4;
+        var armR = new THREE.Mesh(armGeo, shirtMat);
+        armR.position.set(0.32, -0.15, 0.15);
+        armR.rotation.x = -Math.PI / 4;
+        armPivot.add(armL);
+        armPivot.add(armR);
+
+        if (withBat) {
+          var batMat = new THREE.MeshLambertMaterial({ color: 0xd2a679 });
+          var bat = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.025, 0.95, 8), batMat);
+          bat.position.set(0.38, 0.15, 0.32);
+          bat.rotation.z = -Math.PI / 6;
+          bat.rotation.x = Math.PI / 5;
+          armPivot.add(bat);
+        }
+
+        if (withMitt) {
+          var mittMat = new THREE.MeshLambertMaterial({ color: 0x7b3f00 });
+          var mitt = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), mittMat);
+          mitt.scale.set(1.1, 0.6, 1.2);
+          mitt.position.set(-0.36, -0.35, 0.35);
+          armPivot.add(mitt);
+        }
+
+        g.add(armPivot);
+        g.userData.armPivot = armPivot;
+      } catch (e) {}
+      return g;
+    }
+
+    // 玩家手套（掛在 A.g 上）
+    function createPlayerGlove() {
+      if (typeof THREE === 'undefined') return null;
+      var g = new THREE.Group();
+      try {
+        var mat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+        var webMat = new THREE.MeshLambertMaterial({ color: 0x5c2e09 });
+        var main = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10), mat);
+        main.scale.set(1.1, 0.55, 1.25);
+        g.add(main);
+        var pocket = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), webMat);
+        pocket.position.set(0, 0.05, 0.05);
+        g.add(pocket);
+        g.position.set(0.38, 0.95, 0.35);
+      } catch (e) {}
+      return g;
+    }
+
+    // 5. 遊戲狀態管理
+    var G = {
+      active: false,
+      state: 'idle', // 'idle' | 'windup' | 'rolling' | 'aiming' | 'throwing' | 'between'
+      pitchIdx: 0,
+      totalPitches: 10,
+      score: 0,
+      outs: 0,
+      timer: 0,
+      coords: null,
+
+      // 3D 物件
+      batter: null,
+      firstBaseman: null,
+      ballMesh: null,
+      playerGlove: null,
+      gloveAnimTimer: 0,
+
+      // 滾地球軌跡參數
+      ballStart: { x: 0, z: 0 },
+      ballDir: { x: 0, z: 1 },
+      ballDist: 0,
+      ballSpeed: 10,
+      ballTargetDist: 38,
+      ballPos: { x: 0, y: 0, z: 0 },
+      ballPrevPos: { x: 0, z: 0 },
+
+      // 傳一壘時機條參數
+      gaugeVal: 0.5,
+      gaugeDir: 1,
+      gaugeSpeed: 1.45,
+
+      // 傳一壘拋物線參數
+      throwStart: { x: 0, y: 1, z: 0 },
+      throwEnd: { x: 0, y: 1, z: 0 },
+      throwT: 0,
+      throwDuration: 0.65,
+      throwQuality: 'green', // 'green' | 'yellow' | 'red'
+
+      // DOM 元素與事件
+      hudEl: null,
+      gaugeWrapEl: null,
+      gaugeCursorEl: null,
+      keyHandler: null
+    };
+
+    // 6. DOM 介面建立與更新
+    function createDOM() {
+      removeDOM();
+      if (typeof document === 'undefined' || !document.body) return;
+      try {
+        var mob = isMobile();
+
+        // 右上角計分卡（手機 top:140px right:8px；電腦 top:12px right:12px）
+        var hud = document.createElement('div');
+        hud.id = 'escon-if77-hud';
+        hud.style.cssText = [
+          'position:fixed',
+          mob ? 'top:140px;right:8px' : 'top:12px;right:12px',
+          'z-index:9998',
+          'background:rgba(15,28,46,0.92)',
+          'color:#fff',
+          'border:2px solid #ffd166',
+          'border-radius:12px',
+          'padding:8px 12px',
+          'font-family:sans-serif',
+          'font-size:' + (mob ? '13px' : '15px'),
+          'line-height:1.45',
+          'box-shadow:0 4px 12px rgba(0,0,0,0.45)',
+          'pointer-events:auto',
+          'user-select:none'
+        ].join(';');
+
+        var infoDiv = document.createElement('div');
+        infoDiv.id = 'escon-if77-info';
+        hud.appendChild(infoDiv);
+
+        var quitBtn = document.createElement('button');
+        quitBtn.type = 'button';
+        quitBtn.textContent = '✖ 結束';
+        quitBtn.style.cssText = [
+          'margin-top:6px',
+          'width:100%',
+          'padding:4px 8px',
+          'background:#e63946',
+          'color:#fff',
+          'border:none',
+          'border-radius:6px',
+          'font-size:13px',
+          'font-weight:bold',
+          'cursor:pointer'
+        ].join(';');
+        quitBtn.onclick = function(ev) {
+          try { if (ev && ev.stopPropagation) ev.stopPropagation(); } catch (e) {}
+          stopGame(false);
+        };
+        hud.appendChild(quitBtn);
+        document.body.appendChild(hud);
+        G.hudEl = hud;
+
+        // 畫面中下方「傳一壘！」時機條（手機 375 寬不超出，bottom: 170px，避開左下搖桿與右下互動鍵）
+        var wrap = document.createElement('div');
+        wrap.id = 'escon-if77-gauge';
+        wrap.style.cssText = [
+          'position:fixed',
+          'left:50%',
+          'transform:translateX(-50%)',
+          'bottom:170px',
+          'width:min(310px, 84vw)',
+          'max-width:340px',
+          'box-sizing:border-box',
+          'z-index:9999',
+          'background:rgba(15,28,46,0.95)',
+          'border:2px solid #fff',
+          'border-radius:14px',
+          'padding:10px 12px',
+          'text-align:center',
+          'color:#fff',
+          'font-family:sans-serif',
+          'box-shadow:0 6px 18px rgba(0,0,0,0.55)',
+          'display:none',
+          'pointer-events:auto',
+          'user-select:none'
+        ].join(';');
+
+        var title = document.createElement('div');
+        title.textContent = '🎯 傳一壘！看準綠色按傳球！';
+        title.style.cssText = 'font-size:15px;font-weight:bold;margin-bottom:8px;color:#ffd166;';
+        wrap.appendChild(title);
+
+        // 色帶：紅(0~25%) - 黃(25~38%) - 綠(38~62%) - 黃(62~75%) - 紅(75~100%)
+        var bar = document.createElement('div');
+        bar.style.cssText = [
+          'position:relative',
+          'width:100%',
+          'height:22px',
+          'border-radius:11px',
+          'overflow:hidden',
+          'border:2px solid #222',
+          'background:linear-gradient(to right, #e63946 0%, #e63946 25%, #ffb703 25%, #ffb703 38%, #2ec4b6 38%, #2ec4b6 62%, #ffb703 62%, #ffb703 75%, #e63946 75%, #e63946 100%)',
+          'margin-bottom:10px'
+        ].join(';');
+
+        var cursor = document.createElement('div');
+        cursor.style.cssText = [
+          'position:absolute',
+          'top:-2px',
+          'bottom:-2px',
+          'width:8px',
+          'margin-left:-4px',
+          'left:50%',
+          'background:#ffffff',
+          'border:2px solid #000',
+          'border-radius:4px',
+          'box-shadow:0 0 6px #fff'
+        ].join(';');
+        bar.appendChild(cursor);
+        wrap.appendChild(bar);
+
+        var throwBtn = document.createElement('button');
+        throwBtn.type = 'button';
+        throwBtn.id = 'escon-if77-throw-btn';
+        throwBtn.textContent = '⚾ 傳球（空白鍵）';
+        throwBtn.style.cssText = [
+          'width:100%',
+          'padding:10px 0',
+          'background:linear-gradient(180deg, #ff9f1c, #f77f00)',
+          'color:#fff',
+          'border:2px solid #fff',
+          'border-radius:10px',
+          'font-size:17px',
+          'font-weight:bold',
+          'cursor:pointer',
+          'box-shadow:0 3px 8px rgba(0,0,0,0.4)'
+        ].join(';');
+        var onThrowTrigger = function(ev) {
+          try {
+            if (ev && ev.preventDefault) ev.preventDefault();
+            if (ev && ev.stopPropagation) ev.stopPropagation();
+          } catch (e) {}
+          if (G.active && G.state === 'aiming') {
+            triggerThrow();
+          }
+        };
+        throwBtn.onclick = onThrowTrigger;
+        throwBtn.ontouchstart = onThrowTrigger;
+        wrap.appendChild(throwBtn);
+
+        document.body.appendChild(wrap);
+        G.gaugeWrapEl = wrap;
+        G.gaugeCursorEl = cursor;
+
+        updateHUD();
+      } catch (e) {}
+    }
+
+    function updateHUD() {
+      try {
+        if (!G.hudEl) return;
+        var info = (typeof document !== 'undefined') ? document.getElementById('escon-if77-info') : null;
+        if (!info && G.hudEl.firstChild) info = G.hudEl.firstChild;
+        if (info) {
+          var pNum = Math.min(G.pitchIdx, G.totalPitches);
+          info.innerHTML =
+            '🧤 <b>內野守備挑戰</b><br>' +
+            '⚾ 第 <b>' + pNum + '</b> / ' + G.totalPitches + ' 球<br>' +
+            '⭐ 分數：<b>' + G.score + '</b> 分<br>' +
+            '🙌 出局數：<b>' + G.outs + '</b> 人';
+        }
+      } catch (e) {}
+    }
+
+    function showGauge(visible) {
+      try {
+        if (G.gaugeWrapEl) {
+          G.gaugeWrapEl.style.display = visible ? 'block' : 'none';
+        }
+      } catch (e) {}
+    }
+
+    function removeDOM() {
+      try {
+        if (G.hudEl && G.hudEl.parentNode) G.hudEl.parentNode.removeChild(G.hudEl);
+      } catch (e) {}
+      try {
+        if (G.gaugeWrapEl && G.gaugeWrapEl.parentNode) G.gaugeWrapEl.parentNode.removeChild(G.gaugeWrapEl);
+      } catch (e) {}
+      G.hudEl = null;
+      G.gaugeWrapEl = null;
+      G.gaugeCursorEl = null;
+    }
+
+    // 7. 建立與清除場上 3D 物件（打者、一壘手、球、玩家手套）
+    function setupGameObjects() {
+      cleanupGameObjects();
+      if (typeof THREE === 'undefined' || typeof scene === 'undefined' || !scene) return;
+      try {
+        var c = G.coords;
+
+        // 本壘原創打者（灰色球衣）
+        G.batter = createFielderModel(0x888d94, 0x3a3f47, true, false);
+        if (G.batter) {
+          G.batter.position.set(c.home.x - 0.85, c.fieldY, c.home.z);
+          var faceAngle = Math.atan2(c.ss.x - c.home.x, c.ss.z - c.home.z);
+          G.batter.rotation.y = faceAngle;
+          scene.add(G.batter);
+        }
+
+        // 一壘原創一壘手（藍色球衣）
+        G.firstBaseman = createFielderModel(0x1d63b8, 0x0f3b75, false, true);
+        if (G.firstBaseman) {
+          G.firstBaseman.position.set(c.b1.x, c.fieldY, c.b1.z);
+          var lookAngle = Math.atan2(c.ss.x - c.b1.x, c.ss.z - c.b1.z);
+          G.firstBaseman.rotation.y = lookAngle;
+          scene.add(G.firstBaseman);
+        }
+
+        // 白色棒球
+        var ballGeo = new THREE.SphereGeometry(0.16, 12, 12);
+        var ballMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        G.ballMesh = new THREE.Mesh(ballGeo, ballMat);
+        G.ballMesh.visible = false;
+        scene.add(G.ballMesh);
+
+        // 玩家咖啡色手套（掛在 A.g）
+        if (typeof A !== 'undefined' && A && A.g && typeof A.g.add === 'function') {
+          G.playerGlove = createPlayerGlove();
+          if (G.playerGlove) {
+            A.g.add(G.playerGlove);
+          }
+        }
+      } catch (e) {}
+    }
+
+    function cleanupGameObjects() {
+      try {
+        if (G.batter && typeof scene !== 'undefined' && scene) scene.remove(G.batter);
+      } catch (e) {}
+      try {
+        if (G.firstBaseman && typeof scene !== 'undefined' && scene) scene.remove(G.firstBaseman);
+      } catch (e) {}
+      try {
+        if (G.ballMesh && typeof scene !== 'undefined' && scene) scene.remove(G.ballMesh);
+      } catch (e) {}
+      try {
+        if (G.playerGlove && typeof A !== 'undefined' && A && A.g && typeof A.g.remove === 'function') {
+          A.g.remove(G.playerGlove);
+        }
+      } catch (e) {}
+      G.batter = null;
+      G.firstBaseman = null;
+      G.ballMesh = null;
+      G.playerGlove = null;
+    }
+
+    // 8. 鍵盤事件監聽：空白鍵只在等待傳球時攔截，Esc 隨時離開
+    function attachKeyListener() {
+      detachKeyListener();
+      if (typeof window === 'undefined' || !window.addEventListener) return;
+      G.keyHandler = function(ev) {
+        if (!G.active) return;
+        var key = ev.key || '';
+        var code = ev.code || '';
+        if (key === 'Escape' || code === 'Escape' || ev.keyCode === 27) {
+          stopGame(false);
+          return;
+        }
+        var isSpace = (code === 'Space' || key === ' ' || key === 'Spacebar' || ev.keyCode === 32);
+        if (isSpace && G.state === 'aiming') {
+          try {
+            if (ev.preventDefault) ev.preventDefault();
+            if (ev.stopPropagation) ev.stopPropagation();
+          } catch (e) {}
+          triggerThrow();
+        }
+      };
+      try {
+        window.addEventListener('keydown', G.keyHandler, true);
+      } catch (e) {}
+    }
+
+    function detachKeyListener() {
+      try {
+        if (G.keyHandler && typeof window !== 'undefined' && window.removeEventListener) {
+          window.removeEventListener('keydown', G.keyHandler, true);
+        }
+      } catch (e) {}
+      G.keyHandler = null;
+    }
+
+    // 9. 遊戲開始、每一球擊出、接球、傳球與結束流程
+    function teleportPlayerToSS() {
+      var c = G.coords;
+      var headingToHome = Math.atan2(c.home.x - c.ss.x, c.home.z - c.ss.z);
+      try {
+        if (typeof tpTo === 'function') {
+          tpTo(c.ss.x, c.ss.z, headingToHome);
+        } else {
+          if (typeof A !== 'undefined' && A) {
+            if (A.pos) { A.pos.x = c.ss.x; A.pos.z = c.ss.z; }
+            A.heading = headingToHome;
+          }
+          if (typeof pos !== 'undefined' && pos) {
+            pos.x = c.ss.x;
+            pos.z = c.ss.z;
+          }
+        }
+      } catch (e) {}
+    }
+
+    function startGame() {
+      if (G.active) return;
+      G.coords = getEsconCoords();
+      G.active = true;
+      G.pitchIdx = 0;
+      G.score = 0;
+      G.outs = 0;
+      G.state = 'idle';
+      G.timer = 0;
+
+      if (startMarkerGroup) startMarkerGroup.visible = false;
+
+      teleportPlayerToSS();
+      setupGameObjects();
+      createDOM();
+      attachKeyListener();
+
+      try {
+        if (typeof banner === 'function') {
+          banner('🧤 內野守備挑戰！', '快移動接住滾地球，看準綠色傳一壘！（共 10 球）');
+        }
+      } catch (e) {}
+
+      startNextPitch();
+    }
+
+    function startNextPitch() {
+      if (!G.active) return;
+      G.pitchIdx++;
+      if (G.pitchIdx > G.totalPitches) {
+        finishAllPitches();
+        return;
+      }
+
+      updateHUD();
+      showGauge(false);
+
+      // 重設一壘手高度與打者揮棒姿勢
+      if (G.firstBaseman && G.coords) {
+        G.firstBaseman.position.set(G.coords.b1.x, G.coords.fieldY, G.coords.b1.z);
+      }
+      if (G.batter && G.batter.userData && G.batter.userData.armPivot) {
+        G.batter.userData.armPivot.rotation.y = -0.6;
+      }
+      if (G.ballMesh) G.ballMesh.visible = false;
+
+      G.state = 'windup';
+      G.timer = 0.65;
+    }
+
+    function launchGroundBall() {
+      var c = G.coords;
+      // 往游擊手基準位置左右隨機 ±6 公尺滾過去
+      var baseDx = c.ss.x - c.home.x;
+      var baseDz = c.ss.z - c.home.z;
+      var baseLen = Math.hypot(baseDx, baseDz) || 1;
+      var dirX = baseDx / baseLen;
+      var dirZ = baseDz / baseLen;
+      var perpX = -dirZ;
+      var perpZ = dirX;
+
+      var offset = (Math.random() * 12) - 6; // ±6 公尺
+      var targetX = c.ss.x + perpX * offset;
+      var targetZ = c.ss.z + perpZ * offset;
+
+      var rDx = targetX - c.home.x;
+      var rDz = targetZ - c.home.z;
+      var rLen = Math.hypot(rDx, rDz) || 1;
+
+      G.ballStart.x = c.home.x;
+      G.ballStart.z = c.home.z;
+      G.ballDir.x = rDx / rLen;
+      G.ballDir.z = rDz / rLen;
+      G.ballDist = 0;
+      G.ballTargetDist = rLen;
+      // 速度隨球數變快（第 1 球約 11 m/s，第 10 球約 18.2 m/s）
+      G.ballSpeed = 11 + (G.pitchIdx - 1) * 0.8;
+
+      G.ballPos.x = c.home.x;
+      G.ballPos.z = c.home.z;
+      G.ballPos.y = c.fieldY + 0.18;
+      G.ballPrevPos.x = c.home.x;
+      G.ballPrevPos.z = c.home.z;
+
+      if (G.ballMesh) {
+        G.ballMesh.position.set(G.ballPos.x, G.ballPos.y, G.ballPos.z);
+        G.ballMesh.visible = true;
+      }
+      if (G.batter && G.batter.userData && G.batter.userData.armPivot) {
+        G.batter.userData.armPivot.rotation.y = 1.25;
+      }
+      sfxHit();
+      try {
+        if (typeof say === 'function') say('⚾ 第 ' + G.pitchIdx + ' 球打出！快去攔截滾地球！');
+      } catch (e) {}
+
+      G.state = 'rolling';
+    }
+
+    // 點到線段的最短距離（避免慢電腦大 dt 球直接穿過玩家）
+    function distPointToSegment2D(px, pz, x1, z1, x2, z2) {
+      var vx = x2 - x1;
+      var vz = z2 - z1;
+      var wx = px - x1;
+      var wz = pz - z1;
+      var c1 = wx * vx + wz * vz;
+      if (c1 <= 0) return Math.hypot(px - x1, pz - z1);
+      var c2 = vx * vx + vz * vz;
+      if (c2 <= c1) return Math.hypot(px - x2, pz - z2);
+      var b = c1 / c2;
+      var bx = x1 + b * vx;
+      var bz = z1 + b * vz;
+      return Math.hypot(px - bx, pz - bz);
+    }
+
+    function onBallFielded() {
+      sfxCatch();
+      G.gloveAnimTimer = 0.45;
+      if (G.ballMesh) G.ballMesh.visible = false;
+
+      // 面向一壘準備傳球
+      var p = getPlayerPos();
+      var c = G.coords;
+      try {
+        if (typeof A !== 'undefined' && A) {
+          A.heading = Math.atan2(c.b1.x - p.x, c.b1.z - p.z);
+        }
+      } catch (e) {}
+
+      G.state = 'aiming';
+      G.gaugeVal = 0.15;
+      G.gaugeDir = 1;
+      G.gaugeSpeed = 1.35 + (G.pitchIdx - 1) * 0.08;
+      showGauge(true);
+
+      try {
+        if (typeof say === 'function') say('🧤 接到了！看準綠色按空白鍵或「⚾ 傳球」！');
+      } catch (e) {}
+    }
+
+    function onBallMissed() {
+      sfxMiss();
+      if (G.ballMesh) G.ballMesh.visible = false;
+      try {
+        if (typeof say === 'function') say('💦 漏接了！球滾到外野去了（0 分）');
+      } catch (e) {}
+      updateHUD();
+      G.state = 'between';
+      G.timer = 1.25;
+    }
+
+    function triggerThrow() {
+      if (!G.active || G.state !== 'aiming') return;
+      showGauge(false);
+
+      var v = G.gaugeVal;
+      var p = getPlayerPos();
+      var c = G.coords;
+
+      G.throwStart.x = p.x;
+      G.throwStart.y = c.fieldY + 1.1;
+      G.throwStart.z = p.z;
+      G.throwT = 0;
+      G.throwDuration = 0.6;
+
+      // 綠色 0.38 ~ 0.62：完美好球傳一壘
+      // 黃色 0.25 ~ 0.38 或 0.62 ~ 0.75：一壘手跳起來接到
+      // 紅色 其他：暴傳
+      if (v >= 0.38 && v <= 0.62) {
+        G.throwQuality = 'green';
+        G.throwEnd.x = c.b1.x;
+        G.throwEnd.y = c.fieldY + 1.2;
+        G.throwEnd.z = c.b1.z;
+      } else if (v >= 0.25 && v <= 0.75) {
+        G.throwQuality = 'yellow';
+        G.throwEnd.x = c.b1.x;
+        G.throwEnd.y = c.fieldY + 2.35;
+        G.throwEnd.z = c.b1.z;
+      } else {
+        G.throwQuality = 'red';
+        G.throwEnd.x = c.b1.x + 3.5;
+        G.throwEnd.y = c.fieldY + 3.2;
+        G.throwEnd.z = c.b1.z - 3.0;
+      }
+
+      if (G.ballMesh) {
+        G.ballMesh.position.set(G.throwStart.x, G.throwStart.y, G.throwStart.z);
+        G.ballMesh.visible = true;
+      }
+      G.state = 'throwing';
+    }
+
+    function resolveThrowResult() {
+      if (G.ballMesh && G.throwQuality !== 'red') {
+        G.ballMesh.visible = false;
+      }
+      if (G.firstBaseman && G.coords) {
+        G.firstBaseman.position.y = G.coords.fieldY;
+      }
+
+      if (G.throwQuality === 'green') {
+        G.score += 3;
+        G.outs += 1;
+        sfxPerfect();
+        try {
+          if (typeof say === 'function') say('🔥 完美傳球！刺殺出局！（+3 分）');
+        } catch (e) {}
+        try {
+          if (typeof window !== 'undefined' && window.__ESCON && window.__ESCON.screens && typeof window.__ESCON.screens.flashBanner === 'function') {
+            window.__ESCON.screens.flashBanner('好守備！', '完美傳一壘出局！+3分', 2.0, 'gold');
+          }
+        } catch (e) {}
+      } else if (G.throwQuality === 'yellow') {
+        G.score += 2;
+        G.outs += 1;
+        sfxGood();
+        try {
+          if (typeof say === 'function') say('👏 一壘手跳起來接到了！出局！（+2 分）');
+        } catch (e) {}
+        try {
+          if (typeof window !== 'undefined' && window.__ESCON && window.__ESCON.screens && typeof window.__ESCON.screens.flashBanner === 'function') {
+            window.__ESCON.screens.flashBanner('好守備！', '一壘手美技接殺！+2分', 2.0, 'blue');
+          }
+        } catch (e) {}
+      } else {
+        sfxMiss();
+        try {
+          if (typeof say === 'function') say('💥 哎呀暴傳了！球飛太高啦（0 分）');
+        } catch (e) {}
+      }
+
+      updateHUD();
+      G.state = 'between';
+      G.timer = 1.25;
+    }
+
+    function finishAllPitches() {
+      var finalScore = G.score;
+      var finalOuts = G.outs;
+
+      // 儲存最高分 BK.ifBest 並 saveBK()
+      try {
+        if (typeof BK !== 'undefined' && BK) {
+          var prevBest = (typeof BK.ifBest === 'number') ? BK.ifBest : 0;
+          if (finalScore > prevBest) {
+            BK.ifBest = finalScore;
+          }
+        }
+        if (typeof saveBK === 'function') {
+          saveBK();
+        }
+      } catch (e) {}
+
+      // 出局 ≥ 7 次頒發徽章 award('if7')
+      if (finalOuts >= 7) {
+        try {
+          if (typeof award === 'function') {
+            award('if7');
+          }
+        } catch (e) {}
+      }
+
+      var bestScore = finalScore;
+      try {
+        if (typeof BK !== 'undefined' && BK && typeof BK.ifBest === 'number') {
+          bestScore = BK.ifBest;
+        }
+      } catch (e) {}
+
+      stopGame(true);
+
+      try {
+        if (typeof banner === 'function') {
+          var sub = '總分 ' + finalScore + ' 分｜出局 ' + finalOuts + ' / 10 人｜最高分 ' + bestScore + ' 分';
+          if (finalOuts >= 7) sub += ' 🛡️獲得「鐵壁游擊手」徽章！';
+          banner('🧤 內野守備挑戰結束！', sub);
+        }
+      } catch (e) {}
+    }
+
+    function stopGame(isCompleted) {
+      if (!G.active) return;
+      G.active = false;
+      G.state = 'idle';
+      removeDOM();
+      cleanupGameObjects();
+      detachKeyListener();
+
+      if (!isCompleted) {
+        try {
+          if (typeof say === 'function') say('已結束內野守備挑戰。');
+        } catch (e) {}
+      }
+    }
+
+    // 10. 每格更新：串接 window.__moreTick2（限制 dt 最大 0.1 秒）
+    var prevTick = (typeof window !== 'undefined') ? window.__moreTick2 : null;
+    var tickFn = function(dt, t) {
+      try {
+        if (typeof prevTick === 'function') prevTick(dt, t);
+      } catch (e) {}
+
+      try {
+        var safeDt = (typeof dt === 'number' && !isNaN(dt) && dt > 0) ? Math.min(dt, 0.1) : 0.016;
+        var nowT = (typeof t === 'number') ? t : 0;
+
+        // 更新地面開始點手套（只在玩家 100 公尺內且未開始遊戲時顯示）
+        if (!G.active) {
+          var c = getEsconCoords();
+          if (thingObj) {
+            thingObj.x = c.ss.x;
+            thingObj.z = c.ss.z;
+          }
+          if (startMarkerGroup) {
+            startMarkerGroup.position.set(c.ss.x, c.fieldY + 0.05, c.ss.z);
+            var p = getPlayerPos();
+            var d = Math.hypot(p.x - c.ss.x, p.z - c.ss.z);
+            startMarkerGroup.visible = (d <= 100);
+            if (startMarkerGroup.visible) {
+              startMarkerGroup.rotation.y = nowT * 1.8;
+              if (startGlowRing && startGlowRing.material) {
+                startGlowRing.material.opacity = 0.55 + 0.25 * Math.sin(nowT * 4);
+              }
+            }
+          }
+          return;
+        }
+
+        // 玩家接球手套動畫更新
+        if (G.playerGlove) {
+          if (G.gloveAnimTimer > 0) {
+            G.gloveAnimTimer -= safeDt;
+            var s = 1 + 0.45 * Math.sin((G.gloveAnimTimer / 0.45) * Math.PI);
+            G.playerGlove.scale.set(s, s, s);
+            G.playerGlove.position.y = 0.75;
+          } else {
+            G.playerGlove.scale.set(1, 1, 1);
+            G.playerGlove.position.y = 0.95;
+          }
+        }
+
+        // 狀態機更新
+        if (G.state === 'windup') {
+          G.timer -= safeDt;
+          if (G.timer <= 0) {
+            launchGroundBall();
+          }
+        } else if (G.state === 'rolling') {
+          G.ballPrevPos.x = G.ballPos.x;
+          G.ballPrevPos.z = G.ballPos.z;
+
+          G.ballDist += G.ballSpeed * safeDt;
+          G.ballPos.x = G.ballStart.x + G.ballDir.x * G.ballDist;
+          G.ballPos.z = G.ballStart.z + G.ballDir.z * G.ballDist;
+
+          // 滾地球輕微彈跳
+          var bounce = Math.abs(Math.sin(G.ballDist * 1.35)) * Math.max(0.04, 0.36 * (1 - G.ballDist / 60));
+          G.ballPos.y = G.coords.fieldY + 0.16 + bounce;
+
+          if (G.ballMesh) {
+            G.ballMesh.position.set(G.ballPos.x, G.ballPos.y, G.ballPos.z);
+          }
+
+          // 用線段距離判斷接球（球進入玩家 1.0 公尺內就算接到）
+          var pPos = getPlayerPos();
+          var segDist = distPointToSegment2D(
+            pPos.x, pPos.z,
+            G.ballPrevPos.x, G.ballPrevPos.z,
+            G.ballPos.x, G.ballPos.z
+          );
+          if (segDist <= 1.0) {
+            onBallFielded();
+            return;
+          }
+
+          // 漏接判斷：球滾過玩家 3 公尺以上
+          var playerAlong = (pPos.x - G.ballStart.x) * G.ballDir.x + (pPos.z - G.ballStart.z) * G.ballDir.z;
+          if (G.ballDist - playerAlong >= 3.0 || G.ballDist > G.ballTargetDist + 8.0) {
+            onBallMissed();
+            return;
+          }
+        } else if (G.state === 'aiming') {
+          G.gaugeVal += G.gaugeDir * G.gaugeSpeed * safeDt;
+          if (G.gaugeVal >= 1) {
+            G.gaugeVal = 1;
+            G.gaugeDir = -1;
+          } else if (G.gaugeVal <= 0) {
+            G.gaugeVal = 0;
+            G.gaugeDir = 1;
+          }
+          if (G.gaugeCursorEl) {
+            G.gaugeCursorEl.style.left = (G.gaugeVal * 100).toFixed(1) + '%';
+          }
+        } else if (G.state === 'throwing') {
+          G.throwT += safeDt / G.throwDuration;
+          var u = Math.min(1, G.throwT);
+
+          // 拋物線飛行到一壘
+          var bx = G.throwStart.x + (G.throwEnd.x - G.throwStart.x) * u;
+          var bz = G.throwStart.z + (G.throwEnd.z - G.throwStart.z) * u;
+          var arcH = (G.throwQuality === 'red') ? 3.6 : 2.1;
+          var by = G.throwStart.y + (G.throwEnd.y - G.throwStart.y) * u + Math.sin(u * Math.PI) * arcH;
+
+          if (G.ballMesh) {
+            G.ballMesh.position.set(bx, by, bz);
+          }
+
+          // 黃色區一壘手跳起來接球動畫
+          if (G.firstBaseman && G.coords && G.throwQuality === 'yellow') {
+            G.firstBaseman.position.y = G.coords.fieldY + Math.sin(u * Math.PI) * 1.15;
+          }
+
+          if (u >= 1) {
+            resolveThrowResult();
+          }
+        } else if (G.state === 'between') {
+          G.timer -= safeDt;
+          if (G.timer <= 0) {
+            startNextPitch();
+          }
+        }
+      } catch (e) {}
+    };
+
+    if (typeof window !== 'undefined') {
+      window.__moreTick2 = tickFn;
+    }
+  } catch (err) {}
+})();
+// ===== 第 78 版：北海道棒球場 F VILLAGE「F 村農業學習溫室＋採收小遊戲」（Gemini 撰寫） =====
+(function(){
+  try {
+    // 1. 註冊徽章：採滿 20 個獲得「小小農夫」
+    if (typeof BADGES !== 'undefined' && Array.isArray(BADGES)) {
+      var hasFarmBadge = false;
+      for (var i = 0; i < BADGES.length; i++) {
+        if (BADGES[i] && BADGES[i][0] === 'farm20') {
+          hasFarmBadge = true;
+          break;
+        }
+      }
+      if (!hasFarmBadge) {
+        BADGES.push(['farm20', '小小農夫', '🧑🌾', function(){ return false; }]);
+      }
+    }
+
+    // 2. 狀態與設定常數
+    var built = false;
+    var ghGroup = null;
+    var ghCenter = { x: 140, z: 940, y: 0 };
+    var ghThings = [];
+    var CANDIDATES = [
+      [140, 940],
+      [-130, 860],
+      [140, 955]
+    ];
+
+    // 溫室尺寸：寬 24m (x: -12 ~ +12)，深 14m (z: -7 ~ +7)
+    var GH_W = 24;
+    var GH_D = 14;
+    var GH_H = 5.2;
+
+    // 4 種作物設定（每種 8 個果實，共 32 個）
+    var CROPS = [
+      { id: 'tomato',     name: '紅番茄',       icon: '🍅', rx: -7.5, color: 0xff3b30 },
+      { id: 'strawberry', name: '甜草莓',       icon: '🍓', rx: -2.5, color: 0xff2d55 },
+      { id: 'corn',       name: '黃金玉米',     icon: '🌽', rx:  2.5, color: 0xffcc00 },
+      { id: 'potato',     name: '北海道馬鈴薯', icon: '🥔', rx:  7.5, color: 0xc89b65 }
+    ];
+    var fruits = []; // { id, cropIdx, name, icon, wx, wz, mesh, picked, respawnAt, scale, baseY }
+
+    // 採收小遊戲狀態
+    var game = {
+      active: false,
+      timeLeft: 0,
+      counts: { tomato: 0, strawberry: 0, corn: 0, potato: 0 },
+      total: 0,
+      uiEl: null,
+      basketGroup: null
+    };
+
+    // 手上點心道具狀態
+    var snackState = {
+      mesh: null,
+      timer: 0
+    };
+
+    // 安全工具函式
+    function safeSay(msg) {
+      try { if (typeof say === 'function') say(msg); } catch (e) {}
+    }
+    function safeBanner(t, s) {
+      try { if (typeof banner === 'function') banner(t, s); } catch (e) {}
+    }
+    function safeNotes(freqs, wave, dur) {
+      try { if (typeof notes === 'function') notes(freqs, wave || 'sine', dur || 0.1); } catch (e) {}
+    }
+    function safeAward(id) {
+      try { if (typeof award === 'function') award(id); } catch (e) {}
+    }
+    function safeSaveBK() {
+      try { if (typeof saveBK === 'function') saveBK(); } catch (e) {}
+    }
+    function getPlayerPos() {
+      try {
+        if (typeof pos !== 'undefined' && pos && typeof pos.x === 'number') return pos;
+        if (typeof A !== 'undefined' && A && A.pos && typeof A.pos.x === 'number') return A.pos;
+      } catch (e) {}
+      return null;
+    }
+    function getFieldY() {
+      try {
+        if (typeof window !== 'undefined' && window.__ESCON && typeof window.__ESCON.fieldY === 'number') {
+          return window.__ESCON.fieldY;
+        }
+      } catch (e) {}
+      return 0;
+    }
+
+    // 3. 檢查碰撞與場景 Mesh 邊界框重疊並決定溫室中心座標
+    // 只在第一次建立溫室時收集一次場景中高度 > 2.5m 且寬度 < 400m 的模型世界座標範圍（排除溫室自己）
+    function collectSceneObstacleBoxes() {
+      var boxes = [];
+      try {
+        if (typeof scene === 'undefined' || !scene || typeof scene.traverse !== 'function') return boxes;
+        if (typeof scene.updateMatrixWorld === 'function') {
+          try { scene.updateMatrixWorld(true); } catch (e) {}
+        }
+        var tmpBox = (typeof THREE !== 'undefined' && THREE.Box3) ? new THREE.Box3() : null;
+
+        scene.traverse(function(obj) {
+          try {
+            if (!obj || !obj.isMesh && !(typeof THREE !== 'undefined' && THREE.Mesh && obj instanceof THREE.Mesh)) return;
+            // 排除溫室自己的群組與玩家自身群組
+            var p = obj;
+            while (p) {
+              if (p === ghGroup || p.name === 'FVillage_Farm_Greenhouse_v76') return;
+              if (typeof A !== 'undefined' && A && p === A.g) return;
+              p = p.parent;
+            }
+            var geo = obj.geometry;
+            if (!geo) return;
+            if (!geo.boundingBox && typeof geo.computeBoundingBox === 'function') {
+              geo.computeBoundingBox();
+            }
+            if (!geo.boundingBox) return;
+
+            var minX, maxX, minY, maxY, minZ, maxZ;
+            if (tmpBox && typeof tmpBox.copy === 'function' && typeof tmpBox.applyMatrix4 === 'function' && obj.matrixWorld) {
+              tmpBox.copy(geo.boundingBox);
+              tmpBox.applyMatrix4(obj.matrixWorld);
+              minX = tmpBox.min.x; maxX = tmpBox.max.x;
+              minY = tmpBox.min.y; maxY = tmpBox.max.y;
+              minZ = tmpBox.min.z; maxZ = tmpBox.max.z;
+            } else if (typeof geo.boundingBox.clone === 'function') {
+              var b = geo.boundingBox.clone();
+              if (typeof b.applyMatrix4 === 'function' && obj.matrixWorld) {
+                b.applyMatrix4(obj.matrixWorld);
+              }
+              minX = b.min.x; maxX = b.max.x;
+              minY = b.min.y; maxY = b.max.y;
+              minZ = b.min.z; maxZ = b.max.z;
+            } else {
+              return;
+            }
+
+            var w = maxX - minX;
+            var d = maxZ - minZ;
+            var h = maxY - minY;
+            // 只看高度超過 2.5 公尺、寬度（與深度）小於 400 公尺的模型
+            if (h > 2.5 && w < 400 && d < 400) {
+              boxes.push({ x0: minX, x1: maxX, z0: minZ, z1: maxZ });
+            }
+          } catch (e) {}
+        });
+      } catch (e) {}
+      return boxes;
+    }
+
+    // 溫室本體 24x14 公尺，外加 2 公尺緩衝 -> 檢查範圍 x ± 14, z ± 9
+    function hasOverlap(cx, cz, meshBoxes) {
+      var halfW = GH_W / 2 + 2; // 14
+      var halfD = GH_D / 2 + 2; // 9
+      var minX = cx - halfW, maxX = cx + halfW;
+      var minZ = cz - halfD, maxZ = cz + halfD;
+
+      try {
+        if (typeof colliders !== 'undefined' && Array.isArray(colliders)) {
+          for (var i = 0; i < colliders.length; i++) {
+            var c = colliders[i];
+            if (!c || c.on === false) continue;
+            var cx0 = (typeof c.x0 === 'number') ? c.x0 : ((typeof c.minX === 'number') ? c.minX : undefined);
+            var cx1 = (typeof c.x1 === 'number') ? c.x1 : ((typeof c.maxX === 'number') ? c.maxX : undefined);
+            var cz0 = (typeof c.z0 === 'number') ? c.z0 : ((typeof c.minZ === 'number') ? c.minZ : undefined);
+            var cz1 = (typeof c.z1 === 'number') ? c.z1 : ((typeof c.maxZ === 'number') ? c.maxZ : undefined);
+            if (cx0 === undefined || cx1 === undefined || cz0 === undefined || cz1 === undefined) continue;
+
+            var x0 = Math.min(cx0, cx1), x1 = Math.max(cx0, cx1);
+            var z0 = Math.min(cz0, cz1), z1 = Math.max(cz0, cz1);
+            // 忽略超大範圍的邊界或地面框
+            if (x1 - x0 > 400 || z1 - z0 > 400) continue;
+
+            if (x0 < maxX && x1 > minX && z0 < maxZ && z1 > minZ) {
+              return true;
+            }
+          }
+        }
+
+        if (Array.isArray(meshBoxes)) {
+          for (var j = 0; j < meshBoxes.length; j++) {
+            var mb = meshBoxes[j];
+            if (mb.x0 < maxX && mb.x1 > minX && mb.z0 < maxZ && mb.z1 > minZ) {
+              return true;
+            }
+          }
+        }
+      } catch (e) {}
+      return false;
+    }
+
+    function pickGreenhouseCenter() {
+      var meshBoxes = collectSceneObstacleBoxes();
+      for (var i = 0; i < CANDIDATES.length; i++) {
+        var cx = CANDIDATES[i][0];
+        var cz = CANDIDATES[i][1];
+        if (!hasOverlap(cx, cz, meshBoxes)) {
+          return { x: cx, z: cz, y: getFieldY() };
+        }
+      }
+      // 全部重疊就用最後一個 (140, 955) 並往 -x 每次移 8 公尺直到不重疊（最多 10 次）
+      var last = CANDIDATES[CANDIDATES.length - 1];
+      var fx = last[0], fz = last[1];
+      for (var step = 1; step <= 10; step++) {
+        fx -= 8;
+        if (!hasOverlap(fx, fz, meshBoxes)) {
+          return { x: fx, z: fz, y: getFieldY() };
+        }
+      }
+      return { x: fx, z: fz, y: getFieldY() };
+    }
+
+    // 4. 建立 Canvas 貼圖立牌文字
+    function makeSignTexture(titleText, subText) {
+      try {
+        if (typeof document === 'undefined' || !document.createElement) return null;
+        var cvs = document.createElement('canvas');
+        cvs.width = 512;
+        cvs.height = 192;
+        var ctx = cvs.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#fefae0';
+          ctx.fillRect(0, 0, 512, 192);
+          ctx.strokeStyle = '#386641';
+          ctx.lineWidth = 12;
+          ctx.strokeRect(8, 8, 496, 176);
+
+          ctx.fillStyle = '#283618';
+          ctx.font = 'bold 42px "Microsoft JhengHei", "PingFang TC", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(titleText, 256, 76);
+
+          if (subText) {
+            ctx.fillStyle = '#606c38';
+            ctx.font = 'bold 26px "Microsoft JhengHei", "PingFang TC", sans-serif';
+            ctx.fillText(subText, 256, 136);
+          }
+        }
+        if (typeof THREE !== 'undefined' && THREE.CanvasTexture) {
+          var tex = new THREE.CanvasTexture(cvs);
+          tex.needsUpdate = true;
+          return tex;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    // 5. 畫面上方採收小卡片 UI（左上 top:60px left:8px，字 13px，手機 375 寬不超出）
+    function ensureHarvestUI() {
+      if (game.uiEl) return game.uiEl;
+      try {
+        if (typeof document === 'undefined' || !document.createElement) return null;
+        var div = document.createElement('div');
+        div.id = 'fvillage-farm-hud';
+        div.style.cssText = [
+          'position:fixed',
+          'top:60px',
+          'left:8px',
+          'z-index:999',
+          'max-width:255px',
+          'box-sizing:border-box',
+          'background:rgba(28,48,30,0.88)',
+          'color:#fff',
+          'padding:6px 10px',
+          'border-radius:10px',
+          'border:2px solid #a7c957',
+          'font-size:13px',
+          'line-height:1.45',
+          'font-family:"Microsoft JhengHei","PingFang TC",sans-serif',
+          'pointer-events:none',
+          'box-shadow:0 3px 10px rgba(0,0,0,0.3)',
+          'display:none'
+        ].join(';');
+        if (document.body) {
+          document.body.appendChild(div);
+        }
+        game.uiEl = div;
+      } catch (e) {}
+      return game.uiEl;
+    }
+
+    function updateHarvestUI() {
+      var el = ensureHarvestUI();
+      if (!el) return;
+      if (!game.active) {
+        el.style.display = 'none';
+        return;
+      }
+      el.style.display = 'block';
+      var sec = Math.max(0, Math.ceil(game.timeLeft));
+      var best = (typeof BK !== 'undefined' && BK && typeof BK.farmBest === 'number') ? BK.farmBest : 0;
+      el.innerHTML =
+        '<div style="font-weight:bold;color:#e9f5db;margin-bottom:2px;">' +
+          '🧺 溫室採收中｜⏱️ 剩 <b>' + sec + '</b> 秒（共 ' + game.total + '/32）' +
+        '</div>' +
+        '<div style="white-space:nowrap;">' +
+          '🍅 ' + game.counts.tomato +
+          '　🍓 ' + game.counts.strawberry +
+          '　🌽 ' + game.counts.corn +
+          '　🥔 ' + game.counts.potato +
+          (best > 0 ? ' ｜🏆' + best : '') +
+        '</div>';
+    }
+
+    // 6. 玩家手上的竹籃與試吃點心道具
+    function attachPlayerBasket(show) {
+      try {
+        if (typeof THREE === 'undefined' || typeof A === 'undefined' || !A || !A.g) return;
+        if (!show) {
+          if (game.basketGroup && game.basketGroup.parent) {
+            game.basketGroup.parent.remove(game.basketGroup);
+          }
+          return;
+        }
+        if (!game.basketGroup) {
+          var bg = new THREE.Group();
+          var bMat = new THREE.MeshStandardMaterial({ color: 0xc68b59, roughness: 0.85 });
+          var body = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.18, 0.24, 12), bMat);
+          bg.add(body);
+          var handle = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.025, 8, 16, Math.PI), bMat);
+          handle.position.y = 0.12;
+          bg.add(handle);
+          bg.position.set(0.38, 0.85, 0.28);
+          game.basketGroup = bg;
+        }
+        if (game.basketGroup.parent !== A.g) {
+          A.g.add(game.basketGroup);
+        }
+      } catch (e) {}
+    }
+
+    function showPlayerSnack(type) {
+      try {
+        if (typeof THREE === 'undefined' || typeof A === 'undefined' || !A || !A.g) return;
+        if (snackState.mesh && snackState.mesh.parent) {
+          snackState.mesh.parent.remove(snackState.mesh);
+        }
+        var g = new THREE.Group();
+        if (type === 'tomato') {
+          var tMat = new THREE.MeshStandardMaterial({ color: 0xff2a2a, roughness: 0.35 });
+          var tMesh = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), tMat);
+          g.add(tMesh);
+          var cMat = new THREE.MeshStandardMaterial({ color: 0x2d6a4f, roughness: 0.7 });
+          var calyx = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.06, 6), cMat);
+          calyx.position.y = 0.14;
+          g.add(calyx);
+        } else {
+          var pMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.8 });
+          var pMesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), pMat);
+          pMesh.scale.set(1.3, 0.85, 0.95);
+          g.add(pMesh);
+          var bMat = new THREE.MeshStandardMaterial({ color: 0xffe66d, roughness: 0.4 });
+          var butter = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.09), bMat);
+          butter.position.y = 0.12;
+          g.add(butter);
+        }
+        g.position.set(-0.32, 1.05, 0.35);
+        A.g.add(g);
+        snackState.mesh = g;
+        snackState.timer = 2.0;
+      } catch (e) {}
+    }
+
+    // 7. 建立各種作物的果實 Mesh
+    function createFruitMesh(cropId) {
+      var g = new THREE.Group();
+      if (cropId === 'tomato') {
+        var mat = new THREE.MeshStandardMaterial({ color: 0xff2e2e, roughness: 0.35 });
+        var ball = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), mat);
+        g.add(ball);
+        var topMat = new THREE.MeshStandardMaterial({ color: 0x2b9348 });
+        var top = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.01, 0.05, 5), topMat);
+        top.position.y = 0.14;
+        g.add(top);
+      } else if (cropId === 'strawberry') {
+        var sMat = new THREE.MeshStandardMaterial({ color: 0xff1e56, roughness: 0.45 });
+        var berry = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.22, 10), sMat);
+        berry.rotation.x = Math.PI;
+        g.add(berry);
+        var lMat = new THREE.MeshStandardMaterial({ color: 0x40916c });
+        var leaf = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.02, 0.04, 6), lMat);
+        leaf.position.y = 0.11;
+        g.add(leaf);
+      } else if (cropId === 'corn') {
+        var cMat = new THREE.MeshStandardMaterial({ color: 0xffd100, roughness: 0.5 });
+        var cob = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.32, 10), cMat);
+        g.add(cob);
+        var hMat = new THREE.MeshStandardMaterial({ color: 0x70e000, roughness: 0.7 });
+        var husk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.06, 0.16, 8), hMat);
+        husk.position.y = -0.1;
+        g.add(husk);
+      } else {
+        // 北海道馬鈴薯（半露在土面上）
+        var pMat = new THREE.MeshStandardMaterial({ color: 0xc69c6d, roughness: 0.85 });
+        var spud = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 10), pMat);
+        spud.scale.set(1.25, 0.8, 0.95);
+        g.add(spud);
+      }
+      return g;
+    }
+
+    // 8. 動態建立溫室、4 排種植槽、戶外小田、小拖拉機與互動點
+    function buildGreenhouse() {
+      if (built) return;
+      if (typeof THREE === 'undefined' || typeof scene === 'undefined' || !scene) return;
+      built = true;
+
+      ghCenter = pickGreenhouseCenter();
+      var cx = ghCenter.x;
+      var cz = ghCenter.z;
+      var cy = ghCenter.y;
+
+      ghGroup = new THREE.Group();
+      ghGroup.name = 'FVillage_Farm_Greenhouse_v76';
+      ghGroup.position.set(cx, cy, cz);
+
+      var parentObj = (typeof VGRP !== 'undefined' && VGRP && VGRP.escon) ? VGRP.escon : scene;
+      parentObj.add(ghGroup);
+
+      // --- (A) 溫室地板與步道 ---
+      var floorMat = new THREE.MeshStandardMaterial({ color: 0xe9edc9, roughness: 0.9 });
+      var floorMesh = new THREE.Mesh(new THREE.BoxGeometry(GH_W, 0.12, GH_D), floorMat);
+      floorMesh.position.set(0, 0.06, 0);
+      ghGroup.add(floorMesh);
+
+      var pathMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.85 });
+      var mainPath = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.14, GH_D + 2.4), pathMat);
+      mainPath.position.set(0, 0.07, -0.8);
+      ghGroup.add(mainPath);
+
+      // --- (B) 白色鋼骨拱形屋頂與半透明玻璃牆 ---
+      var frameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.35, roughness: 0.3 });
+      var glassMat = new THREE.MeshPhysicalMaterial
+        ? new THREE.MeshPhysicalMaterial({ color: 0xd8f3dc, transparent: true, opacity: 0.36, roughness: 0.15 })
+        : new THREE.MeshStandardMaterial({ color: 0xd8f3dc, transparent: true, opacity: 0.36, roughness: 0.2 });
+
+      var wallH = 3.2;
+      var archR = GH_D / 2; // 7m
+
+      // 左右兩側玻璃牆 (x = -12, +12)
+      var sideGlassGeo = new THREE.BoxGeometry(0.12, wallH, GH_D);
+      var leftWall = new THREE.Mesh(sideGlassGeo, glassMat);
+      leftWall.position.set(-GH_W / 2, wallH / 2, 0);
+      ghGroup.add(leftWall);
+
+      var rightWall = new THREE.Mesh(sideGlassGeo, glassMat);
+      rightWall.position.set(GH_W / 2, wallH / 2, 0);
+      ghGroup.add(rightWall);
+
+      // 後牆玻璃 (z = +7)
+      var backWall = new THREE.Mesh(new THREE.BoxGeometry(GH_W, wallH, 0.12), glassMat);
+      backWall.position.set(0, wallH / 2, GH_D / 2);
+      ghGroup.add(backWall);
+
+      // 前牆玻璃 (z = -7)，中央留 3 公尺寬門口 (x: -1.5 ~ +1.5)，左右各寬 10.5m
+      var frontHalfW = (GH_W - 3.0) / 2; // 10.5m
+      var frontLeft = new THREE.Mesh(new THREE.BoxGeometry(frontHalfW, wallH, 0.12), glassMat);
+      frontLeft.position.set(-1.5 - frontHalfW / 2, wallH / 2, -GH_D / 2);
+      ghGroup.add(frontLeft);
+
+      var frontRight = new THREE.Mesh(new THREE.BoxGeometry(frontHalfW, wallH, 0.12), glassMat);
+      frontRight.position.set(1.5 + frontHalfW / 2, wallH / 2, -GH_D / 2);
+      ghGroup.add(frontRight);
+
+      // 門口上方門楣玻璃與白框
+      var doorTopGlass = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.6, 0.12), glassMat);
+      doorTopGlass.position.set(0, wallH - 0.3, -GH_D / 2);
+      ghGroup.add(doorTopGlass);
+
+      var doorPostGeo = new THREE.BoxGeometry(0.18, wallH, 0.18);
+      var doorPostL = new THREE.Mesh(doorPostGeo, frameMat);
+      doorPostL.position.set(-1.5, wallH / 2, -GH_D / 2);
+      ghGroup.add(doorPostL);
+
+      var doorPostR = new THREE.Mesh(doorPostGeo, frameMat);
+      doorPostR.position.set(1.5, wallH / 2, -GH_D / 2);
+      ghGroup.add(doorPostR);
+
+      var doorHeader = new THREE.Mesh(new THREE.BoxGeometry(3.36, 0.18, 0.22), frameMat);
+      doorHeader.position.set(0, wallH - 0.6, -GH_D / 2);
+      ghGroup.add(doorHeader);
+
+      // 拱形半圓屋頂玻璃（沿 X 軸延伸的半圓柱）
+      var roofGlassGeo = new THREE.CylinderGeometry(archR, archR, GH_W, 20, 1, true, 0, Math.PI);
+      var roofGlass = new THREE.Mesh(roofGlassGeo, glassMat);
+      roofGlass.rotation.z = Math.PI / 2;
+      roofGlass.rotation.x = Math.PI / 2;
+      roofGlass.scale.set(0.36, 1, 1); // 壓扁成優雅拱頂（高約 2.5m）
+      roofGlass.position.set(0, wallH, 0);
+      ghGroup.add(roofGlass);
+
+      // 白色鋼骨拱形骨架（每隔 4 公尺一道鋼骨）
+      for (var ix = -GH_W / 2; ix <= GH_W / 2; ix += 4) {
+        var colF = new THREE.Mesh(new THREE.BoxGeometry(0.16, wallH, 0.16), frameMat);
+        colF.position.set(ix, wallH / 2, -GH_D / 2);
+        ghGroup.add(colF);
+
+        var colB = new THREE.Mesh(new THREE.BoxGeometry(0.16, wallH, 0.16), frameMat);
+        colB.position.set(ix, wallH / 2, GH_D / 2);
+        ghGroup.add(colB);
+
+        var archTor = new THREE.Mesh(new THREE.TorusGeometry(archR, 0.09, 8, 24, Math.PI), frameMat);
+        archTor.rotation.y = Math.PI / 2;
+        archTor.scale.set(1, 0.36, 1);
+        archTor.position.set(ix, wallH, 0);
+        ghGroup.add(archTor);
+      }
+
+      // 屋頂縱向白色鋼樑
+      for (var ia = 0; ia <= 4; ia++) {
+        var ang = (ia / 4) * Math.PI;
+        var bz = Math.cos(ang) * archR;
+        var by = wallH + Math.sin(ang) * archR * 0.36;
+        var purlin = new THREE.Mesh(new THREE.BoxGeometry(GH_W + 0.2, 0.1, 0.1), frameMat);
+        purlin.position.set(0, by, bz);
+        ghGroup.add(purlin);
+      }
+
+      // --- (C) 四周牆壁碰撞 col（門口留 3 公尺寬 x: cx-1.5 ~ cx+1.5）---
+      if (typeof col === 'function') {
+        try {
+          var wt = 0.35;
+          // 左牆
+          col(cx - GH_W / 2 - wt, cx - GH_W / 2 + wt, cz - GH_D / 2, cz + GH_D / 2);
+          // 右牆
+          col(cx + GH_W / 2 - wt, cx + GH_W / 2 + wt, cz - GH_D / 2, cz + GH_D / 2);
+          // 後牆
+          col(cx - GH_W / 2, cx + GH_W / 2, cz + GH_D / 2 - wt, cz + GH_D / 2 + wt);
+          // 前牆左段 (cx - 12 ~ cx - 1.5)
+          col(cx - GH_W / 2, cx - 1.5, cz - GH_D / 2 - wt, cz - GH_D / 2 + wt);
+          // 前牆右段 (cx + 1.5 ~ cx + 12)
+          col(cx + 1.5, cx + GH_W / 2, cz - GH_D / 2 - wt, cz - GH_D / 2 + wt);
+        } catch (e) {}
+      }
+
+      // --- (D) 入口立牌「🌱 F 村農業學習溫室」---
+      var signGroup = new THREE.Group();
+      signGroup.position.set(-2.8, 0, -GH_D / 2 - 1.2);
+      var postMat = new THREE.MeshStandardMaterial({ color: 0x6c584c, roughness: 0.85 });
+      var sPostL = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.8, 8), postMat);
+      sPostL.position.set(-0.9, 0.9, 0);
+      signGroup.add(sPostL);
+      var sPostR = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.8, 8), postMat);
+      sPostR.position.set(0.9, 0.9, 0);
+      signGroup.add(sPostR);
+
+      var signTex = makeSignTexture('🌱 F 村農業學習溫室', '北海道新鮮蔬果體驗・歡迎入內採收');
+      var boardMat = signTex
+        ? new THREE.MeshBasicMaterial({ map: signTex })
+        : new THREE.MeshStandardMaterial({ color: 0xfefae0 });
+      var signBoard = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.9, 0.1), boardMat);
+      signBoard.position.set(0, 1.45, 0);
+      signGroup.add(signBoard);
+      ghGroup.add(signGroup);
+
+      // --- (E) 溫室內部 4 排長條種植槽與每種 8 顆可採果實 ---
+      var bedWoodMat = new THREE.MeshStandardMaterial({ color: 0x8d5b4c, roughness: 0.85 });
+      var soilMat = new THREE.MeshStandardMaterial({ color: 0x4a3525, roughness: 0.95 });
+      var leafMat = new THREE.MeshStandardMaterial({ color: 0x38b000, roughness: 0.65 });
+      var stalkMat = new THREE.MeshStandardMaterial({ color: 0x55a630, roughness: 0.7 });
+
+      for (var ci = 0; ci < CROPS.length; ci++) {
+        var crop = CROPS[ci];
+        var rx = crop.rx;
+
+        // 長條種植槽 (寬 2.2m, 長 9.6m, 高 0.55m)
+        var bedGroup = new THREE.Group();
+        bedGroup.position.set(rx, 0, 0.4);
+
+        var bedBox = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.55, 9.6), bedWoodMat);
+        bedBox.position.y = 0.275;
+        bedGroup.add(bedBox);
+
+        var soilBox = new THREE.Mesh(new THREE.BoxGeometry(1.96, 0.58, 9.36), soilMat);
+        soilBox.position.y = 0.29;
+        bedGroup.add(soilBox);
+
+        ghGroup.add(bedGroup);
+
+        // 每排種植 8 株植株與 8 顆可採果實 (2 列 x 4 行)
+        for (var fi = 0; fi < 8; fi++) {
+          var colSide = (fi % 2 === 0) ? -0.48 : 0.48;
+          var rowIdx = Math.floor(fi / 2); // 0..3
+          var rz = 0.4 - 3.3 + rowIdx * 2.2;
+          var fx = rx + colSide;
+          var fz = rz;
+          var baseY = 0.75;
+
+          // 植物枝葉造型
+          if (crop.id === 'tomato') {
+            var vine = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.05, 6), stalkMat);
+            vine.position.set(fx, 1.05, fz);
+            ghGroup.add(vine);
+            var bush = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 8), leafMat);
+            bush.position.set(fx, 1.15, fz);
+            ghGroup.add(bush);
+            baseY = 1.08;
+          } else if (crop.id === 'strawberry') {
+            var sBush = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), leafMat);
+            sBush.scale.set(1.2, 0.55, 1.2);
+            sBush.position.set(fx, 0.65, fz);
+            ghGroup.add(sBush);
+            baseY = 0.74;
+          } else if (crop.id === 'corn') {
+            var stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.55, 7), stalkMat);
+            stalk.position.set(fx, 1.3, fz);
+            ghGroup.add(stalk);
+            baseY = 1.25;
+          } else {
+            // 北海道馬鈴薯：綠葉叢＋土面半露馬鈴薯
+            var pLeaf = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.35, 6), leafMat);
+            pLeaf.position.set(fx, 0.72, fz - 0.12);
+            ghGroup.add(pLeaf);
+            baseY = 0.62;
+          }
+
+          var fMesh = createFruitMesh(crop.id);
+          fMesh.position.set(fx, baseY, fz);
+          ghGroup.add(fMesh);
+
+          fruits.push({
+            id: crop.id,
+            cropIdx: ci,
+            name: crop.name,
+            icon: crop.icon,
+            wx: cx + fx,
+            wz: cz + fz,
+            mesh: fMesh,
+            picked: false,
+            respawnAt: 0,
+            scale: 1,
+            baseY: baseY
+          });
+        }
+      }
+
+      // --- (F) 溫室門口採收籃與點心試吃小桌 ---
+      var tableGroup = new THREE.Group();
+      tableGroup.position.set(3.2, 0, -GH_D / 2 - 1.5);
+      var tblMat = new THREE.MeshStandardMaterial({ color: 0xdda15e, roughness: 0.8 });
+      var tblTop = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.12, 1.1), tblMat);
+      tblTop.position.y = 0.82;
+      tableGroup.add(tblTop);
+      var legGeo = new THREE.BoxGeometry(0.12, 0.82, 0.12);
+      var lPositions = [[-1.1, -0.4], [1.1, -0.4], [-1.1, 0.4], [1.1, 0.4]];
+      for (var li = 0; li < lPositions.length; li++) {
+        var leg = new THREE.Mesh(legGeo, tblMat);
+        leg.position.set(lPositions[li][0], 0.41, lPositions[li][1]);
+        tableGroup.add(leg);
+      }
+      // 桌上裝飾果籃與烤爐
+      var demoBasket = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.22, 0.25, 10), bedWoodMat);
+      demoBasket.position.set(-0.7, 0.98, 0);
+      tableGroup.add(demoBasket);
+      var demoTomato = createFruitMesh('tomato');
+      demoTomato.position.set(0, 0.98, 0);
+      tableGroup.add(demoTomato);
+      var demoPotato = createFruitMesh('potato');
+      demoPotato.position.set(0.7, 0.96, 0);
+      tableGroup.add(demoPotato);
+      ghGroup.add(tableGroup);
+
+      // --- (G) 旁邊戶外小田 (x: +15.5, z: 0) ---
+      var outdoorPlot = new THREE.Group();
+      outdoorPlot.position.set(15.5, 0, 1.0);
+      var outBorder = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.22, 8.4), bedWoodMat);
+      outBorder.position.y = 0.11;
+      outdoorPlot.add(outBorder);
+      for (var r = 0; r < 4; r++) {
+        var ridge = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.28, 7.8), soilMat);
+        ridge.position.set(-1.65 + r * 1.1, 0.18, 0);
+        outdoorPlot.add(ridge);
+        for (var sp = -3; sp <= 3; sp += 1.5) {
+          var sprout = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.35, 6), leafMat);
+          sprout.position.set(-1.65 + r * 1.1, 0.42, sp);
+          outdoorPlot.add(sprout);
+        }
+      }
+      ghGroup.add(outdoorPlot);
+
+      // --- (H) 原創小拖拉機（可坐上去 sit，位於 x: +15.5, z: -5.5）---
+      var trX = 15.5, trZ = -5.5;
+      var tractor = new THREE.Group();
+      tractor.position.set(trX, 0, trZ);
+
+      var bodyMat = new THREE.MeshStandardMaterial({ color: 0x2a9d8f, roughness: 0.4, metalness: 0.2 });
+      var yellowMat = new THREE.MeshStandardMaterial({ color: 0xe9c46a, roughness: 0.4 });
+      var tireMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
+      var seatMat = new THREE.MeshStandardMaterial({ color: 0x6c584c, roughness: 0.7 });
+
+      // 車身與引擎蓋
+      var chassis = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.65, 2.5), bodyMat);
+      chassis.position.set(0, 0.75, 0);
+      tractor.add(chassis);
+      var hood = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.55, 1.2), bodyMat);
+      hood.position.set(0, 1.25, -0.55);
+      tractor.add(hood);
+
+      // 煙囪與方向盤
+      var pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.7, 8), tireMat);
+      pipe.position.set(0.4, 1.75, -0.75);
+      tractor.add(pipe);
+      var wheelSteer = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.03, 6, 12), tireMat);
+      wheelSteer.rotation.x = Math.PI / 3;
+      wheelSteer.position.set(0, 1.45, 0.25);
+      tractor.add(wheelSteer);
+
+      // 座椅
+      var seatMesh = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.18, 0.6), seatMat);
+      seatMesh.position.set(0, 1.25, 0.65);
+      tractor.add(seatMesh);
+      var seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.45, 0.14), seatMat);
+      seatBack.position.set(0, 1.5, 0.9);
+      tractor.add(seatBack);
+
+      // 4 個輪胎（後大前小）
+      var backWheelGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.38, 14);
+      var frontWheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.28, 12);
+      var rimGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.4, 10);
+
+      var bwL = new THREE.Mesh(backWheelGeo, tireMat);
+      bwL.rotation.z = Math.PI / 2;
+      bwL.position.set(-0.85, 0.65, 0.65);
+      tractor.add(bwL);
+      var rimL = new THREE.Mesh(rimGeo, yellowMat);
+      rimL.rotation.z = Math.PI / 2;
+      rimL.position.set(-0.85, 0.65, 0.65);
+      tractor.add(rimL);
+
+      var bwR = new THREE.Mesh(backWheelGeo, tireMat);
+      bwR.rotation.z = Math.PI / 2;
+      bwR.position.set(0.85, 0.65, 0.65);
+      tractor.add(bwR);
+      var rimR = new THREE.Mesh(rimGeo, yellowMat);
+      rimR.rotation.z = Math.PI / 2;
+      rimR.position.set(0.85, 0.65, 0.65);
+      tractor.add(rimR);
+
+      var fwL = new THREE.Mesh(frontWheelGeo, tireMat);
+      fwL.rotation.z = Math.PI / 2;
+      fwL.position.set(-0.78, 0.42, -0.8);
+      tractor.add(fwL);
+
+      var fwR = new THREE.Mesh(frontWheelGeo, tireMat);
+      fwR.rotation.z = Math.PI / 2;
+      fwR.position.set(0.78, 0.42, -0.8);
+      tractor.add(fwR);
+
+      ghGroup.add(tractor);
+
+      // --- (I) 註冊互動點 (things) ---
+      if (typeof things !== 'undefined' && Array.isArray(things)) {
+        // 1. 拿籃子開始採收
+        var startThing = {
+          x: cx + 2.2,
+          z: cz - GH_D / 2 - 1.5,
+          r: 2.8,
+          label: function() {
+            return game.active ? '🧺 重新開始採收小遊戲' : '🧺 拿籃子開始採收';
+          },
+          go: function() {
+            startHarvestGame();
+          }
+        };
+        things.push(startThing);
+        ghThings.push(startThing);
+
+        // 2. 動態最近果實採收互動點（每格自動對齊最近可採的果實）
+        var pickThing = {
+          x: -99999,
+          z: -99999,
+          r: 2.3,
+          _targetFruit: null,
+          label: function() {
+            var f = this._targetFruit;
+            if (!f) return '🌱 採收作物';
+            return f.icon + ' 採收' + f.name;
+          },
+          go: function() {
+            pickFruit(this._targetFruit);
+          }
+        };
+        things.push(pickThing);
+        ghThings.push(pickThing);
+        game.pickThing = pickThing;
+
+        // 3. 試吃現採番茄
+        var tomatoSnackThing = {
+          x: cx + 3.2,
+          z: cz - GH_D / 2 - 1.5,
+          r: 2.4,
+          label: function() { return '🍅 試吃現採番茄'; },
+          go: function() {
+            safeNotes([587.33, 659.25, 783.99], 'triangle', 0.09);
+            showPlayerSnack('tomato');
+            safeSay('🍅 咬下一口現採紅番茄，酸酸甜甜好多汁喔！');
+          }
+        };
+        things.push(tomatoSnackThing);
+        ghThings.push(tomatoSnackThing);
+
+        // 4. 烤北海道馬鈴薯
+        var potatoSnackThing = {
+          x: cx + 4.3,
+          z: cz - GH_D / 2 - 1.5,
+          r: 2.4,
+          label: function() { return '🥔 烤北海道馬鈴薯'; },
+          go: function() {
+            safeNotes([440, 523.25, 659.25], 'sine', 0.11);
+            showPlayerSnack('potato');
+            safeSay('🥔 熱呼呼的烤北海道馬鈴薯加上奶油，又香又鬆軟！');
+          }
+        };
+        things.push(potatoSnackThing);
+        ghThings.push(potatoSnackThing);
+
+        // 5. 坐上原創小拖拉機
+        var tractorThing = {
+          x: cx + trX,
+          z: cz + trZ,
+          r: 2.8,
+          label: function() { return '🚜 坐上農場小拖拉機'; },
+          go: function() {
+            try {
+              if (typeof sit === 'function') {
+                sit({ x: cx + trX, z: cz + trZ + 0.65, ry: Math.PI, h: cy + 1.35 });
+              }
+            } catch (e) {}
+            safeNotes([261.63, 329.63, 392.00], 'sawtooth', 0.1);
+            safeSay('🚜 噗噗！坐上小拖拉機，今天我是農場小幫手！');
+          }
+        };
+        things.push(tractorThing);
+        ghThings.push(tractorThing);
+      }
+    }
+
+    // 9. 採收小遊戲流程（開始、採果實、結算、90秒重生）
+    function startHarvestGame() {
+      if (!built) buildGreenhouse();
+      game.active = true;
+      game.timeLeft = 60;
+      game.counts.tomato = 0;
+      game.counts.strawberry = 0;
+      game.counts.corn = 0;
+      game.counts.potato = 0;
+      game.total = 0;
+
+      // 開始遊戲時若果實全部都被採光，讓果實立即長回來方便遊玩
+      var availableCount = 0;
+      for (var i = 0; i < fruits.length; i++) {
+        if (!fruits[i].picked) availableCount++;
+      }
+      if (availableCount === 0) {
+        for (var j = 0; j < fruits.length; j++) {
+          fruits[j].picked = false;
+          fruits[j].respawnAt = 0;
+          fruits[j].scale = 1;
+          if (fruits[j].mesh) {
+            fruits[j].mesh.visible = true;
+            fruits[j].mesh.scale.set(1, 1, 1);
+          }
+        }
+      }
+
+      attachPlayerBasket(true);
+      updateHarvestUI();
+      safeNotes([523.25, 659.25, 783.99, 1046.5], 'triangle', 0.1);
+      safeSay('🧺 拿好小竹籃！60 秒內走進溫室靠近蔬果按互動採收吧！');
+    }
+
+    function pickFruit(f) {
+      if (!f || f.picked) return;
+      if (!game.active) {
+        safeSay('🧺 請先到溫室門口按「拿籃子開始採收」喔！');
+        return;
+      }
+      f.picked = true;
+      f.respawnAt = 90; // 90 秒後重新長出來
+      f.scale = 0.01;
+      if (f.mesh) {
+        f.mesh.visible = false;
+        f.mesh.scale.set(0.01, 0.01, 0.01);
+      }
+
+      if (typeof game.counts[f.id] === 'number') {
+        game.counts[f.id]++;
+      }
+      game.total++;
+
+      safeNotes([659.25, 880, 1046.5], 'sine', 0.07);
+      safeSay(f.icon + ' 採到了' + f.name + '！（目前籃子共 ' + game.total + ' 個）');
+      updateHarvestUI();
+
+      // 採滿 20 個頒發小小農夫徽章
+      if (game.total >= 20) {
+        safeAward('farm20');
+      }
+
+      // 檢查是否全部 32 個果實都採完
+      var anyLeft = false;
+      for (var i = 0; i < fruits.length; i++) {
+        if (!fruits[i].picked) {
+          anyLeft = true;
+          break;
+        }
+      }
+      if (!anyLeft) {
+        finishHarvestGame(true);
+      }
+    }
+
+    function finishHarvestGame(allCleared) {
+      if (!game.active) return;
+      game.active = false;
+      if (game.pickThing) {
+        game.pickThing.x = -99999;
+        game.pickThing.z = -99999;
+        game.pickThing._targetFruit = null;
+      }
+      attachPlayerBasket(false);
+      updateHarvestUI();
+
+      var score = game.total;
+      var best = score;
+      try {
+        if (typeof BK !== 'undefined' && BK) {
+          var prevBest = (typeof BK.farmBest === 'number') ? BK.farmBest : 0;
+          if (score > prevBest) {
+            BK.farmBest = score;
+          }
+          best = BK.farmBest || score;
+        }
+        safeSaveBK();
+      } catch (e) {}
+
+      if (score >= 20) {
+        safeAward('farm20');
+      }
+
+      safeNotes([523.25, 659.25, 783.99, 1046.5], 'triangle', 0.14);
+      var title = allCleared ? '🎉 太厲害了！溫室蔬果全部採收完畢！' : '⏱️ 採收時間到！';
+      var sub = '本次採收 ' + score + ' 個（🍅' + game.counts.tomato +
+                ' 🍓' + game.counts.strawberry +
+                ' 🌽' + game.counts.corn +
+                ' 🥔' + game.counts.potato +
+                '）｜最高紀錄：' + best + ' 個';
+      safeBanner(title, sub);
+    }
+
+    // 10. 每格更新串接 window.__moreTick2
+    var prevTick = window.__moreTick2;
+    window.__moreTick2 = function(dt, t) {
+      if (typeof prevTick === 'function') {
+        try { prevTick(dt, t); } catch (e) {}
+      }
+      try {
+        var stepDt = (typeof dt === 'number' && dt > 0 && dt < 1) ? dt : 0.016;
+        var p = getPlayerPos();
+        if (!p) return;
+
+        // 手上點心道具計時器
+        if (snackState.timer > 0) {
+          snackState.timer -= stepDt;
+          if (snackState.timer <= 0 && snackState.mesh) {
+            if (snackState.mesh.parent) snackState.mesh.parent.remove(snackState.mesh);
+            snackState.mesh = null;
+          }
+        }
+
+        // 還沒建立時，玩家進入任一候選點 120 公尺內才建立溫室
+        if (!built) {
+          var nearCandidate = false;
+          for (var ci = 0; ci < CANDIDATES.length; ci++) {
+            var cdx = p.x - CANDIDATES[ci][0];
+            var cdz = p.z - CANDIDATES[ci][1];
+            if (cdx * cdx + cdz * cdz <= 120 * 120) {
+              nearCandidate = true;
+              break;
+            }
+          }
+          if (!nearCandidate) return;
+          buildGreenhouse();
+          if (!built || !ghGroup) return;
+        }
+
+        var dx = p.x - ghCenter.x;
+        var dz = p.z - ghCenter.z;
+        var distSq = dx * dx + dz * dz;
+
+        // 建立之後：超過 120 公尺隱藏溫室且不跑每格更新
+        if (distSq > 120 * 120) {
+          if (ghGroup && ghGroup.visible) ghGroup.visible = false;
+          return;
+        }
+        if (ghGroup && !ghGroup.visible) ghGroup.visible = true;
+
+        // 果實 90 秒重生倒數與縮放動畫
+        var nearestFruit = null;
+        var nearestDistSq = 2.3 * 2.3;
+
+        for (var i = 0; i < fruits.length; i++) {
+          var f = fruits[i];
+          if (f.picked) {
+            f.respawnAt -= stepDt;
+            if (f.respawnAt <= 0) {
+              f.picked = false;
+              f.respawnAt = 0;
+              f.scale = 0.05;
+              if (f.mesh) {
+                f.mesh.visible = true;
+                f.mesh.scale.set(0.05, 0.05, 0.05);
+              }
+            }
+          } else {
+            // 長出縮放動畫
+            if (f.scale < 1) {
+              f.scale = Math.min(1, f.scale + stepDt * 2.2);
+              if (f.mesh) {
+                f.mesh.scale.set(f.scale, f.scale, f.scale);
+              }
+            }
+            // 採收遊戲進行中時，尋找離玩家最近的可採果實
+            if (game.active) {
+              var fdx = p.x - f.wx;
+              var fdz = p.z - f.wz;
+              var fd2 = fdx * fdx + fdz * fdz;
+              if (fd2 < nearestDistSq) {
+                nearestDistSq = fd2;
+                nearestFruit = f;
+              }
+            }
+          }
+        }
+
+        // 更新動態採收互動點位置
+        if (game.pickThing) {
+          if (game.active && nearestFruit) {
+            game.pickThing.x = nearestFruit.wx;
+            game.pickThing.z = nearestFruit.wz;
+            game.pickThing._targetFruit = nearestFruit;
+          } else {
+            game.pickThing.x = -99999;
+            game.pickThing.z = -99999;
+            game.pickThing._targetFruit = null;
+          }
+        }
+
+        // 採收遊戲倒數計時
+        if (game.active) {
+          var prevCeil = Math.ceil(game.timeLeft);
+          game.timeLeft -= stepDt;
+          var nowCeil = Math.ceil(game.timeLeft);
+          if (nowCeil !== prevCeil) {
+            updateHarvestUI();
+          }
+          if (game.timeLeft <= 0) {
+            finishHarvestGame(false);
+          }
+        }
+      } catch (e) {}
+    };
+  } catch (err) {}
+})();
+// ===== 第 81 版：電腦版計分卡移到小地圖下方（Gemini 撰寫） =====
+(function () {
+  try {
+    function isDesktop() {
+      var isHoverable = !(
+        window.matchMedia && window.matchMedia('(hover: none)').matches
+      );
+      return isHoverable && window.innerWidth > 560;
+    }
+
+    function isOverlapping(rect1, rect2) {
+      return !(
+        rect1.right <= rect2.left ||
+        rect1.left >= rect2.right ||
+        rect1.bottom <= rect2.top ||
+        rect1.top >= rect2.bottom
+      );
+    }
+
+    function updateDesktopScorecards() {
+      if (!isDesktop()) {
+        var modified = document.querySelectorAll('div[data-v79="1"]');
+        for (var i = 0; i < modified.length; i++) {
+          modified[i].style.removeProperty('top');
+          delete modified[i].dataset.v79;
+        }
+        return;
+      }
+
+      var mapEl = document.getElementById('map');
+      if (!mapEl) return;
+
+      var mapRect = mapEl.getBoundingClientRect();
+      var mapStyle = window.getComputedStyle(mapEl);
+      if (
+        mapRect.width === 0 ||
+        mapRect.height === 0 ||
+        mapStyle.display === 'none'
+      ) {
+        return;
+      }
+
+      var divs = document.querySelectorAll('body div');
+      for (var j = 0; j < divs.length; j++) {
+        var el = divs[j];
+        if (el.dataset.v79 === '1') {
+          var targetTop = mapRect.bottom + 8 + 'px';
+          if (el.style.top !== targetTop) {
+            el.style.setProperty('top', targetTop, 'important');
+          }
+          continue;
+        }
+
+        var style = window.getComputedStyle(el);
+        if (
+          style.position === 'fixed' &&
+          style.borderTopColor === 'rgb(255, 209, 102)' &&
+          el.offsetWidth > 0
+        ) {
+          var elRect = el.getBoundingClientRect();
+          if (isOverlapping(elRect, mapRect)) {
+            el.style.setProperty('top', mapRect.bottom + 8 + 'px', 'important');
+            el.dataset.v79 = '1';
+          }
+        }
+      }
+    }
+
+    setInterval(updateDesktopScorecards, 400);
+    window.addEventListener('resize', updateDesktopScorecards);
+  } catch (e) {}
+})();
+// ===== 第 77 版：北海道棒球場「看台應援：加油棒節奏小遊戲＋原創應援歌」（Gemini 撰寫） =====
+(function() {
+  try {
+    if (typeof THREE === 'undefined' || typeof scene === 'undefined') return;
+
+    // 1. 取得北海道棒球場座標與設定地點（界外區的草地上，高度 fieldY）
+    var escon = (typeof window !== 'undefined' && window.__ESCON) ? window.__ESCON : {};
+    var home = escon.home && typeof escon.home.x === 'number' ? escon.home : { x: 0, z: 745 };
+    var fieldY = typeof escon.fieldY === 'number' ? escon.fieldY : 0;
+
+    // 處理 bases（可能是陣列或物件，兩種都相容處理）並找出 b1（一壘）與 b2（二壘）
+    var basesList = [];
+    var b1 = null, b2 = null;
+
+    function isPt(p) {
+      return p && typeof p.x === 'number' && typeof p.z === 'number' &&
+             Math.hypot(p.x - home.x, p.z - home.z) > 5;
+    }
+
+    if (Array.isArray(escon.bases)) {
+      for (var bi = 0; bi < escon.bases.length; bi++) {
+        if (isPt(escon.bases[bi])) basesList.push(escon.bases[bi]);
+      }
+    } else if (escon.bases && typeof escon.bases === 'object') {
+      if (isPt(escon.bases.first)) b1 = escon.bases.first;
+      else if (isPt(escon.bases.b1)) b1 = escon.bases.b1;
+      else if (isPt(escon.bases[1])) b1 = escon.bases[1];
+
+      if (isPt(escon.bases.second)) b2 = escon.bases.second;
+      else if (isPt(escon.bases.b2)) b2 = escon.bases.b2;
+      else if (isPt(escon.bases[2])) b2 = escon.bases[2];
+
+      var bKeys = Object.keys(escon.bases);
+      for (var bk = 0; bk < bKeys.length; bk++) {
+        var bv = escon.bases[bKeys[bk]];
+        if (isPt(bv)) basesList.push(bv);
+      }
+    }
+
+    // 先找二壘 b2：離本壘最遠（約 38 公尺，即 27 * sqrt(2)）的那個壘包
+    if (!b2 && basesList.length > 0) {
+      var maxDist = -1;
+      for (var i2 = 0; i2 < basesList.length; i2++) {
+        var dHome = Math.hypot(basesList[i2].x - home.x, basesList[i2].z - home.z);
+        if (dHome > maxDist) {
+          maxDist = dHome;
+          b2 = basesList[i2];
+        }
+      }
+    }
+    if (!b2) {
+      b2 = { x: home.x, z: home.z + 38.2 };
+    }
+
+    // 找一壘 b1：離本壘約 27 公尺、且跟二壘距離也約 27 公尺、且不是二壘的那個壘（三壘是另一個）
+    if (!b1 && basesList.length > 0) {
+      var candidates = [];
+      for (var i1 = 0; i1 < basesList.length; i1++) {
+        var pt = basesList[i1];
+        if (pt === b2 || Math.hypot(pt.x - b2.x, pt.z - b2.z) < 5) continue;
+        var dh = Math.hypot(pt.x - home.x, pt.z - home.z);
+        var d2 = Math.hypot(pt.x - b2.x, pt.z - b2.z);
+        if (dh >= 15 && dh <= 40 && d2 >= 15 && d2 <= 40) {
+          candidates.push(pt);
+        }
+      }
+      if (candidates.length === 1) {
+        b1 = candidates[0];
+      } else if (candidates.length >= 2) {
+        // 用本壘往二壘向量判斷一壘方向（優先選第一個符合條件的候選壘包）
+        var v2x = b2.x - home.x, v2z = b2.z - home.z;
+        for (var ci = 0; ci < candidates.length; ci++) {
+          var cPt = candidates[ci];
+          var cross = (cPt.x - home.x) * v2z - (cPt.z - home.z) * v2x;
+          if (cross < 0) {
+            b1 = cPt;
+            break;
+          }
+        }
+        if (!b1) b1 = candidates[0];
+      }
+    }
+    if (!b1) {
+      b1 = { x: home.x - 19.1, z: home.z + 19.1 };
+    }
+
+    // 2. 計算位置 P = home + 0.6 × (b1 - home)，再沿著「遠離二壘」的垂直方向往外移 8 公尺
+    var vx = b1.x - home.x;
+    var vz = b1.z - home.z;
+    var vLen = Math.hypot(vx, vz) || 27;
+    var ux = vx / vLen; // 沿邊線往一壘單位向量
+    var uz = vz / vLen;
+
+    // 垂直於邊線（一壘線）的兩個法向量：(-uz, ux) 與 (uz, -ux)
+    var nx = -uz, nz = ux;
+    // 檢查與 (b2 - b1) 的內積，若 > 0 代表朝向二壘，取反向即為「遠離二壘」的界外方向
+    if (nx * (b2.x - b1.x) + nz * (b2.z - b1.z) > 0) {
+      nx = -nx;
+      nz = -nz;
+    }
+
+    var stageX = home.x + 0.6 * vx + 8 * nx;
+    var stageZ = home.z + 0.6 * vz + 8 * nz;
+    var stageY = fieldY; // 界外區草地高度
+
+    // 4. 檢查 P 附近 6x4 公尺是否有 colliders 重疊，重疊就沿邊線往本壘方向 (-ux, -uz) 每次移 3 公尺再試（最多 6 次）
+    function isOverlapping(cx, cz, w, d) {
+      if (typeof colliders === 'undefined' || !Array.isArray(colliders)) return false;
+      var x0 = cx - w / 2, x1 = cx + w / 2;
+      var z0 = cz - d / 2, z1 = cz + d / 2;
+      for (var i = 0; i < colliders.length; i++) {
+        var c = colliders[i];
+        if (!c || c.on === false) continue;
+        var cx0 = typeof c.x0 === 'number' ? c.x0 : (typeof c.minX === 'number' ? c.minX : null);
+        var cx1 = typeof c.x1 === 'number' ? c.x1 : (typeof c.maxX === 'number' ? c.maxX : null);
+        var cz0 = typeof c.z0 === 'number' ? c.z0 : (typeof c.minZ === 'number' ? c.minZ : null);
+        var cz1 = typeof c.z1 === 'number' ? c.z1 : (typeof c.maxZ === 'number' ? c.maxZ : null);
+        if (cx0 !== null && cx1 !== null && cz0 !== null && cz1 !== null) {
+          if (x0 < cx1 && x1 > cx0 && z0 < cz1 && z1 > cz0) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    for (var tryCount = 0; tryCount < 6; tryCount++) {
+      if (!isOverlapping(stageX, stageZ, 6, 4)) break;
+      stageX -= 3 * ux;
+      stageZ -= 3 * uz;
+    }
+
+    // 建立碰撞台（讓玩家可以站上去或碰撞）
+    try {
+      if (typeof col === 'function') {
+        var stageCol = col(stageX - 2.2, stageX + 2.2, stageZ - 1.5, stageZ + 1.5);
+        if (stageCol) stageCol.top = stageY + 0.6;
+      }
+    } catch (e) {}
+
+    // 建立 3D 群組（掛在 VGRP.escon 或 scene）
+    var parentGrp = (typeof VGRP !== 'undefined' && VGRP && VGRP.escon) ? VGRP.escon : scene;
+    var rootGrp = new THREE.Group();
+    rootGrp.position.set(stageX, stageY, stageZ);
+    parentGrp.add(rootGrp);
+
+    // 團長台面向「本壘與二壘中間」的方向
+    var midHomeB2 = {
+      x: (home.x + b2.x) * 0.5,
+      z: (home.z + b2.z) * 0.5
+    };
+    var faceAngle = Math.atan2(midHomeB2.x - stageX, midHomeB2.z - stageZ);
+    rootGrp.rotation.y = faceAngle;
+
+    // 建造「📣 應援團長台」（小平台、旗子、大鼓）
+    var matStage = new THREE.MeshLambertMaterial({ color: 0x1e3a8a }); // 寶藍底座
+    var matGold = new THREE.MeshLambertMaterial({ color: 0xfbbf24 });  // 金色邊飾
+    var matDrum = new THREE.MeshLambertMaterial({ color: 0x991b1b });  // 紅通通大鼓
+    var matDrumHead = new THREE.MeshBasicMaterial({ color: 0xfef3c7 });// 鼓面
+    var matFlagPole = new THREE.MeshLambertMaterial({ color: 0xe5e7eb });
+    var matFlag = new THREE.MeshBasicMaterial({ color: 0x2563eb, side: THREE.DoubleSide });
+    var matGlow = new THREE.MeshBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.65, side: THREE.DoubleSide });
+
+    // 小平台
+    var baseMesh = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.6, 2.8), matStage);
+    baseMesh.position.set(0, 0.3, 0);
+    rootGrp.add(baseMesh);
+
+    var trimMesh = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.12, 2.9), matGold);
+    trimMesh.position.set(0, 0.6, 0);
+    rootGrp.add(trimMesh);
+
+    // 應援大旗（左後方）
+    var flagGrp = new THREE.Group();
+    flagGrp.position.set(-1.6, 0.6, -0.8);
+    var poleMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 3.8, 8), matFlagPole);
+    poleMesh.position.set(0, 1.9, 0);
+    flagGrp.add(poleMesh);
+
+    var flagCloth = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.0), matFlag);
+    flagCloth.position.set(0.85, 3.2, 0);
+    flagGrp.add(flagCloth);
+
+    var flagStripe = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.25), matGold);
+    flagStripe.position.set(0.85, 3.2, 0.01);
+    flagGrp.add(flagStripe);
+    rootGrp.add(flagGrp);
+
+    // 應援大鼓（右前方）
+    var drumGrp = new THREE.Group();
+    drumGrp.position.set(1.2, 1.25, 0.3);
+    var drumBody = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.7, 16), matDrum);
+    drumBody.rotation.x = Math.PI / 2;
+    drumGrp.add(drumBody);
+
+    var drumFace1 = new THREE.Mesh(new THREE.CircleGeometry(0.54, 16), matDrumHead);
+    drumFace1.position.set(0, 0, 0.36);
+    drumGrp.add(drumFace1);
+
+    var drumFace2 = new THREE.Mesh(new THREE.CircleGeometry(0.54, 16), matDrumHead);
+    drumFace2.position.set(0, 0, -0.36);
+    drumFace2.rotation.y = Math.PI;
+    drumGrp.add(drumFace2);
+
+    var standLeg1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), matGold);
+    standLeg1.position.set(-0.35, -0.4, 0);
+    drumGrp.add(standLeg1);
+    var standLeg2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), matGold);
+    standLeg2.position.set(0.35, -0.4, 0);
+    drumGrp.add(standLeg2);
+    rootGrp.add(drumGrp);
+
+    // 地上發光圓圈互動點（放在台前）
+    var spotOffsetZ = 2.2;
+    var worldSpotX = stageX + Math.sin(faceAngle) * spotOffsetZ;
+    var worldSpotZ = stageZ + Math.cos(faceAngle) * spotOffsetZ;
+
+    var glowRing = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.45, 24), matGlow);
+    glowRing.rotation.x = -Math.PI / 2;
+    glowRing.position.set(0, 0.05, spotOffsetZ);
+    rootGrp.add(glowRing);
+
+    var glowInner = new THREE.Mesh(new THREE.CircleGeometry(1.1, 24), new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide
+    }));
+    glowInner.rotation.x = -Math.PI / 2;
+    glowInner.position.set(0, 0.04, spotOffsetZ);
+    rootGrp.add(glowInner);
+
+    // 3. 觀眾小人圍在團長台後方與兩側（半徑 4～7 公尺的半圓，共 24 人），只在遊戲中顯示
+    var crowdGrp = new THREE.Group();
+    crowdGrp.visible = false;
+    rootGrp.add(crowdGrp);
+
+    var crowdFans = [];
+    var fanColors = [0x2563eb, 0xfbbf24, 0x38bdf8, 0xf97316, 0x22c55e, 0xec4899];
+    var headMat = new THREE.MeshLambertMaterial({ color: 0xffedd5 });
+    var towelMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide });
+
+    var ringRadii = [4.2, 5.5, 6.8];
+    var ringCounts = [7, 8, 9]; // 總共 24 個小觀眾
+
+    for (var rIdx = 0; rIdx < ringRadii.length; rIdx++) {
+      var radius = ringRadii[rIdx];
+      var count = ringCounts[rIdx];
+      for (var sIdx = 0; sIdx < count; sIdx++) {
+        // 角度分佈在 -85° ~ +85°（围绕在團長台後方 z < 0 與左右兩側的半圓弧）
+        var ratio = count > 1 ? (sIdx / (count - 1)) : 0.5;
+        var ang = (ratio - 0.5) * Math.PI * 0.94;
+        var fx = Math.sin(ang) * radius;
+        var fz = -Math.cos(ang) * radius;
+        var fy = 0;
+
+        var fan = new THREE.Group();
+        fan.position.set(fx, fy, fz);
+        // 面向團長台與球場方向
+        fan.rotation.y = Math.atan2(-fx, -fz) * 0.45;
+
+        var cIdx = (rIdx * 8 + sIdx) % fanColors.length;
+        var bodyMat = new THREE.MeshLambertMaterial({ color: fanColors[cIdx] });
+        var bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.65, 0.32), bodyMat);
+        bodyMesh.position.set(0, 0.33, 0);
+        fan.add(bodyMesh);
+
+        var headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), headMat);
+        headMesh.position.set(0, 0.85, 0);
+        fan.add(headMesh);
+
+        // 揮舞的小毛巾
+        var towelPivot = new THREE.Group();
+        towelPivot.position.set(0.28, 0.72, 0);
+        var towelMesh = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.04), towelMat);
+        towelMesh.position.set(0.18, 0.15, 0);
+        towelPivot.add(towelMesh);
+        fan.add(towelPivot);
+
+        crowdGrp.add(fan);
+        crowdFans.push({
+          grp: fan,
+          baseY: fy,
+          towel: towelPivot,
+          phase: (rIdx * 5 + sIdx) * 0.65
+        });
+      }
+    }
+
+    // 註冊互動點到 things
+    if (typeof things !== 'undefined' && Array.isArray(things)) {
+      things.push({
+        x: worldSpotX,
+        z: worldSpotZ,
+        r: 2.1,
+        label: function() {
+          return gameState.active ? '📣 應援進行中！' : '📣 站上應援團長台（敲加油棒）';
+        },
+        go: function() {
+          if (gameState.active) return;
+          startCheerGame();
+        }
+      });
+    }
+
+    // 2. 原創應援歌 3 首（完全原創旋律，8～16 拍，BPM 100～130）
+    // 每拍定義：{ beat: 拍點, freqs: 單音或短樂句頻率陣列, wave: 'square'|'triangle', dur: 每音秒數, drum: 是否擊大鼓 }
+    var SONGS = [
+      {
+        name: '第一首：北國藍天進行曲',
+        bpm: 108,
+        totalBeats: 12,
+        events: [
+          { beat: 0,  freqs: [523, 659], wave: 'square',   dur: 0.16, drum: true },
+          { beat: 1,  freqs: [784],      wave: 'square',   dur: 0.22, drum: true },
+          { beat: 2,  freqs: [659, 784], wave: 'square',   dur: 0.16, drum: false },
+          { beat: 3,  freqs: [880],      wave: 'triangle', dur: 0.25, drum: true },
+          { beat: 4,  freqs: [784, 659], wave: 'square',   dur: 0.16, drum: true },
+          { beat: 5,  freqs: [587, 659], wave: 'square',   dur: 0.16, drum: false },
+          { beat: 6,  freqs: [523],      wave: 'triangle', dur: 0.28, drum: true },
+          { beat: 7,  freqs: [392, 523], wave: 'square',   dur: 0.16, drum: true },
+          { beat: 8,  freqs: [587, 698], wave: 'square',   dur: 0.16, drum: true },
+          { beat: 9,  freqs: [659, 784], wave: 'square',   dur: 0.16, drum: false },
+          { beat: 10, freqs: [880, 988], wave: 'square',   dur: 0.16, drum: true },
+          { beat: 11, freqs: [1047],     wave: 'triangle', dur: 0.35, drum: true }
+        ]
+      },
+      {
+        name: '第二首：黃金全壘打衝衝衝',
+        bpm: 118,
+        totalBeats: 12,
+        events: [
+          { beat: 0,  freqs: [440, 554], wave: 'triangle', dur: 0.15, drum: true },
+          { beat: 1,  freqs: [659],      wave: 'square',   dur: 0.22, drum: true },
+          { beat: 2,  freqs: [659, 740], wave: 'square',   dur: 0.14, drum: true },
+          { beat: 3,  freqs: [880],      wave: 'square',   dur: 0.24, drum: true },
+          { beat: 4,  freqs: [740, 659], wave: 'triangle', dur: 0.15, drum: false },
+          { beat: 5,  freqs: [587],      wave: 'square',   dur: 0.22, drum: true },
+          { beat: 6,  freqs: [659, 587], wave: 'triangle', dur: 0.15, drum: false },
+          { beat: 7,  freqs: [494, 587], wave: 'square',   dur: 0.15, drum: true },
+          { beat: 8,  freqs: [440, 554], wave: 'square',   dur: 0.15, drum: true },
+          { beat: 9,  freqs: [659, 880], wave: 'square',   dur: 0.15, drum: true },
+          { beat: 10, freqs: [988, 880], wave: 'triangle', dur: 0.15, drum: true },
+          { beat: 11, freqs: [880, 1109],wave: 'square',   dur: 0.24, drum: true }
+        ]
+      },
+      {
+        name: '第三首：雪國閃電大連擊',
+        bpm: 126,
+        totalBeats: 16,
+        events: [
+          { beat: 0,  freqs: [587],      wave: 'square',   dur: 0.18, drum: true },
+          { beat: 1,  freqs: [698],      wave: 'square',   dur: 0.18, drum: true },
+          { beat: 2,  freqs: [880, 784], wave: 'triangle', dur: 0.13, drum: true },
+          { beat: 3,  freqs: [698],      wave: 'square',   dur: 0.20, drum: false },
+          { beat: 4,  freqs: [659, 784], wave: 'square',   dur: 0.13, drum: true },
+          { beat: 5,  freqs: [880],      wave: 'triangle', dur: 0.20, drum: true },
+          { beat: 6,  freqs: [784, 659], wave: 'square',   dur: 0.13, drum: false },
+          { beat: 7,  freqs: [587],      wave: 'triangle', dur: 0.22, drum: true },
+          { beat: 8,  freqs: [523, 587], wave: 'square',   dur: 0.13, drum: true },
+          { beat: 9,  freqs: [659, 698], wave: 'square',   dur: 0.13, drum: true },
+          { beat: 10, freqs: [784, 880], wave: 'square',   dur: 0.13, drum: true },
+          { beat: 11, freqs: [988],      wave: 'triangle', dur: 0.22, drum: true },
+          { beat: 12, freqs: [1175, 988],wave: 'square',   dur: 0.13, drum: true },
+          { beat: 13, freqs: [880, 784], wave: 'square',   dur: 0.13, drum: false },
+          { beat: 14, freqs: [698, 880], wave: 'triangle', dur: 0.13, drum: true },
+          { beat: 15, freqs: [1175],     wave: 'square',   dur: 0.30, drum: true }
+        ]
+      }
+    ];
+
+    var songIndex = 0;
+
+    // 註冊「應援達人」徽章（先檢查 BADGES 沒有才 push）
+    try {
+      if (typeof BADGES !== 'undefined' && Array.isArray(BADGES)) {
+        var hasCheerBadge = false;
+        for (var bIdx = 0; bIdx < BADGES.length; bIdx++) {
+          if (Array.isArray(BADGES[bIdx]) && BADGES[bIdx][0] === 'cheer1') {
+            hasCheerBadge = true;
+            break;
+          }
+        }
+        if (!hasCheerBadge) {
+          BADGES.push(['cheer1', '應援達人', '📣', function() { return false; }]);
+        }
+      }
+    } catch (e) {}
+
+    // 3. 遊戲狀態與加油棒 3D 模型管理
+    var gameState = {
+      active: false,
+      song: null,
+      elapsed: 0,
+      leadIn: 2.0,      // 音符提前 2 秒從右方浮現
+      endTime: 0,
+      notesList: [],    // { time, playedAudio, hit, missed, domEl }
+      score: 0,
+      maxPossible: 0,
+      combo: 0,
+      maxCombo: 0,
+      clapTimer: 0,     // 敲擊動畫倒數
+      domWrap: null,
+      laneEl: null,
+      statusEl: null,
+      scoreEl: null,
+      songTitleEl: null,
+      leftBat: null,
+      rightBat: null,
+      keyHandler: null
+    };
+
+    // 在玩家角色 A.g 群組加上藍＋金兩支加油棒
+    function attachCheerBats() {
+      removeCheerBats();
+      try {
+        if (typeof A === 'undefined' || !A || !A.g) return;
+        var batGeo = new THREE.CylinderGeometry(0.045, 0.038, 0.62, 10);
+        var matBlueBat = new THREE.MeshLambertMaterial({ color: 0x2563eb });
+        var matGoldBat = new THREE.MeshLambertMaterial({ color: 0xfbbf24 });
+
+        var leftPivot = new THREE.Group();
+        leftPivot.position.set(-0.28, 1.15, 0.25);
+        var leftMesh = new THREE.Mesh(batGeo, matBlueBat);
+        leftMesh.position.set(0, 0.25, 0);
+        leftPivot.add(leftMesh);
+
+        var rightPivot = new THREE.Group();
+        rightPivot.position.set(0.28, 1.15, 0.25);
+        var rightMesh = new THREE.Mesh(batGeo, matGoldBat);
+        rightMesh.position.set(0, 0.25, 0);
+        rightPivot.add(rightMesh);
+
+        // 預設微傾角度
+        leftPivot.rotation.set(0.5, 0, -0.35);
+        rightPivot.rotation.set(0.5, 0, 0.35);
+
+        A.g.add(leftPivot);
+        A.g.add(rightPivot);
+        gameState.leftBat = leftPivot;
+        gameState.rightBat = rightPivot;
+      } catch (e) {}
+    }
+
+    function removeCheerBats() {
+      try {
+        if (typeof A !== 'undefined' && A && A.g) {
+          if (gameState.leftBat) A.g.remove(gameState.leftBat);
+          if (gameState.rightBat) A.g.remove(gameState.rightBat);
+        }
+      } catch (e) {}
+      gameState.leftBat = null;
+      gameState.rightBat = null;
+    }
+
+    // 播放音符與大鼓音效
+    function playBeatAudio(ev) {
+      try {
+        if (typeof notes === 'function' && ev.freqs) {
+          notes(ev.freqs, ev.wave || 'square', ev.dur || 0.16);
+        }
+      } catch (e) {}
+      try {
+        if (ev.drum && typeof noiseBurst === 'function') {
+          noiseBurst(0.11, 120, 0.65, 'lowpass');
+        }
+      } catch (e) {}
+    }
+
+    function playClapAudio(isPerfect) {
+      try {
+        if (typeof noiseBurst === 'function') {
+          noiseBurst(0.06, isPerfect ? 130 : 115, 0.55, 'lowpass');
+        }
+        if (typeof notes === 'function') {
+          notes(isPerfect ? [1047, 1319] : [880], 'triangle', 0.06);
+        }
+      } catch (e) {}
+    }
+
+    // 建立節奏條 DOM（手機 375 寬也不超出畫面、bottom: 170px 避開左右下按鈕）
+    function createGameDOM(song) {
+      removeGameDOM();
+      if (typeof document === 'undefined' || !document.body) return;
+
+      var wrap = document.createElement('div');
+      wrap.id = 'escon-cheer-ui';
+      wrap.style.cssText = [
+        'position:fixed',
+        'left:50%',
+        'transform:translateX(-50%)',
+        'bottom:170px',
+        'width:min(340px, 90vw)',
+        'max-width:340px',
+        'box-sizing:border-box',
+        'background:rgba(15, 23, 42, 0.92)',
+        'border:3px solid #fbbf24',
+        'border-radius:16px',
+        'padding:8px 10px',
+        'color:#ffffff',
+        'font-family:sans-serif',
+        'z-index:9999',
+        'user-select:none',
+        '-webkit-user-select:none',
+        'box-shadow:0 6px 20px rgba(0,0,0,0.45)'
+      ].join(';');
+
+      // 頂部列：曲名 ＋ ✖ 結束按鈕
+      var topBar = document.createElement('div');
+      topBar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px;';
+
+      var titleEl = document.createElement('div');
+      titleEl.style.cssText = 'font-size:13px;font-weight:bold;color:#fde047;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+      titleEl.textContent = '🎵 ' + song.name;
+
+      var closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = '✖ 結束';
+      closeBtn.style.cssText = [
+        'background:#ef4444',
+        'color:#fff',
+        'border:none',
+        'border-radius:8px',
+        'padding:3px 8px',
+        'font-size:12px',
+        'font-weight:bold',
+        'cursor:pointer',
+        'flex-shrink:0'
+      ].join(';');
+      closeBtn.onclick = function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        stopCheerGame(true);
+      };
+
+      topBar.appendChild(titleEl);
+      topBar.appendChild(closeBtn);
+      wrap.appendChild(topBar);
+
+      // 分數與判定狀態列
+      var infoBar = document.createElement('div');
+      infoBar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:6px;';
+
+      var statusEl = document.createElement('div');
+      statusEl.style.cssText = 'font-weight:bold;color:#38bdf8;';
+      statusEl.textContent = '準備敲加油棒！';
+
+      var scoreEl = document.createElement('div');
+      scoreEl.style.cssText = 'font-weight:bold;color:#ffffff;';
+      scoreEl.textContent = '分數 0 ｜ 連擊 0';
+
+      infoBar.appendChild(statusEl);
+      infoBar.appendChild(scoreEl);
+      wrap.appendChild(infoBar);
+
+      // 節奏軌道（音符從右往左流到左方判定圈）
+      var lane = document.createElement('div');
+      lane.style.cssText = [
+        'position:relative',
+        'width:100%',
+        'height:44px',
+        'background:rgba(30, 58, 138, 0.75)',
+        'border:2px solid #60a5fa',
+        'border-radius:22px',
+        'overflow:hidden',
+        'margin-bottom:8px',
+        'box-sizing:border-box'
+      ].join(';');
+
+      // 左側判定圈（位於 18% 處）
+      var targetCircle = document.createElement('div');
+      targetCircle.style.cssText = [
+        'position:absolute',
+        'left:18%',
+        'top:50%',
+        'width:30px',
+        'height:30px',
+        'transform:translate(-50%, -50%)',
+        'border:3px solid #fde047',
+        'border-radius:50%',
+        'background:rgba(251, 191, 36, 0.25)',
+        'box-sizing:border-box',
+        'z-index:2'
+      ].join(';');
+      lane.appendChild(targetCircle);
+      wrap.appendChild(lane);
+
+      // 下方大按鈕：「📣 敲！」＋ 換歌小鈕
+      var btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:6px;align-items:center;';
+
+      var hitBtn = document.createElement('button');
+      hitBtn.type = 'button';
+      hitBtn.textContent = '📣 敲！（空白鍵）';
+      hitBtn.style.cssText = [
+        'flex:1',
+        'background:linear-gradient(180deg, #fbbf24, #d97706)',
+        'color:#1e293b',
+        'border:2px solid #fef08a',
+        'border-radius:12px',
+        'padding:8px 0',
+        'font-size:16px',
+        'font-weight:900',
+        'cursor:pointer',
+        'box-shadow:0 3px 0 #92400e'
+      ].join(';');
+
+      var triggerHit = function(e) {
+        if (e) {
+          if (e.preventDefault) e.preventDefault();
+          if (e.stopPropagation) e.stopPropagation();
+        }
+        handlePlayerTap();
+      };
+      hitBtn.addEventListener('pointerdown', triggerHit);
+      hitBtn.addEventListener('click', function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+      });
+
+      btnRow.appendChild(hitBtn);
+      wrap.appendChild(btnRow);
+
+      document.body.appendChild(wrap);
+
+      gameState.domWrap = wrap;
+      gameState.laneEl = lane;
+      gameState.statusEl = statusEl;
+      gameState.scoreEl = scoreEl;
+      gameState.songTitleEl = titleEl;
+    }
+
+    function removeGameDOM() {
+      try {
+        if (gameState.domWrap && gameState.domWrap.parentNode) {
+          gameState.domWrap.parentNode.removeChild(gameState.domWrap);
+        }
+      } catch (e) {}
+      gameState.domWrap = null;
+      gameState.laneEl = null;
+      gameState.statusEl = null;
+      gameState.scoreEl = null;
+      gameState.songTitleEl = null;
+    }
+
+    // 4. 鍵盤空白鍵與 Esc 監聽（capture 階段攔截，只在遊戲進行中攔截）
+    function attachKeyListener() {
+      detachKeyListener();
+      if (typeof window === 'undefined' || !window.addEventListener) return;
+      gameState.keyHandler = function(e) {
+        if (!gameState.active) return;
+        var code = e.code || '';
+        var key = e.key || '';
+        if (code === 'Space' || key === ' ' || key === 'Spacebar') {
+          if (e.preventDefault) e.preventDefault();
+          if (e.stopPropagation) e.stopPropagation();
+          handlePlayerTap();
+        } else if (code === 'Escape' || key === 'Escape' || key === 'Esc') {
+          if (e.preventDefault) e.preventDefault();
+          if (e.stopPropagation) e.stopPropagation();
+          stopCheerGame(true);
+        }
+      };
+      window.addEventListener('keydown', gameState.keyHandler, true);
+    }
+
+    function detachKeyListener() {
+      if (gameState.keyHandler && typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('keydown', gameState.keyHandler, true);
+      }
+      gameState.keyHandler = null;
+    }
+
+    // 開始應援小遊戲
+    function startCheerGame() {
+      var song = SONGS[songIndex % SONGS.length];
+      songIndex = (songIndex + 1) % SONGS.length;
+
+      var secPerBeat = 60 / song.bpm;
+      var leadIn = 1.6;
+
+      gameState.active = true;
+      gameState.song = song;
+      gameState.elapsed = 0;
+      gameState.leadIn = leadIn;
+      gameState.score = 0;
+      gameState.maxPossible = song.events.length * 100;
+      gameState.combo = 0;
+      gameState.maxCombo = 0;
+      gameState.clapTimer = 0;
+      gameState.notesList = [];
+
+      createGameDOM(song);
+      attachCheerBats();
+      attachKeyListener();
+      crowdGrp.visible = true;
+
+      // 建立每顆音符與對應 DOM 圓點
+      for (var i = 0; i < song.events.length; i++) {
+        var ev = song.events[i];
+        var noteTime = leadIn + ev.beat * secPerBeat;
+        var dot = null;
+        if (gameState.laneEl && typeof document !== 'undefined') {
+          dot = document.createElement('div');
+          dot.style.cssText = [
+            'position:absolute',
+            'top:50%',
+            'left:110%',
+            'width:24px',
+            'height:24px',
+            'transform:translate(-50%, -50%)',
+            'border-radius:50%',
+            'background:linear-gradient(135deg, #38bdf8, #2563eb)',
+            'border:2px solid #ffffff',
+            'box-sizing:border-box',
+            'z-index:3',
+            'pointer-events:none'
+          ].join(';');
+          gameState.laneEl.appendChild(dot);
+        }
+        gameState.notesList.push({
+          time: noteTime,
+          ev: ev,
+          playedAudio: false,
+          hit: false,
+          missed: false,
+          domEl: dot
+        });
+      }
+
+      gameState.endTime = leadIn + song.totalBeats * secPerBeat + 1.0;
+
+      try {
+        if (typeof say === 'function') {
+          say('📣 跟著節奏敲加油棒！圓點進黃圈時按「空白鍵」或點「📣 敲！」');
+        }
+      } catch (e) {}
+    }
+
+    // 玩家按下敲擊
+    function handlePlayerTap() {
+      if (!gameState.active) return;
+
+      // 觸發加油棒互敲動畫
+      gameState.clapTimer = 0.18;
+
+      // 尋找最接近目前時間、尚未判定的音符
+      var bestNote = null;
+      var bestDiff = 999;
+      for (var i = 0; i < gameState.notesList.length; i++) {
+        var n = gameState.notesList[i];
+        if (n.hit || n.missed) continue;
+        var diff = Math.abs(n.time - gameState.elapsed);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestNote = n;
+        }
+      }
+
+      // 判定區間：完美 <= 0.14秒，不錯 <= 0.30秒，0.30~0.50秒視為太早或太晚（錯過）
+      if (bestNote && bestDiff <= 0.50) {
+        if (bestDiff <= 0.14) {
+          bestNote.hit = true;
+          gameState.score += 100;
+          gameState.combo += 1;
+          if (gameState.combo > gameState.maxCombo) gameState.maxCombo = gameState.combo;
+          updateJudgeUI('🌟 完美！ +100', '#fde047');
+          playClapAudio(true);
+        } else if (bestDiff <= 0.30) {
+          bestNote.hit = true;
+          gameState.score += 70;
+          gameState.combo += 1;
+          if (gameState.combo > gameState.maxCombo) gameState.maxCombo = gameState.combo;
+          updateJudgeUI('👍 不錯！ +70', '#4ade80');
+          playClapAudio(false);
+        } else {
+          bestNote.missed = true;
+          gameState.combo = 0;
+          updateJudgeUI('💦 錯過！', '#f87171');
+        }
+
+        if (bestNote.domEl) {
+          bestNote.domEl.style.display = 'none';
+        }
+
+        // 連擊達 4 以上時，呼叫球場大螢幕 flashBanner 顯示「應援大成功！」
+        if (gameState.combo === 4 || gameState.combo === 8) {
+          try {
+            if (typeof window !== 'undefined' && window.__ESCON && window.__ESCON.screens && typeof window.__ESCON.screens.flashBanner === 'function') {
+              window.__ESCON.screens.flashBanner('應援大成功！', gameState.combo + ' 連擊熱烈應援中！', 2.5, 'cheer');
+            }
+          } catch (e) {}
+        }
+      } else {
+        // 空敲也有輕微敲棒聲
+        playClapAudio(false);
+      }
+    }
+
+    function updateJudgeUI(text, color) {
+      if (gameState.statusEl) {
+        gameState.statusEl.textContent = text;
+        gameState.statusEl.style.color = color || '#ffffff';
+      }
+      if (gameState.scoreEl) {
+        gameState.scoreEl.textContent = '分數 ' + gameState.score + ' ｜ 連擊 ' + gameState.combo;
+      }
+    }
+
+    // 結束應援小遊戲（cancelled=true 表示中途離開，false 表示一首正常結束）
+    function stopCheerGame(cancelled) {
+      if (!gameState.active) return;
+      gameState.active = false;
+
+      var finalScore = gameState.score;
+      var maxPossible = gameState.maxPossible || 100;
+      var pct = Math.round((finalScore / maxPossible) * 100);
+
+      removeCheerBats();
+      removeGameDOM();
+      detachKeyListener();
+      crowdGrp.visible = false;
+
+      // 還原小觀眾位置
+      for (var i = 0; i < crowdFans.length; i++) {
+        crowdFans[i].grp.position.y = crowdFans[i].baseY;
+        crowdFans[i].towel.rotation.z = 0;
+      }
+
+      if (cancelled) {
+        try {
+          if (typeof say === 'function') say('👋 結束應援，下次再來一起敲加油棒！');
+        } catch (e) {}
+        return;
+      }
+
+      // 儲存最高分到 BK.cheerBest 並 saveBK()
+      try {
+        if (typeof BK !== 'undefined' && BK) {
+          var prevBest = typeof BK.cheerBest === 'number' ? BK.cheerBest : 0;
+          if (pct > prevBest) {
+            BK.cheerBest = pct;
+          }
+          if (typeof saveBK === 'function') saveBK();
+        }
+      } catch (e) {}
+
+      // 呼叫大螢幕與 banner 顯示分數
+      try {
+        if (pct >= 80 && typeof window !== 'undefined' && window.__ESCON && window.__ESCON.screens && typeof window.__ESCON.screens.flashBanner === 'function') {
+          window.__ESCON.screens.flashBanner('應援大成功！', '得分率 ' + pct + '%', 3.0, 'cheer');
+        }
+      } catch (e) {}
+
+      try {
+        if (typeof banner === 'function') {
+          var bestStr = (typeof BK !== 'undefined' && BK && typeof BK.cheerBest === 'number') ? ('（最高 ' + BK.cheerBest + '%）') : '';
+          banner('📣 應援結束！得分 ' + pct + '%', '總分 ' + finalScore + ' 分・最高連擊 ' + gameState.maxCombo + ' ' + bestStr);
+        }
+      } catch (e) {}
+
+      // 分數 >= 80% 頒發徽章 award('cheer1')
+      if (pct >= 80) {
+        try {
+          if (typeof award === 'function') {
+            award('cheer1');
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 5. 每格更新：串接 window.__moreTick2（dt 限制最大 0.1）
+    var prevTick = typeof window !== 'undefined' ? window.__moreTick2 : null;
+    var accumT = 0;
+
+    function tickCheer(dt, t) {
+      if (typeof prevTick === 'function') {
+        try { prevTick(dt, t); } catch (e) {}
+      }
+
+      var safeDt = (typeof dt === 'number' && !isNaN(dt)) ? Math.min(Math.max(dt, 0), 0.1) : 0.016;
+      accumT += safeDt;
+
+      // 取得玩家目前位置
+      var px = (typeof pos !== 'undefined' && pos && typeof pos.x === 'number') ? pos.x :
+               ((typeof A !== 'undefined' && A && A.pos && typeof A.pos.x === 'number') ? A.pos.x : stageX);
+      var pz = (typeof pos !== 'undefined' && pos && typeof pos.z === 'number') ? pos.z :
+               ((typeof A !== 'undefined' && A && A.pos && typeof A.pos.z === 'number') ? A.pos.z : stageZ);
+
+      var dx = px - stageX;
+      var dz = pz - stageZ;
+      var distSq = dx * dx + dz * dz;
+
+      // 只在玩家 80 公尺內才 visible
+      var in80m = distSq <= 80 * 80;
+      if (rootGrp.visible !== in80m) {
+        rootGrp.visible = in80m;
+      }
+
+      if (in80m) {
+        // 地上發光圈呼吸閃爍與旗子飄動
+        glowRing.scale.setScalar(1 + 0.08 * Math.sin(accumT * 4));
+        flagCloth.rotation.y = 0.18 * Math.sin(accumT * 5);
+        flagStripe.rotation.y = flagCloth.rotation.y;
+      }
+
+      if (!gameState.active) return;
+
+      // 玩家走離 30 公尺以上自動結束
+      if (distSq > 30 * 30) {
+        stopCheerGame(true);
+        return;
+      }
+
+      // 累加遊戲時間軸（不使用 setTimeout）
+      gameState.elapsed += safeDt;
+      var curT = gameState.elapsed;
+
+      // 加油棒互敲動畫更新
+      if (gameState.clapTimer > 0) {
+        gameState.clapTimer = Math.max(0, gameState.clapTimer - safeDt);
+        var p = gameState.clapTimer / 0.18;
+        if (gameState.leftBat && gameState.rightBat) {
+          gameState.leftBat.rotation.set(0.85, 0, -0.35 + p * 0.55);
+          gameState.rightBat.rotation.set(0.85, 0, 0.35 - p * 0.55);
+        }
+      } else if (gameState.leftBat && gameState.rightBat) {
+        var idleWave = 0.08 * Math.sin(curT * 8);
+        gameState.leftBat.rotation.set(0.5 + idleWave, 0, -0.35);
+        gameState.rightBat.rotation.set(0.5 - idleWave, 0, 0.35);
+      }
+
+      // 更新音符位置、自動播放應援旋律、檢查逾時錯過
+      for (var i = 0; i < gameState.notesList.length; i++) {
+        var n = gameState.notesList[i];
+
+        // 到達拍點時播放應援歌音符與大鼓聲
+        if (!n.playedAudio && curT >= n.time) {
+          n.playedAudio = true;
+          playBeatAudio(n.ev);
+          // 大鼓輕微彈跳視覺
+          drumGrp.scale.setScalar(1.12);
+        }
+
+        if (n.hit || n.missed) continue;
+
+        var timeRem = n.time - curT;
+
+        // 超過拍點 0.30 秒未敲擊 -> 判定錯過
+        if (timeRem < -0.30) {
+          n.missed = true;
+          gameState.combo = 0;
+          if (n.domEl) n.domEl.style.display = 'none';
+          updateJudgeUI('💦 錯過！', '#f87171');
+          continue;
+        }
+
+        // 計算音符在軌道上的百分比位置（判定圈在 18%，提前 leadIn 秒在 96%）
+        if (n.domEl) {
+          var ratio = timeRem / gameState.leadIn;
+          var leftPct = 18 + ratio * 78;
+          if (leftPct >= -10 && leftPct <= 105) {
+            n.domEl.style.left = leftPct.toFixed(1) + '%';
+          }
+        }
+      }
+
+      // 大鼓縮放回彈
+      if (drumGrp.scale.x > 1.001) {
+        var nextS = Math.max(1, drumGrp.scale.x - safeDt * 1.2);
+        drumGrp.scale.setScalar(nextS);
+      }
+
+      // 附近看台小觀眾動畫：連擊時一起跳、揮毛巾
+      var isComboCheering = gameState.combo >= 1;
+      var jumpSpeed = isComboCheering ? 12 : 4;
+      var jumpAmp = isComboCheering ? 0.32 : 0.05;
+      for (var f = 0; f < crowdFans.length; f++) {
+        var fanObj = crowdFans[f];
+        var jumpOffset = Math.abs(Math.sin(curT * jumpSpeed + fanObj.phase)) * jumpAmp;
+        fanObj.grp.position.y = fanObj.baseY + jumpOffset;
+        fanObj.towel.rotation.z = isComboCheering ? (Math.sin(curT * 15 + fanObj.phase) * 0.9) : 0.15;
+      }
+
+      // 歌曲結束檢查
+      if (curT >= gameState.endTime) {
+        stopCheerGame(false);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.__moreTick2 = tickCheer;
+    }
+  } catch (err) {
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn('v75 cheer game error:', err);
+    }
+  }
+})();
+// ===== 第 80 版：北海道棒球場「投手丘三振挑戰：玩家投球對決原創打者」（Gemini 撰寫） =====
+(function () {
+  try {
+    // 1. 註冊徽章：['k3','三振王','🔥',function(){return false;}]
+    if (typeof BADGES !== 'undefined' && Array.isArray(BADGES)) {
+      var hasK3 = false;
+      for (var i = 0; i < BADGES.length; i++) {
+        if (BADGES[i] && BADGES[i][0] === 'k3') {
+          hasK3 = true;
+          break;
+        }
+      }
+      if (!hasK3) {
+        BADGES.push(['k3', '三振王', '🔥', function () { return false; }]);
+      }
+    }
+
+    // 2. 取得球場座標設定（支援動態讀取 __ESCON）
+    function getEsconInfo() {
+      var es = (typeof window !== 'undefined' && window.__ESCON) ? window.__ESCON : {};
+      var mound = (es && es.mound && typeof es.mound.x === 'number') ? es.mound : { x: 0, z: 726.6 };
+      var home = (es && es.home && typeof es.home.x === 'number') ? es.home : { x: 0, z: 745 };
+      var fieldY = (es && typeof es.fieldY === 'number') ? es.fieldY : 0;
+      return { es: es, mound: mound, home: home, fieldY: fieldY };
+    }
+
+    var initInfo = getEsconInfo();
+    // 投手丘旁 3 公尺（往一壘方向：本壘面向外野時一壘在右方，即 x + 3）
+    var triggerX = initInfo.mound.x + 3;
+    var triggerZ = initInfo.mound.z;
+
+    // 3. 建立地上發光棒球圖示（只在玩家 100 公尺內 visible）
+    var markerGroup = null;
+    var markerGlow = null;
+    if (typeof THREE !== 'undefined' && typeof scene !== 'undefined' && scene && typeof scene.add === 'function') {
+      try {
+        markerGroup = new THREE.Group();
+        markerGroup.position.set(triggerX, initInfo.fieldY + 0.05, triggerZ);
+
+        // 地面發光光圈
+        var ringGeo = new THREE.RingGeometry(0.9, 1.45, 28);
+        var ringMat = new THREE.MeshBasicMaterial({
+          color: 0xffd54f,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.78
+        });
+        markerGlow = new THREE.Mesh(ringGeo, ringMat);
+        markerGlow.rotation.x = -Math.PI / 2;
+        markerGroup.add(markerGlow);
+
+        // 內層光盤
+        var discGeo = new THREE.CircleGeometry(0.88, 24);
+        var discMat = new THREE.MeshBasicMaterial({
+          color: 0xfff8e1,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.35
+        });
+        var discMesh = new THREE.Mesh(discGeo, discMat);
+        discMesh.rotation.x = -Math.PI / 2;
+        discMesh.position.y = 0.01;
+        markerGroup.add(discMesh);
+
+        // 漂浮大棒球
+        var ballGeo = new THREE.SphereGeometry(0.38, 16, 16);
+        var ballMat = new THREE.MeshLambertMaterial({
+          color: 0xffffff,
+          emissive: 0x554411
+        });
+        var ballMesh = new THREE.Mesh(ballGeo, ballMat);
+        ballMesh.position.y = 0.55;
+        markerGroup.add(ballMesh);
+
+        // 紅色縫線環
+        var seamGeo = new THREE.TorusGeometry(0.385, 0.025, 8, 24);
+        var seamMat = new THREE.MeshBasicMaterial({ color: 0xe53935 });
+        var seam1 = new THREE.Mesh(seamGeo, seamMat);
+        seam1.position.y = 0.55;
+        seam1.rotation.set(0.5, 0.4, 0);
+        markerGroup.add(seam1);
+
+        var seam2 = new THREE.Mesh(seamGeo, seamMat);
+        seam2.position.y = 0.55;
+        seam2.rotation.set(-0.5, -0.4, Math.PI / 2);
+        markerGroup.add(seam2);
+
+        scene.add(markerGroup);
+      } catch (e) {}
+    }
+
+    // 4. 三位原創打者資料（名字原創、球衣灰色、小學一年級看得懂）
+    var BATTERS = [
+      {
+        name: '阿灰（大棒重砲）',
+        shortName: '阿灰',
+        desc: '力氣超大，喜歡打正中間的直球，變化球比較弱！',
+        power: 1.15,
+        eye: 0.72,
+        favType: 'fast'
+      },
+      {
+        name: '小石（巧打快腿）',
+        shortName: '小石',
+        desc: '眼睛很利、不愛追壞球，要用邊角好球對付他！',
+        power: 0.9,
+        eye: 1.25,
+        favType: 'curve'
+      },
+      {
+        name: '鐵平（全能隊長）',
+        shortName: '鐵平',
+        desc: '實力很強的隊長，對準力量條正中間投進邊角吧！',
+        power: 1.05,
+        eye: 1.1,
+        favType: 'change'
+      }
+    ];
+
+    // 球種設定：直球／曲球／變速球
+    var PITCH_TYPES = {
+      fast: {
+        id: 'fast',
+        name: '🔥 直球',
+        shortName: '直球',
+        baseSpeed: 148,
+        flightDur: 0.52,
+        arcY: 0.32,
+        dropY: 0.0,
+        curveX: 0.0,
+        whiffBonus: 0.06
+      },
+      curve: {
+        id: 'curve',
+        name: '🌀 曲球',
+        shortName: '曲球',
+        baseSpeed: 122,
+        flightDur: 0.72,
+        arcY: 1.25,
+        dropY: -0.62,
+        curveX: 0.28,
+        whiffBonus: 0.14
+      },
+      change: {
+        id: 'change',
+        name: '🍃 變速球',
+        shortName: '變速球',
+        baseSpeed: 130,
+        flightDur: 0.66,
+        arcY: 0.62,
+        dropY: -0.28,
+        curveX: -0.12,
+        whiffBonus: 0.12
+      }
+    };
+
+    // 5x5 格位（中間 r=1..3, c=1..3 是九宮格好球帶 1~9 號；外圍 16 格是壞球區）
+    // 每個格位回傳 { r, c, isStrike, isCorner, label, targetXOffset, targetY }
+    function getGridInfo(r, c) {
+      var isStrike = (r >= 1 && r <= 3 && c >= 1 && c <= 3);
+      var isCorner = isStrike && !(r === 2 && c === 2);
+      var num = isStrike ? ((r - 1) * 3 + c) : 0;
+      var label = isStrike ? ('好球 ' + num) : '壞球';
+      // c: 0..4 -> x 偏移 -0.72 .. +0.72 公尺
+      var targetXOffset = (c - 2) * 0.36;
+      // r: 0..4 -> y 高度（0 最高 1.83m，4 最低 0.47m，好球帶 r=1..3 約 1.49m..0.81m）
+      var targetY = 1.15 + (2 - r) * 0.34;
+      return {
+        r: r,
+        c: c,
+        isStrike: isStrike,
+        isCorner: isCorner,
+        num: num,
+        label: label,
+        targetXOffset: targetXOffset,
+        targetY: targetY
+      };
+    }
+
+    // 檢查是否有其他棒球小遊戲正在進行
+    function isOtherBaseballGameActive() {
+      try {
+        if (typeof document === 'undefined' || !document.querySelectorAll) return false;
+        var nodes = document.querySelectorAll(
+          'div[data-v73], div[data-v74], div[data-v75], div[data-v76], div[data-v77]'
+        );
+        for (var i = 0; i < nodes.length; i++) {
+          var el = nodes[i];
+          if (!el) continue;
+          var st = (el.style && el.style.display) ? el.style.display : '';
+          if (st !== 'none') {
+            if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+              var cs = window.getComputedStyle(el);
+              if (cs && cs.display === 'none') continue;
+            }
+            return true;
+          }
+        }
+      } catch (e) {}
+      return false;
+    }
+
+    // 音效輔助
+    function playSfx(type) {
+      try {
+        if (type === 'select') {
+          if (typeof notes === 'function') notes([523, 659], 'sine', 0.06);
+        } else if (type === 'throw') {
+          if (typeof noiseBurst === 'function') noiseBurst(0.12, 900, 0.25, 'bandpass');
+          if (typeof notes === 'function') notes([392, 330], 'triangle', 0.06);
+        } else if (type === 'catch') {
+          if (typeof noiseBurst === 'function') noiseBurst(0.09, 500, 0.38, 'lowpass');
+        } else if (type === 'hit') {
+          if (typeof noiseBurst === 'function') noiseBurst(0.14, 1400, 0.45, 'bandpass');
+          if (typeof notes === 'function') notes([587, 440], 'sawtooth', 0.08);
+        } else if (type === 'strike') {
+          if (typeof notes === 'function') notes([659, 880], 'square', 0.08);
+        } else if (type === 'strikeout') {
+          if (typeof notes === 'function') notes([523, 659, 784, 1046], 'square', 0.11);
+        } else if (type === 'win') {
+          if (typeof notes === 'function') notes([523, 659, 784, 1046, 1318], 'triangle', 0.13);
+        } else if (type === 'fail') {
+          if (typeof notes === 'function') notes([392, 349, 311, 261], 'sawtooth', 0.12);
+        }
+      } catch (e) {}
+    }
+
+    function safeSay(msg) {
+      try {
+        if (typeof say === 'function') say(msg);
+      } catch (e) {}
+    }
+
+    function safeBanner(t, s) {
+      try {
+        if (typeof banner === 'function') banner(t, s);
+      } catch (e) {}
+    }
+
+    function safeFlashScreen(t, s, sec, mode) {
+      try {
+        if (
+          typeof window !== 'undefined' &&
+          window.__ESCON &&
+          window.__ESCON.screens &&
+          typeof window.__ESCON.screens.flashBanner === 'function'
+        ) {
+          window.__ESCON.screens.flashBanner(t, s || '', sec || 2.5, mode || 'gold');
+        }
+      } catch (e) {}
+    }
+
+    function isMobileView() {
+      try {
+        if (typeof window !== 'undefined') {
+          if (window.matchMedia && window.matchMedia('(hover:none)').matches) return true;
+          if (typeof window.innerWidth === 'number' && window.innerWidth <= 560) return true;
+        }
+      } catch (e) {}
+      return false;
+    }
+
+    // 遊戲狀態管理
+    var G = {
+      active: false,
+      phase: 'idle', // 'type' | 'zone' | 'power' | 'flight' | 'hit_flight' | 'result'
+      phaseTimer: 0,
+      batterIdx: 0,
+      pitchesThisBatter: 0,
+      balls: 0,
+      strikes: 0,
+      strikeouts: 0,
+      outs: 0,
+      lastSpeed: 0,
+      lastCallText: '準備投球',
+      selectedType: 'fast',
+      selectedCell: { r: 2, c: 2 },
+      powerPos: 0.5, // 0..1 來回跑
+      powerDir: 1,
+      powerLocked: 0.5,
+      // 飛行資料
+      flightElapsed: 0,
+      flightDur: 0.6,
+      ballStart: { x: 0, y: 1.5, z: 726.6 },
+      ballEnd: { x: 0, y: 1.1, z: 745 },
+      ballArcY: 0.5,
+      ballCurveX: 0,
+      swingTriggered: false,
+      pitchOutcome: null,
+      hitStart: { x: 0, y: 1.1, z: 745 },
+      hitVel: { x: 0, y: 12, z: -25 },
+      hitElapsed: 0,
+      hitDur: 1.1,
+      pendingNextBatter: false,
+      pendingEndGame: false,
+      endReason: '',
+      // 3D 與 DOM 參照
+      group3D: null,
+      batterGroup: null,
+      batPivot: null,
+      catcherGroup: null,
+      pitchBallMesh: null,
+      targetRingMesh: null,
+      scoreEl: null,
+      panelEl: null,
+      powerCursorEl: null,
+      keydownHandler: null,
+      resizeHandler: null
+    };
+
+    // 建立 3D 幾何人形（打者與捕手，灰色球衣原創角色）
+    function buildSceneModels() {
+      removeSceneModels();
+      if (typeof THREE === 'undefined' || typeof scene === 'undefined' || !scene) return;
+      try {
+        var info = getEsconInfo();
+        var fy = info.fieldY;
+        var hx = info.home.x;
+        var hz = info.home.z;
+
+        var root = new THREE.Group();
+
+        // 1. 原創打者（灰色球衣，站在右打者打擊區：本壘左側 x - 0.85, z: hz）
+        var batter = new THREE.Group();
+        batter.position.set(hx - 0.85, fy, hz);
+
+        var greyJerseyMat = new THREE.MeshLambertMaterial({ color: 0x90a4ae }); // 灰色球衣
+        var darkGreyMat = new THREE.MeshLambertMaterial({ color: 0x455a64 });   // 深灰球褲與球帽
+        var skinMat = new THREE.MeshLambertMaterial({ color: 0xffccaa });       // 皮膚
+        var batMat = new THREE.MeshLambertMaterial({ color: 0xd7ccc8 });        // 木棒
+
+        // 雙腿
+        var legGeo = new THREE.CylinderGeometry(0.11, 0.1, 0.72, 10);
+        var legL = new THREE.Mesh(legGeo, darkGreyMat);
+        legL.position.set(-0.14, 0.36, 0.08);
+        batter.add(legL);
+        var legR = new THREE.Mesh(legGeo, darkGreyMat);
+        legR.position.set(0.14, 0.36, -0.08);
+        batter.add(legR);
+
+        // 灰色球衣軀幹
+        var torsoGeo = new THREE.BoxGeometry(0.46, 0.68, 0.32);
+        var torso = new THREE.Mesh(torsoGeo, greyJerseyMat);
+        torso.position.set(0, 1.04, 0);
+        batter.add(torso);
+
+        // 頭部與頭盔
+        var headGeo = new THREE.SphereGeometry(0.21, 14, 14);
+        var head = new THREE.Mesh(headGeo, skinMat);
+        head.position.set(0, 1.56, 0);
+        batter.add(head);
+
+        var helmetGeo = new THREE.SphereGeometry(0.225, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62);
+        var helmet = new THREE.Mesh(helmetGeo, darkGreyMat);
+        helmet.position.set(0, 1.58, 0);
+        batter.add(helmet);
+
+        // 球棒支點（方便揮棒旋轉）
+        var batPivot = new THREE.Group();
+        batPivot.position.set(0.18, 1.32, -0.15);
+        batPivot.rotation.set(0.25, 0, -0.45);
+
+        // 手臂與球棒
+        var armGeo = new THREE.CylinderGeometry(0.08, 0.07, 0.45, 8);
+        var armMesh = new THREE.Mesh(armGeo, greyJerseyMat);
+        armMesh.position.set(0.1, -0.05, 0.1);
+        armMesh.rotation.z = -0.7;
+        batPivot.add(armMesh);
+
+        var batGeo = new THREE.CylinderGeometry(0.045, 0.025, 0.95, 10);
+        var batMesh = new THREE.Mesh(batGeo, batMat);
+        batMesh.position.set(0.22, 0.38, 0.12);
+        batMesh.rotation.z = -0.25;
+        batPivot.add(batMesh);
+
+        batter.add(batPivot);
+        root.add(batter);
+
+        // 2. 原創捕手（蹲在本壘後方 z: hz + 1.55）
+        var catcher = new THREE.Group();
+        catcher.position.set(hx, fy, hz + 1.55);
+
+        var catcherMat = new THREE.MeshLambertMaterial({ color: 0x37474f });
+        var gearMat = new THREE.MeshLambertMaterial({ color: 0x1e88e5 });
+        var mittMat = new THREE.MeshLambertMaterial({ color: 0x6d4c41 });
+
+        // 蹲姿雙腿
+        var cLegGeo = new THREE.BoxGeometry(0.48, 0.42, 0.42);
+        var cLegs = new THREE.Mesh(cLegGeo, catcherMat);
+        cLegs.position.set(0, 0.22, 0);
+        catcher.add(cLegs);
+
+        // 護胸軀幹
+        var cTorsoGeo = new THREE.BoxGeometry(0.48, 0.56, 0.34);
+        var cTorso = new THREE.Mesh(cTorsoGeo, gearMat);
+        cTorso.position.set(0, 0.68, 0);
+        catcher.add(cTorso);
+
+        // 捕手頭盔
+        var cHeadGeo = new THREE.SphereGeometry(0.21, 12, 12);
+        var cHead = new THREE.Mesh(cHeadGeo, catcherMat);
+        cHead.position.set(0, 1.12, 0);
+        catcher.add(cHead);
+
+        // 捕手手套（接球用）
+        var mittGeo = new THREE.SphereGeometry(0.19, 12, 12);
+        var mitt = new THREE.Mesh(mittGeo, mittMat);
+        mitt.scale.set(1.2, 1.2, 0.55);
+        mitt.position.set(0.0, 0.88, -0.35);
+        catcher.add(mitt);
+
+        root.add(catcher);
+
+        // 3. 投出的棒球
+        var pBallGeo = new THREE.SphereGeometry(0.14, 14, 14);
+        var pBallMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x333333 });
+        var pBall = new THREE.Mesh(pBallGeo, pBallMat);
+        pBall.visible = false;
+        root.add(pBall);
+
+        // 4. 本壘前方的好球帶外框與瞄準圈（讓玩家在 3D 視野也能看清楚瞄準位置）
+        var zoneFrameGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.08, 1.02, 0.02));
+        var zoneFrameMat = new THREE.LineBasicMaterial({ color: 0xffeb3b });
+        var zoneFrame = new THREE.LineSegments(zoneFrameGeo, zoneFrameMat);
+        zoneFrame.position.set(hx, fy + 1.15, hz - 0.15);
+        root.add(zoneFrame);
+
+        var tRingGeo = new THREE.RingGeometry(0.1, 0.16, 16);
+        var tRingMat = new THREE.MeshBasicMaterial({
+          color: 0xff5252,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.85
+        });
+        var tRing = new THREE.Mesh(tRingGeo, tRingMat);
+        tRing.position.set(hx, fy + 1.15, hz - 0.16);
+        root.add(tRing);
+
+        scene.add(root);
+
+        G.group3D = root;
+        G.batterGroup = batter;
+        G.batPivot = batPivot;
+        G.catcherGroup = catcher;
+        G.pitchBallMesh = pBall;
+        G.targetRingMesh = tRing;
+      } catch (e) {}
+    }
+
+    function removeSceneModels() {
+      try {
+        if (G.group3D && typeof scene !== 'undefined' && scene && typeof scene.remove === 'function') {
+          scene.remove(G.group3D);
+        }
+      } catch (e) {}
+      G.group3D = null;
+      G.batterGroup = null;
+      G.batPivot = null;
+      G.catcherGroup = null;
+      G.pitchBallMesh = null;
+      G.targetRingMesh = null;
+    }
+
+    // 更新 3D 瞄準圈位置
+    function syncTargetRing() {
+      try {
+        if (!G.targetRingMesh) return;
+        var info = getEsconInfo();
+        var cell = getGridInfo(G.selectedCell.r, G.selectedCell.c);
+        G.targetRingMesh.position.set(
+          info.home.x + cell.targetXOffset,
+          info.fieldY + cell.targetY,
+          info.home.z - 0.16
+        );
+      } catch (e) {}
+    }
+
+    // 建立與更新右上計分卡與中下方控制面板
+    function buildDOM() {
+      removeDOM();
+      if (typeof document === 'undefined' || !document.body) return;
+      try {
+        var mobile = isMobileView();
+
+        // 1. 右上計分卡（手機版 top:142px right:8px，電腦版 top:12px right:12px）
+        var scoreEl = document.createElement('div');
+        scoreEl.setAttribute('data-v78', 'score');
+        scoreEl.setAttribute('data-v73', 'v78-mound'); // 讓其他棒球小遊戲也能偵測互斥
+        scoreEl.style.cssText = [
+          'position:fixed',
+          'top:' + (mobile ? '142px' : '12px'),
+          'right:' + (mobile ? '8px' : '12px'),
+          'z-index:9990',
+          'background:rgba(15,23,42,0.88)',
+          'color:#fff',
+          'border:2px solid #ffd54f',
+          'border-radius:12px',
+          'padding:' + (mobile ? '8px 10px' : '10px 14px'),
+          'font-family:sans-serif',
+          'font-size:' + (mobile ? '13px' : '14px'),
+          'line-height:1.45',
+          'min-width:' + (mobile ? '148px' : '185px'),
+          'box-shadow:0 4px 14px rgba(0,0,0,0.45)',
+          'pointer-events:auto',
+          'user-select:none'
+        ].join(';');
+        document.body.appendChild(scoreEl);
+        G.scoreEl = scoreEl;
+
+        // 2. 畫面中下方控制面板（bottom:160px，手機 375 寬不可超出、不擋左下搖桿與右下互動鍵）
+        var panelEl = document.createElement('div');
+        panelEl.setAttribute('data-v78', 'panel');
+        panelEl.style.cssText = [
+          'position:fixed',
+          'left:50%',
+          'transform:translateX(-50%)',
+          'bottom:160px',
+          'z-index:9991',
+          'width:calc(100vw - 24px)',
+          'max-width:340px',
+          'box-sizing:border-box',
+          'background:rgba(15,23,42,0.92)',
+          'color:#fff',
+          'border:2px solid #64b5f6',
+          'border-radius:14px',
+          'padding:10px 12px',
+          'font-family:sans-serif',
+          'text-align:center',
+          'box-shadow:0 6px 20px rgba(0,0,0,0.5)',
+          'pointer-events:auto',
+          'user-select:none'
+        ].join(';');
+        document.body.appendChild(panelEl);
+        G.panelEl = panelEl;
+
+        updateScoreboardDOM();
+        renderPhasePanel();
+      } catch (e) {}
+    }
+
+    function removeDOM() {
+      try {
+        if (G.scoreEl && G.scoreEl.parentNode) G.scoreEl.parentNode.removeChild(G.scoreEl);
+      } catch (e) {}
+      try {
+        if (G.panelEl && G.panelEl.parentNode) G.panelEl.parentNode.removeChild(G.panelEl);
+      } catch (e) {}
+      G.scoreEl = null;
+      G.panelEl = null;
+      G.powerCursorEl = null;
+    }
+
+    function applyResponsiveScorePos() {
+      try {
+        if (!G.scoreEl) return;
+        var mobile = isMobileView();
+        G.scoreEl.style.top = mobile ? '142px' : '12px';
+        G.scoreEl.style.right = mobile ? '8px' : '12px';
+      } catch (e) {}
+    }
+
+    // 畫球數燈號
+    function dotsHTML(count, max, activeColor) {
+      var s = '';
+      for (var i = 0; i < max; i++) {
+        var on = i < count;
+        s += '<span style="display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:4px;vertical-align:middle;background:' +
+          (on ? activeColor : '#334155') + ';border:1px solid #94a3b8;"></span>';
+      }
+      return s;
+    }
+
+    function updateScoreboardDOM() {
+      try {
+        if (!G.scoreEl) return;
+        var batter = BATTERS[G.batterIdx] || BATTERS[0];
+        var remainPitches = Math.max(0, 6 - G.pitchesThisBatter);
+        var speedStr = G.lastSpeed > 0 ? (G.lastSpeed + ' km/h') : '-- km/h';
+
+        G.scoreEl.innerHTML =
+          '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #334155;padding-bottom:4px;margin-bottom:5px;">' +
+            '<strong style="color:#ffd54f;font-size:14px;">⚾ 三振挑戰</strong>' +
+            '<button id="v78-quit-top" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:2px 7px;font-size:12px;cursor:pointer;font-weight:bold;">✖ 結束</button>' +
+          '</div>' +
+          '<div style="margin-bottom:3px;">打者 (第' + (G.batterIdx + 1) + '/3位)：<strong style="color:#93c5fd;">' + batter.shortName + '</strong></div>' +
+          '<div style="margin-bottom:3px;font-size:12px;color:#cbd5e1;">本位剩餘球數：<strong>' + remainPitches + '</strong> / 6 球</div>' +
+          '<div style="margin-bottom:2px;">壞球 B：' + dotsHTML(G.balls, 3, '#22c55e') + '</div>' +
+          '<div style="margin-bottom:2px;">好球 S：' + dotsHTML(G.strikes, 2, '#eab308') + '</div>' +
+          '<div style="margin-bottom:4px;">出局 O：' + dotsHTML(G.outs, 3, '#ef4444') + '</div>' +
+          '<div style="display:flex;justify-content:space-between;border-top:1px solid #334155;padding-top:4px;font-size:12px;">' +
+            '<span>🔥 三振：<strong>' + G.strikeouts + '</strong>/3</span>' +
+            '<span>⚡ 球速：<strong style="color:#38bdf8;">' + speedStr + '</strong></span>' +
+          '</div>';
+
+        var quitBtn = G.scoreEl.querySelector ? G.scoreEl.querySelector('#v78-quit-top') : null;
+        if (quitBtn) {
+          quitBtn.onclick = function (ev) {
+            if (ev && ev.stopPropagation) ev.stopPropagation();
+            stopChallenge('manual');
+          };
+        }
+      } catch (e) {}
+    }
+
+    // 根據階段渲染中下方操作面板
+    function renderPhasePanel() {
+      try {
+        if (!G.panelEl) return;
+        G.powerCursorEl = null;
+        var batter = BATTERS[G.batterIdx] || BATTERS[0];
+
+        if (G.phase === 'type') {
+          G.panelEl.innerHTML =
+            '<div style="font-size:13px;color:#ffd54f;font-weight:bold;margin-bottom:3px;">第 ' + (G.batterIdx + 1) + ' 位打者：' + batter.name + '</div>' +
+            '<div style="font-size:12px;color:#cbd5e1;margin-bottom:8px;">' + batter.desc + '</div>' +
+            '<div style="font-size:13px;margin-bottom:6px;font-weight:bold;">步驟 1：請選擇要投的球種</div>' +
+            '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px;">' +
+              '<button data-ptype="fast" style="flex:1;padding:10px 4px;font-size:14px;font-weight:bold;border-radius:10px;border:2px solid #f87171;background:#b91c1c;color:#fff;cursor:pointer;">🔥 直球<br><span style="font-size:11px;font-weight:normal;">速度快</span></button>' +
+              '<button data-ptype="curve" style="flex:1;padding:10px 4px;font-size:14px;font-weight:bold;border-radius:10px;border:2px solid #60a5fa;background:#1d4ed8;color:#fff;cursor:pointer;">🌀 曲球<br><span style="font-size:11px;font-weight:normal;">往下彎</span></button>' +
+              '<button data-ptype="change" style="flex:1;padding:10px 4px;font-size:14px;font-weight:bold;border-radius:10px;border:2px solid #4ade80;background:#15803d;color:#fff;cursor:pointer;">🍃 變速球<br><span style="font-size:11px;font-weight:normal;">慢速騙打者</span></button>' +
+            '</div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#94a3b8;">' +
+              '<span>本位第 ' + (G.pitchesThisBatter + 1) + ' / 6 球</span>' +
+              '<button id="v78-quit-bot" style="background:#475569;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;">✖ 結束挑戰</button>' +
+            '</div>';
+
+          var btns = G.panelEl.querySelectorAll ? G.panelEl.querySelectorAll('button[data-ptype]') : [];
+          for (var i = 0; i < btns.length; i++) {
+            (function (btn) {
+              btn.onclick = function () {
+                var pt = btn.getAttribute('data-ptype') || 'fast';
+                selectPitchType(pt);
+              };
+            })(btns[i]);
+          }
+          bindQuitBot();
+
+        } else if (G.phase === 'zone') {
+          var pInfo = PITCH_TYPES[G.selectedType] || PITCH_TYPES.fast;
+          var gridHtml = '<div style="display:grid;grid-template-columns:repeat(5, 42px); gap:3px; justify-content:center; margin:0 auto 8px auto;">';
+          for (var r = 0; r < 5; r++) {
+            for (var c = 0; c < 5; c++) {
+              var cell = getGridInfo(r, c);
+              var bg = cell.isStrike
+                ? (cell.isCorner ? '#1e40af' : '#2563eb')
+                : '#334155';
+              var border = cell.isStrike ? '2px solid #fbbf24' : '1px solid #64748b';
+              var txt = cell.isStrike ? String(cell.num) : '壞';
+              var txtColor = cell.isStrike ? '#ffffff' : '#cbd5e1';
+              gridHtml +=
+                '<button data-r="' + r + '" data-c="' + c + '" style="width:42px;height:34px;padding:0;font-size:12px;font-weight:bold;border-radius:6px;background:' +
+                bg + ';color:' + txtColor + ';border:' + border + ';cursor:pointer;">' + txt + '</button>';
+            }
+          }
+          gridHtml += '</div>';
+
+          G.panelEl.innerHTML =
+            '<div style="font-size:13px;margin-bottom:4px;">已選：<strong style="color:#ffd54f;">' + pInfo.name + '</strong> ｜ <strong>步驟 2：點選進壘位置</strong></div>' +
+            '<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">黃框 1~9 是九宮格好球帶（邊角較難打），外圈「壞」是壞球區</div>' +
+            gridHtml +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+              '<button id="v78-back-type" style="background:#475569;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;">← 換球種</button>' +
+              '<button id="v78-quit-bot" style="background:#475569;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;">✖ 結束</button>' +
+            '</div>';
+
+          var zBtns = G.panelEl.querySelectorAll ? G.panelEl.querySelectorAll('button[data-r]') : [];
+          for (var j = 0; j < zBtns.length; j++) {
+            (function (b) {
+              b.onclick = function () {
+                var rr = parseInt(b.getAttribute('data-r'), 10);
+                var cc = parseInt(b.getAttribute('data-c'), 10);
+                selectZoneCell(rr, cc);
+              };
+            })(zBtns[j]);
+          }
+          var backBtn = G.panelEl.querySelector ? G.panelEl.querySelector('#v78-back-type') : null;
+          if (backBtn) {
+            backBtn.onclick = function () {
+              G.phase = 'type';
+              renderPhasePanel();
+            };
+          }
+          bindQuitBot();
+
+        } else if (G.phase === 'power') {
+          var pInfo2 = PITCH_TYPES[G.selectedType] || PITCH_TYPES.fast;
+          var cellInfo = getGridInfo(G.selectedCell.r, G.selectedCell.c);
+          G.panelEl.innerHTML =
+            '<div style="font-size:13px;margin-bottom:4px;"><strong style="color:#ffd54f;">' + pInfo2.shortName + '</strong> → 瞄準 <strong style="color:#93c5fd;">' + cellInfo.label + '</strong></div>' +
+            '<div style="font-size:12px;color:#cbd5e1;margin-bottom:8px;">步驟 3：看準游標跑到<strong style="color:#4ade80;">綠色正中間</strong>時按「投！」或空白鍵！<br><span style="font-size:11px;color:#fca5a5;">（偏離中間會讓球偏掉一格喔）</span></div>' +
+            '<div style="position:relative;width:100%;height:24px;background:#334155;border-radius:12px;overflow:hidden;border:2px solid #94a3b8;margin-bottom:10px;">' +
+              '<div style="position:absolute;left:35%;width:30%;top:0;bottom:0;background:rgba(250,204,21,0.35);"></div>' +
+              '<div style="position:absolute;left:44%;width:12%;top:0;bottom:0;background:rgba(34,197,94,0.85);"></div>' +
+              '<div id="v78-power-cursor" style="position:absolute;left:50%;top:0;bottom:0;width:8px;margin-left:-4px;background:#ffffff;border:1px solid #000;border-radius:4px;"></div>' +
+            '</div>' +
+            '<div style="display:flex;gap:8px;justify-content:center;align-items:center;">' +
+              '<button id="v78-throw-btn" style="flex:1;padding:10px 0;font-size:16px;font-weight:bold;background:#ef4444;color:#fff;border:2px solid #fca5a5;border-radius:10px;cursor:pointer;">⚾ 投！（空白鍵）</button>' +
+              '<button id="v78-quit-bot" style="background:#475569;color:#fff;border:none;border-radius:8px;padding:10px 10px;font-size:12px;cursor:pointer;">✖ 結束</button>' +
+            '</div>';
+
+          G.powerCursorEl = G.panelEl.querySelector ? G.panelEl.querySelector('#v78-power-cursor') : null;
+          var throwBtn = G.panelEl.querySelector ? G.panelEl.querySelector('#v78-throw-btn') : null;
+          if (throwBtn) {
+            throwBtn.onclick = function () {
+              triggerPitchThrow();
+            };
+          }
+          bindQuitBot();
+
+        } else if (G.phase === 'flight' || G.phase === 'hit_flight' || G.phase === 'result') {
+          G.panelEl.innerHTML =
+            '<div style="font-size:15px;font-weight:bold;color:#ffd54f;padding:6px 0;">' + G.lastCallText + '</div>' +
+            '<div style="display:flex;justify-content:flex-end;">' +
+              '<button id="v78-quit-bot" style="background:#475569;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;">✖ 結束</button>' +
+            '</div>';
+          bindQuitBot();
+        }
+      } catch (e) {}
+    }
+
+    function bindQuitBot() {
+      try {
+        if (!G.panelEl || !G.panelEl.querySelector) return;
+        var q = G.panelEl.querySelector('#v78-quit-bot');
+        if (q) {
+          q.onclick = function (ev) {
+            if (ev && ev.stopPropagation) ev.stopPropagation();
+            stopChallenge('manual');
+          };
+        }
+      } catch (e) {}
+    }
+
+    // 步驟 1：選球種
+    function selectPitchType(pt) {
+      if (!G.active || G.phase !== 'type') return;
+      if (!PITCH_TYPES[pt]) pt = 'fast';
+      G.selectedType = pt;
+      G.phase = 'zone';
+      playSfx('select');
+      renderPhasePanel();
+    }
+
+    // 步驟 2：選九宮格或外圈壞球位置
+    function selectZoneCell(r, c) {
+      if (!G.active || G.phase !== 'zone') return;
+      r = Math.max(0, Math.min(4, r | 0));
+      c = Math.max(0, Math.min(4, c | 0));
+      G.selectedCell = { r: r, c: c };
+      syncTargetRing();
+      G.powerPos = 0.38;
+      G.powerDir = 1;
+      G.phase = 'power';
+      playSfx('select');
+      renderPhasePanel();
+    }
+
+    // 步驟 3：決定力量條並投出！
+    function triggerPitchThrow() {
+      if (!G.active || G.phase !== 'power') return;
+      G.powerLocked = G.powerPos;
+      var diff = Math.abs(G.powerLocked - 0.5); // 0 為正中心，最大 0.5
+      var accuracy = Math.max(0, 1 - diff * 2); // 0 ~ 1
+
+      var pType = PITCH_TYPES[G.selectedType] || PITCH_TYPES.fast;
+      // 球速：中心越準球速越高
+      var speedBonus = Math.round(accuracy * 12) - 4;
+      var speedKmh = pType.baseSpeed + speedBonus;
+      G.lastSpeed = speedKmh;
+
+      // 準度判定：偏離中心超過 0.14 時，落點隨機偏移一格
+      var actualR = G.selectedCell.r;
+      var actualC = G.selectedCell.c;
+      var drifted = false;
+      if (diff > 0.14) {
+        var dirs = [
+          [-1, 0], [1, 0], [0, -1], [0, 1],
+          [-1, -1], [-1, 1], [1, -1], [1, 1]
+        ];
+        var pick = dirs[Math.floor(Math.random() * dirs.length)];
+        actualR = Math.max(0, Math.min(4, actualR + pick[0]));
+        actualC = Math.max(0, Math.min(4, actualC + pick[1]));
+        drifted = true;
+      }
+
+      var actualCell = getGridInfo(actualR, actualC);
+      var outcomeKind = decideBatterAI(pType, actualCell, accuracy);
+
+      var info = getEsconInfo();
+      var startX = info.mound.x;
+      var startY = info.fieldY + 1.65;
+      var startZ = info.mound.z;
+
+      var endX = info.home.x + actualCell.targetXOffset;
+      var endY = info.fieldY + actualCell.targetY + pType.dropY * 0.25;
+      var endZ = info.home.z - 0.1;
+
+      G.ballStart = { x: startX, y: startY, z: startZ };
+      G.ballEnd = { x: endX, y: endY, z: endZ };
+      G.ballArcY = pType.arcY;
+      G.ballCurveX = pType.curveX;
+      G.flightElapsed = 0;
+      G.flightDur = pType.flightDur;
+      G.swingTriggered = false;
+      G.pitchOutcome = {
+        kind: outcomeKind,
+        actualCell: actualCell,
+        speedKmh: speedKmh,
+        drifted: drifted,
+        accuracy: accuracy
+      };
+
+      // 更新 3D 球與目標圈
+      if (G.pitchBallMesh) {
+        G.pitchBallMesh.visible = true;
+        G.pitchBallMesh.position.set(startX, startY, startZ);
+      }
+      if (G.batPivot) {
+        G.batPivot.rotation.set(0.25, 0, -0.45);
+      }
+
+      G.pitchesThisBatter += 1;
+      G.lastCallText = '⚾ 投出 ' + pType.shortName + '（' + speedKmh + ' km/h）' + (drifted ? '【稍微偏了！】' : '【完美控球！】');
+      G.phase = 'flight';
+      playSfx('throw');
+      updateScoreboardDOM();
+      renderPhasePanel();
+    }
+
+    // 打者 AI：依球種、位置、準度用機率決定 揮空／界外／打出去（安打）／不揮
+    function decideBatterAI(pType, actualCell, accuracy) {
+      var batter = BATTERS[G.batterIdx] || BATTERS[0];
+      var isFav = (batter.favType === pType.id);
+      var cornerBonus = actualCell.isCorner ? 0.16 : 0;
+      var accBonus = accuracy * 0.16; // 控球越準越難被打好
+
+      if (actualCell.isStrike) {
+        // 好球帶內：打者高機率出棒
+        var swingProb = actualCell.isCorner ? 0.78 : 0.92;
+        if (Math.random() > swingProb) {
+          return 'called_strike'; // 不揮棒 -> 好球
+        }
+        // 出棒後決定：揮空 / 界外 / 安打
+        var whiffChance = Math.min(0.78, Math.max(0.18,
+          0.28 + pType.whiffBonus + cornerBonus + accBonus - (isFav ? 0.08 : 0)
+        ));
+        var foulChance = 0.27;
+        var roll = Math.random();
+        if (roll < whiffChance) return 'whiff';
+        if (roll < whiffChance + foulChance) return 'foul';
+        return 'hit';
+      } else {
+        // 壞球區：選球眼越好越不容易追打
+        var chaseProb = Math.min(0.55, Math.max(0.12,
+          (0.34 / batter.eye) + (pType.whiffBonus * 0.7) + (accuracy * 0.08)
+        ));
+        if (Math.random() > chaseProb) {
+          return 'ball'; // 不揮 -> 壞球
+        }
+        // 追打壞球：高機率揮空或界外
+        var rollChase = Math.random();
+        if (rollChase < 0.68) return 'whiff';
+        if (rollChase < 0.92) return 'foul';
+        return 'hit';
+      }
+    }
+
+    // 當球飛抵本壘時的判定處理
+    function onPitchArriveHome() {
+      var out = G.pitchOutcome;
+      if (!out) return;
+
+      var info = getEsconInfo();
+      // 捕手接球移動
+      if (G.catcherGroup) {
+        G.catcherGroup.position.x = info.home.x + out.actualCell.targetXOffset * 0.65;
+      }
+
+      var kind = out.kind;
+      G.pendingNextBatter = false;
+      G.pendingEndGame = false;
+
+      if (kind === 'hit') {
+        // 打出去（安打）：球飛往外野消失
+        playSfx('hit');
+        G.hitStart = {
+          x: G.ballEnd.x,
+          y: G.ballEnd.y,
+          z: G.ballEnd.z
+        };
+        var dirX = (Math.random() - 0.5) * 28;
+        G.hitVel = { x: dirX, y: 13 + Math.random() * 5, z: -38 - Math.random() * 12 };
+        G.hitElapsed = 0;
+        G.hitDur = 1.05;
+        G.lastCallText = '💥 被打出去形成安打了！挑戰失敗！';
+        safeSay('糟了！被 ' + BATTERS[G.batterIdx].shortName + ' 打出安打了！');
+        G.pendingEndGame = true;
+        G.endReason = '安打失分！被第 ' + (G.batterIdx + 1) + ' 位打者擊出安打';
+        G.phase = 'hit_flight';
+        renderPhasePanel();
+        return;
+      }
+
+      if (kind === 'foul') {
+        playSfx('hit');
+        G.hitStart = { x: G.ballEnd.x, y: G.ballEnd.y, z: G.ballEnd.z };
+        G.hitVel = { x: (Math.random() < 0.5 ? -14 : 14), y: 10, z: 12 };
+        G.hitElapsed = 0;
+        G.hitDur = 0.65;
+        if (G.strikes < 2) G.strikes += 1;
+        G.lastCallText = '⚡ 擦棒界外球！（好球數 ' + G.strikes + '）';
+        safeSay('界外球！好球數 ' + G.strikes + '，壞球數 ' + G.balls);
+        checkPitchLimitAfterNonOut();
+        G.phase = 'hit_flight';
+        updateScoreboardDOM();
+        renderPhasePanel();
+        return;
+      }
+
+      // 捕手接進手套
+      if (G.pitchBallMesh) G.pitchBallMesh.visible = false;
+
+      if (kind === 'whiff' || kind === 'called_strike') {
+        G.strikes += 1;
+        var desc = (kind === 'whiff') ? '揮棒落空！好球！' : '壓在好球帶！打者沒揮，好球！';
+        if (G.strikes >= 3) {
+          // 三振出局！
+          G.strikeouts += 1;
+          G.outs += 1;
+          playSfx('strikeout');
+          safeFlashScreen('三振！', BATTERS[G.batterIdx].shortName + ' 三振出局！', 2.5, 'gold');
+          G.lastCallText = '🔥 三振出局！（' + desc + '）已三振 ' + G.strikeouts + ' 人！';
+          safeSay('太棒了！三振了 ' + BATTERS[G.batterIdx].shortName + '！（目前 ' + G.strikeouts + ' K）');
+
+          if (G.strikeouts >= 3 || G.batterIdx >= 2) {
+            G.pendingEndGame = true;
+            G.endReason = '連續三振 3 位打者，挑戰大成功！';
+          } else {
+            G.pendingNextBatter = true;
+          }
+        } else {
+          playSfx('strike');
+          G.lastCallText = '👍 ' + desc + '（' + G.balls + ' 壞 ' + G.strikes + ' 好）';
+          safeSay(desc + ' 球數 ' + G.balls + ' 壞 ' + G.strikes + ' 好');
+          checkPitchLimitAfterNonOut();
+        }
+      } else if (kind === 'ball') {
+        G.balls += 1;
+        playSfx('catch');
+        if (G.balls >= 4) {
+          // 四壞球保送也算失敗一位
+          G.lastCallText = '💦 四壞球保送！挑戰失敗！';
+          safeSay('四壞球保送了 ' + BATTERS[G.batterIdx].shortName + '，挑戰結束！');
+          G.pendingEndGame = true;
+          G.endReason = '四壞球保送了第 ' + (G.batterIdx + 1) + ' 位打者';
+        } else {
+          G.lastCallText = '👀 打者沒揮，壞球！（' + G.balls + ' 壞 ' + G.strikes + ' 好）';
+          safeSay('壞球！球數 ' + G.balls + ' 壞 ' + G.strikes + ' 好');
+          checkPitchLimitAfterNonOut();
+        }
+      }
+
+      G.phase = 'result';
+      G.phaseTimer = 1.35;
+      updateScoreboardDOM();
+      renderPhasePanel();
+    }
+
+    // 檢查單一打者是否已投滿 6 球仍未解決
+    function checkPitchLimitAfterNonOut() {
+      if (!G.pendingEndGame && !G.pendingNextBatter && G.pitchesThisBatter >= 6) {
+        G.pendingEndGame = true;
+        G.endReason = '對第 ' + (G.batterIdx + 1) + ' 位打者用完 6 球仍未三振';
+        G.lastCallText += '（已滿 6 球未能三振！）';
+      }
+    }
+
+    // 換下一位打者
+    function advanceToNextBatter() {
+      G.batterIdx += 1;
+      G.pitchesThisBatter = 0;
+      G.balls = 0;
+      G.strikes = 0;
+      if (G.catcherGroup) {
+        var info = getEsconInfo();
+        G.catcherGroup.position.x = info.home.x;
+      }
+      if (G.batPivot) {
+        G.batPivot.rotation.set(0.25, 0, -0.45);
+      }
+      var nextB = BATTERS[G.batterIdx];
+      safeSay('下一位打者上場：第 ' + (G.batterIdx + 1) + ' 位「' + nextB.name + '」！');
+      G.phase = 'type';
+      updateScoreboardDOM();
+      renderPhasePanel();
+    }
+
+    // 結束挑戰並結算成績／頒發徽章／完整還原
+    function finishChallengeWithSummary() {
+      var kCount = G.strikeouts;
+      var success = (kCount >= 3);
+      var reason = G.endReason || (success ? '成功三振 3 位打者！' : '挑戰結束');
+
+      // 存檔 BK.kBest 並 saveBK()
+      try {
+        if (typeof BK !== 'undefined' && BK) {
+          var prevBest = (typeof BK.kBest === 'number') ? BK.kBest : 0;
+          if (kCount > prevBest) {
+            BK.kBest = kCount;
+          }
+        }
+        if (typeof saveBK === 'function') {
+          saveBK();
+        }
+      } catch (e) {}
+
+      var bestNow = kCount;
+      try {
+        if (typeof BK !== 'undefined' && BK && typeof BK.kBest === 'number') {
+          bestNow = Math.max(kCount, BK.kBest);
+        }
+      } catch (e) {}
+
+      // 三振 3 人頒發 k3 三振王徽章
+      if (success) {
+        playSfx('win');
+        try {
+          if (typeof award === 'function') {
+            award('k3');
+          }
+        } catch (e) {}
+        safeBanner(
+          '🏆 投手丘三振挑戰成功！',
+          '三振 3 人達成「三振王 🔥」！最高紀錄：' + bestNow + ' K'
+        );
+      } else {
+        playSfx('fail');
+        safeBanner(
+          '⚾ 投手丘三振挑戰結束',
+          reason + '｜本次三振：' + kCount + ' 人（最高紀錄：' + bestNow + ' K）'
+        );
+      }
+
+      cleanupChallengeState();
+    }
+
+    function stopChallenge(mode) {
+      if (!G.active) return;
+      var kCount = G.strikeouts;
+      try {
+        if (typeof BK !== 'undefined' && BK) {
+          var prevBest = (typeof BK.kBest === 'number') ? BK.kBest : 0;
+          if (kCount > prevBest) BK.kBest = kCount;
+        }
+        if (typeof saveBK === 'function') saveBK();
+      } catch (e) {}
+
+      cleanupChallengeState();
+
+      if (mode === 'distance') {
+        safeSay('離開投手丘超過 25 公尺，投手丘三振挑戰已自動結束。');
+      } else if (mode === 'manual') {
+        safeBanner('⚾ 已結束投手丘三振挑戰', '本次三振：' + kCount + ' 人');
+      }
+    }
+
+    // 完整還原 DOM、3D 模型、事件監聽
+    function cleanupChallengeState() {
+      G.active = false;
+      G.phase = 'idle';
+      removeDOM();
+      removeSceneModels();
+      unbindEvents();
+    }
+
+    function bindEvents() {
+      unbindEvents();
+      if (typeof window === 'undefined') return;
+      try {
+        G.keydownHandler = function (ev) {
+          if (!G.active) return;
+          var key = ev.key || '';
+          var code = ev.code || '';
+
+          // Esc 離開
+          if (key === 'Escape' || code === 'Escape' || ev.keyCode === 27) {
+            if (ev.preventDefault) ev.preventDefault();
+            if (ev.stopPropagation) ev.stopPropagation();
+            stopChallenge('manual');
+            return;
+          }
+
+          // 空白鍵只在力量條出現（phase === 'power'）時攔截
+          if (G.phase === 'power' && (key === ' ' || code === 'Space' || ev.keyCode === 32)) {
+            if (ev.preventDefault) ev.preventDefault();
+            if (ev.stopPropagation) ev.stopPropagation();
+            triggerPitchThrow();
+          }
+        };
+        window.addEventListener('keydown', G.keydownHandler, true);
+
+        G.resizeHandler = function () {
+          applyResponsiveScorePos();
+        };
+        window.addEventListener('resize', G.resizeHandler, false);
+      } catch (e) {}
+    }
+
+    function unbindEvents() {
+      if (typeof window === 'undefined') return;
+      try {
+        if (G.keydownHandler) {
+          window.removeEventListener('keydown', G.keydownHandler, true);
+        }
+      } catch (e) {}
+      try {
+        if (G.resizeHandler) {
+          window.removeEventListener('resize', G.resizeHandler, false);
+        }
+      } catch (e) {}
+      G.keydownHandler = null;
+      G.resizeHandler = null;
+    }
+
+    // 啟動挑戰
+    function startChallenge() {
+      if (G.active) {
+        safeSay('投手丘三振挑戰已經在進行中囉！');
+        return;
+      }
+      if (isOtherBaseballGameActive()) {
+        safeSay('畫面上還有其他棒球小遊戲在進行，請先結束那個遊戲再來投球喔！');
+        return;
+      }
+
+      var info = getEsconInfo();
+      // 計算面向本壘的方向角
+      var dx = info.home.x - info.mound.x;
+      var dz = info.home.z - info.mound.z;
+      var headingToHome = Math.atan2(dx, dz);
+
+      try {
+        if (typeof tpTo === 'function') {
+          tpTo(info.mound.x, info.mound.z, headingToHome);
+        } else {
+          if (typeof pos !== 'undefined' && pos) {
+            pos.x = info.mound.x;
+            pos.z = info.mound.z;
+          }
+          if (typeof A !== 'undefined' && A) {
+            if (A.pos) {
+              A.pos.x = info.mound.x;
+              A.pos.z = info.mound.z;
+            }
+            A.heading = headingToHome;
+          }
+        }
+      } catch (e) {}
+
+      G.active = true;
+      G.phase = 'type';
+      G.phaseTimer = 0;
+      G.batterIdx = 0;
+      G.pitchesThisBatter = 0;
+      G.balls = 0;
+      G.strikes = 0;
+      G.strikeouts = 0;
+      G.outs = 0;
+      G.lastSpeed = 0;
+      G.lastCallText = '準備投球';
+      G.selectedType = 'fast';
+      G.selectedCell = { r: 2, c: 2 };
+      G.powerPos = 0.5;
+      G.powerDir = 1;
+      G.pendingNextBatter = false;
+      G.pendingEndGame = false;
+      G.endReason = '';
+
+      buildSceneModels();
+      syncTargetRing();
+      buildDOM();
+      bindEvents();
+
+      safeBanner('⚾ 投手丘三振挑戰', '每位打者最多 6 球，連續三振 3 位原創打者就過關！');
+      safeSay('站上投手丘了！第 1 位打者是「' + BATTERS[0].name + '」，請先選球種！');
+    }
+
+    // 註冊互動點 things.push
+    if (typeof things !== 'undefined' && Array.isArray(things)) {
+      things.push({
+        x: triggerX,
+        z: triggerZ,
+        r: 2,
+        label: function () {
+          return '⚾ 投手丘三振挑戰';
+        },
+        go: function () {
+          startChallenge();
+        }
+      });
+    }
+
+    // 取得玩家當前座標
+    function getPlayerCoords() {
+      if (typeof pos !== 'undefined' && pos && typeof pos.x === 'number' && typeof pos.z === 'number') {
+        return pos;
+      }
+      if (typeof A !== 'undefined' && A && A.pos && typeof A.pos.x === 'number' && typeof A.pos.z === 'number') {
+        return A.pos;
+      }
+      return null;
+    }
+
+    // 每格更新：串接 window.__moreTick2（dt 最大 0.1，不用 setTimeout）
+    var prevTick = (typeof window !== 'undefined') ? window.__moreTick2 : null;
+    var tickFn = function (dt, t) {
+      if (typeof prevTick === 'function') {
+        try {
+          prevTick(dt, t);
+        } catch (e) {}
+      }
+
+      try {
+        var safeDt = (typeof dt === 'number' && !isNaN(dt)) ? Math.min(Math.max(dt, 0), 0.1) : 0.016;
+        var info = getEsconInfo();
+        var p = getPlayerCoords();
+
+        // 1. 更新地上發光棒球圖示（只在玩家 100 公尺內 visible）
+        if (markerGroup) {
+          var tx = info.mound.x + 3;
+          var tz = info.mound.z;
+          markerGroup.position.set(tx, info.fieldY + 0.05, tz);
+          if (p) {
+            var ddx = p.x - tx;
+            var ddz = p.z - tz;
+            var distSq = ddx * ddx + ddz * ddz;
+            markerGroup.visible = (distSq <= 100 * 100);
+          } else {
+            markerGroup.visible = true;
+          }
+          if (markerGroup.visible) {
+            markerGroup.rotation.y += safeDt * 1.8;
+            if (markerGlow && markerGlow.material) {
+              markerGlow.material.opacity = 0.55 + 0.25 * Math.sin((typeof t === 'number' ? t : 0) * 4);
+            }
+          }
+        }
+
+        if (!G.active) return;
+
+        // 2. 檢查玩家是否離開投手丘 25 公尺以上 -> 自動結束
+        if (p) {
+          var mdx = p.x - info.mound.x;
+          var mdz = p.z - info.mound.z;
+          if (mdx * mdx + mdz * mdz > 25 * 25) {
+            stopChallenge('distance');
+            return;
+          }
+        }
+
+        // 3. 力量條階段：游標來回跑
+        if (G.phase === 'power') {
+          G.powerPos += G.powerDir * safeDt * 1.45;
+          if (G.powerPos >= 1) {
+            G.powerPos = 1;
+            G.powerDir = -1;
+          } else if (G.powerPos <= 0) {
+            G.powerPos = 0;
+            G.powerDir = 1;
+          }
+          if (G.powerCursorEl && G.powerCursorEl.style) {
+            G.powerCursorEl.style.left = (G.powerPos * 100).toFixed(1) + '%';
+          }
+        }
+
+        // 4. 投球拋物線飛行階段
+        else if (G.phase === 'flight') {
+          G.flightElapsed += safeDt;
+          var u = G.flightDur > 0 ? Math.min(1, G.flightElapsed / G.flightDur) : 1;
+
+          if (G.pitchBallMesh) {
+            // 拋物線與曲球橫向／縱向彎曲
+            var bx = G.ballStart.x + (G.ballEnd.x - G.ballStart.x) * u + Math.sin(u * Math.PI) * G.ballCurveX;
+            var bz = G.ballStart.z + (G.ballEnd.z - G.ballStart.z) * u;
+            var by = G.ballStart.y + (G.ballEnd.y - G.ballStart.y) * u + 4 * G.ballArcY * u * (1 - u);
+            G.pitchBallMesh.position.set(bx, by, bz);
+          }
+
+          // 打者揮棒動畫（在球接近本壘 u >= 0.72 時揮棒）
+          if (G.pitchOutcome && (G.pitchOutcome.kind === 'whiff' || G.pitchOutcome.kind === 'foul' || G.pitchOutcome.kind === 'hit')) {
+            if (u >= 0.72 && G.batPivot) {
+              var swingProg = Math.min(1, (u - 0.72) / 0.25);
+              G.batPivot.rotation.y = swingProg * 2.2;
+            }
+          }
+
+          if (u >= 1) {
+            onPitchArriveHome();
+          }
+        }
+
+        // 5. 被打出去（安打或界外）的飛行階段
+        else if (G.phase === 'hit_flight') {
+          G.hitElapsed += safeDt;
+          var ht = G.hitElapsed;
+          if (G.pitchBallMesh) {
+            var hx = G.hitStart.x + G.hitVel.x * ht;
+            var hy = Math.max(info.fieldY + 0.1, G.hitStart.y + G.hitVel.y * ht - 0.5 * 18 * ht * ht);
+            var hz = G.hitStart.z + G.hitVel.z * ht;
+            G.pitchBallMesh.position.set(hx, hy, hz);
+          }
+          if (G.hitElapsed >= G.hitDur) {
+            if (G.pitchBallMesh) G.pitchBallMesh.visible = false;
+            G.phase = 'result';
+            G.phaseTimer = 1.25;
+          }
+        }
+
+        // 6. 單球結果展示倒數（全靠 dt 累加）
+        else if (G.phase === 'result') {
+          G.phaseTimer -= safeDt;
+          if (G.phaseTimer <= 0) {
+            if (G.pendingEndGame) {
+              finishChallengeWithSummary();
+            } else if (G.pendingNextBatter) {
+              advanceToNextBatter();
+            } else {
+              // 繼續對決同一位打者的下一球
+              if (G.batPivot) G.batPivot.rotation.set(0.25, 0, -0.45);
+              G.phase = 'type';
+              renderPhasePanel();
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    if (typeof window !== 'undefined') {
+      window.__moreTick2 = tickFn;
+    }
+  } catch (err) {}
+})();
 netStart();
 requestAnimationFrame(frame);
 })();

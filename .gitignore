@@ -1,3 +1,4 @@
-tools/test.html
-tools/check.js
-__pycache__/
+tools/node_modules/
+tools/*.png
+tools/*.log
+tools/gemini/work/

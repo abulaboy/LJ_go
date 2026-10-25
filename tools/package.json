@@ -1,0 +1,7 @@
+{
+  "name": "jiazou-test",
+  "private": true,
+  "description": "家裡走走 自動測試工具（Playwright）",
+  "scripts": { "test": "node run.js ../index.html scenarios/smoke.js" },
+  "devDependencies": { "playwright": "^1.48.0", "three": "0.149.0" }
+}
