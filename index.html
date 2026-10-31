@@ -112266,6 +112266,908 @@ try {
 } catch (e146idn) {
   console.warn(e146idn);
 }
+// ===== 第 147 版（Rudy）=====
+try {
+  (function () {
+    // 1. 擴展 stepUp73 範圍（涵蓋球場雙座標系主入口廣場 z: 600..990 與 1330..1660），確保入口階梯與 1~3 樓樓梯皆有 0.75m 踏階容差（對應 v146 第 4233、110461 行）
+    var applyStepUp147 = function () {
+      if (typeof stepUp73 === 'function' && !stepUp73.__v147Fixed) {
+        stepUp73 = function (x, z) {
+          if ((x > -210 && x < 230 && z > 600 && z < 995) ||
+              (x > -210 && x < 230 && z > 1330 && z < 1665)) {
+            return 0.75;
+          }
+          return 0.08;
+        };
+        stepUp73.__v147Fixed = true;
+      }
+    };
+    applyStepUp147();
+
+    // 取得球場偏移座標系清單（同時相容 W_OZ = 780 / 800 與 esconIn W_OZ = 1500）
+    var getStadiumOffsets147 = function () {
+      var list = [
+        { ox: 0, oz: 780 },
+        { ox: 0, oz: 800 },
+        { ox: 0, oz: 1500 }
+      ];
+      if (typeof window !== 'undefined' && window.__ESCON) {
+        var eo = window.__ESCON;
+        if (typeof eo.ox === 'number' && typeof eo.oz === 'number') {
+          list.unshift({ ox: eo.ox, oz: eo.oz });
+        }
+      }
+      var unique = [];
+      for (var i = 0; i < list.length; i++) {
+        var dup = false;
+        for (var j = 0; j < unique.length; j++) {
+          if (Math.abs(unique[j].ox - list[i].ox) < 1 && Math.abs(unique[j].oz - list[i].oz) < 1) {
+            dup = true;
+            break;
+          }
+        }
+        if (!dup) unique.push(list[i]);
+      }
+      return unique;
+    };
+
+    // 新增潔淨碰撞盒輔助函式（不受 XF 影響）
+    var addCleanCol147 = function (x0, x1, z0, z1, top, bot, tag) {
+      if (typeof colliders === 'undefined' || !Array.isArray(colliders)) return null;
+      var c = {
+        x0: Math.min(x0, x1),
+        x1: Math.max(x0, x1),
+        z0: Math.min(z0, z1),
+        z1: Math.max(z0, z1),
+        top: top,
+        bot: (typeof bot === 'number') ? bot : (top - 0.35),
+        on: true,
+        _v147Rudy: true,
+        __tag: tag || 'rudy_147'
+      };
+      colliders.push(c);
+      return c;
+    };
+
+    // 2. 偵測並修復 TOWER 11 樓層地板、樓梯與球場入口大門/手扶梯碰撞（對應 v146 第 15100–15244、17066–17214、100112–100168 行）
+    var t11BoundsList147 = [];
+    var rebuildAndFixStadiumFloors147 = function () {
+      if (typeof colliders === 'undefined' || !Array.isArray(colliders)) return;
+      applyStepUp147();
+
+      // (A) 掃描既有 colliders 找出 TOWER 11 6 層同尺寸大地板（第 17115 行 col(xMin, xMax, zMin, zMax)）
+      var boxGroups = {};
+      for (var i = 0; i < colliders.length; i++) {
+        var c = colliders[i];
+        if (!c || typeof c.top !== 'number' || !isFinite(c.top)) continue;
+        var x0 = Math.min(c.x0, c.x1), x1 = Math.max(c.x0, c.x1);
+        var z0 = Math.min(c.z0, c.z1), z1 = Math.max(c.z0, c.z1);
+        var w = x1 - x0, d = z1 - z0;
+        if (z1 < 580) continue;
+
+        // 移除 v117 自癒腳本在樓梯出入口誤加的護欄（對應第 100112–100168 行 escon_stair_rail_*）
+        if (c.__tag && String(c.__tag).indexOf('escon_stair_rail') === 0) {
+          c.on = false;
+          continue;
+        }
+
+        // 為所有球場高層樓板（top >= 1.5m 且未設 bot 或 bot <= 0）補上合理底高 bot = top - 0.38，
+        // 避免第 4235 行 collide() 因 c.bot === undefined 把正在爬樓梯至 2F/3F 的玩家當成整面高牆推走
+        if (w >= 8.0 && d >= 8.0 && c.top >= 1.5) {
+          if (c.bot === undefined || c.bot < c.top - 0.65) {
+            c.bot = c.top - 0.38;
+          }
+          c.on = true;
+        }
+
+        // 群組化同 (x0, x1, z0, z1) 的多層樓板以定位 TOWER 11 座標與 FLOOR_Y
+        if (w >= 10.0 && w <= 48.0 && d >= 8.0 && d <= 48.0) {
+          var key = x0.toFixed(1) + '_' + x1.toFixed(1) + '_' + z0.toFixed(1) + '_' + z1.toFixed(1);
+          if (!boxGroups[key]) {
+            boxGroups[key] = { x0: x0, x1: x1, z0: z0, z1: z1, tops: [], cols: [] };
+          }
+          boxGroups[key].cols.push(c);
+          var hasT = false;
+          for (var ti = 0; ti < boxGroups[key].tops.length; ti++) {
+            if (Math.abs(boxGroups[key].tops[ti] - c.top) < 0.15) { hasT = true; break; }
+          }
+          if (!hasT) boxGroups[key].tops.push(c.top);
+        }
+      }
+
+      // 整理出 TOWER 11 實例清單（具備 >= 3 個不同樓層高度的同平面樓板群組）
+      t11BoundsList147 = [];
+      for (var gk in boxGroups) {
+        if (!Object.prototype.hasOwnProperty.call(boxGroups, gk)) continue;
+        var grp = boxGroups[gk];
+        if (grp.tops.length >= 3) {
+          grp.tops.sort(function (a, b) { return a - b; });
+          t11BoundsList147.push(grp);
+          for (var ci = 0; ci < grp.cols.length; ci++) {
+            var fc = grp.cols[ci];
+            fc.on = true;
+            fc.bot = fc.top - 0.36;
+          }
+        }
+      }
+
+      // (B) 針對每個發現的 TOWER 11 實例，確保館內樓梯（xMin+0.8 .. xMin+3.4）在 1F~3F（及至 RF）暢通無阻且階高 <= 0.45m
+      if (!window.__v147T11StairsBuilt && t11BoundsList147.length > 0) {
+        window.__v147T11StairsBuilt = true;
+        for (var bi = 0; bi < t11BoundsList147.length; bi++) {
+          var tb = t11BoundsList147[bi];
+          var sx0 = tb.x0 + 0.65;
+          var sx1 = tb.x0 + 3.65;
+          var szMin = tb.z0 + 0.6;
+          var szMax = tb.z1 - 0.6;
+
+          // 先將擋在樓梯井通道 (x: sx0..sx1, z: tb.z0..tb.z1) 內的非階梯牆盒關閉，並將上層大地板在樓梯井區域讓出淨空或確保 bot 夠高
+          for (var k = 0; k < colliders.length; k++) {
+            var cc = colliders[k];
+            if (!cc || cc._v147Rudy) continue;
+            var cx0 = Math.min(cc.x0, cc.x1), cx1 = Math.max(cc.x0, cc.x1);
+            var cz0 = Math.min(cc.z0, cc.z1), cz1 = Math.max(cc.z0, cc.z1);
+            var cw = cx1 - cx0, cd = cz1 - cz0;
+            // 若在樓梯井範圍內有高牆盒或過陡單階盒，關閉後由下方加密 14 階平滑階梯接手
+            if (cx1 > sx0 - 0.15 && cx0 < sx1 + 0.15 && cz1 > tb.z0 + 0.2 && cz0 < tb.z1 - 0.2) {
+              if (cw < (tb.x1 - tb.x0) * 0.65 && cd < (tb.z1 - tb.z0) * 0.85) {
+                if (cc.top === undefined || (cc.top - (cc.bot || 0) > 1.15)) {
+                  cc.on = false;
+                }
+              }
+            }
+          }
+
+          // 為每一層樓之間（特別是 1F->2F->3F）建立 14 階加密連續支撐踏階（每階高差約 0.25m~0.32m，遠小於 stepUp73 = 0.75m）
+          for (var fi = 0; fi < tb.tops.length - 1; fi++) {
+            var yA = tb.tops[fi];
+            var yB = tb.tops[fi + 1];
+            var nSteps = 14;
+            for (var s = 0; s < nSteps; s++) {
+              var f0 = s / nSteps;
+              var f1 = (s + 1) / nSteps;
+              var stZ0 = szMin + (szMax - szMin) * f0 - 0.18;
+              var stZ1 = szMin + (szMax - szMin) * f1 + 0.18;
+              var stTop = yA + (yB - yA) * f1;
+              addCleanCol147(sx0, sx1, stZ0, stZ1, stTop, stTop - 0.45, 't11_stair_147');
+            }
+            // 樓梯頂部連接該樓層平台的緩衝踏板
+            addCleanCol147(sx0 - 0.2, sx1 + 1.2, szMax - 0.8, tb.z1 - 0.25, yB, yB - 0.4, 't11_landing_top_147');
+            addCleanCol147(sx0 - 0.2, sx1 + 1.2, tb.z0 + 0.25, szMin + 0.8, yA, yA - 0.4, 't11_landing_bot_147');
+          }
+        }
+      }
+
+      // (C) 補齊球場主入口廣場、剪票閘門、雙道手扶梯與一般樓梯（0m -> 6.0m 一壘側大廳）的連續支撐與淨空（對應第 15100–15244 行）
+      if (!window.__v147EntranceBuilt) {
+        window.__v147EntranceBuilt = true;
+        var offsets = getStadiumOffsets147();
+        for (var oi = 0; oi < offsets.length; oi++) {
+          var ox = offsets[oi].ox;
+          var oz = offsets[oi].oz;
+
+          // 1. 入口廣場至迎賓門廳與手扶梯底部穩定地面支撐 (y = 0)
+          addCleanCol147(ox - 70.0, ox + 45.0, oz - 156.0, oz - 88.0, 0.0, -0.5, 'entrance_plaza_147');
+
+          // 2. 清理剪票口通道 (x: -11..+11, z: -124..-112)、北側迎賓門廳 (x: -18..+18, z: -96..-88)
+          //    以及手扶梯/一般樓梯通道 (x: -61.2..-50.8, z: -102..-72) 內可能阻擋玩家的無 top 牆盒
+          for (var m = 0; m < colliders.length; m++) {
+            var ec = colliders[m];
+            if (!ec || ec._v147Rudy) continue;
+            var ex0 = Math.min(ec.x0, ec.x1), ex1 = Math.max(ec.x0, ec.x1);
+            var ez0 = Math.min(ec.z0, ec.z1), ez1 = Math.max(ec.z0, ec.z1);
+            // 手扶梯與旁邊一般樓梯區域：移除阻擋通行的高牆盒，保留或重建平滑踏階
+            if (ex1 > ox - 61.0 && ex0 < ox - 50.8 && ez1 > oz - 101.5 && ez0 < oz - 72.5) {
+              if (ec.top === undefined || ec.top > 6.5 || (ec.top - (ec.bot || 0) > 1.2 && (ex1 - ex0) < 12.0)) {
+                ec.on = false;
+              }
+            }
+            // 主入口剪票閘門與玻璃立面中央開口 (x: -10.5..+10.5, z: -123..-90)
+            if (ex1 > ox - 10.2 && ex0 < ox + 10.2 && ez1 > oz - 123.5 && ez0 < oz - 89.5) {
+              if ((ec.top === undefined || ec.top > 1.5) && (ex1 - ex0) > 2.2) {
+                ec.on = false;
+              }
+            }
+          }
+
+          // 3. 鋪設手扶梯與一般樓梯 (x: -60.8..-51.0, z: -100.0..-74.0, y: 0.0..6.0m) 32 階平滑連續踏階 + 頂部大廳延伸平台 (z: -74..-50, y: 6.0m)
+          var escSteps = 32;
+          for (var es = 0; es < escSteps; es++) {
+            var ezA = (oz - 100.0) + (26.0 * es) / escSteps - 0.22;
+            var ezB = (oz - 100.0) + (26.0 * (es + 1)) / escSteps + 0.22;
+            var eyT = (6.0 * (es + 1)) / escSteps;
+            addCleanCol147(ox - 60.8, ox - 51.0, ezA, ezB, eyT, eyT - 0.45, 'entrance_esc_stair_147');
+          }
+          addCleanCol147(ox - 64.5, ox - 49.5, oz - 74.5, oz - 50.0, 6.0, 5.6, 'concourse_landing_147');
+        }
+      }
+    };
+
+    rebuildAndFixStadiumFloors147();
+
+    // 若 sanitizeStadiumAndVipColliders143A 被觸發，確保執行後重新套用 147 樓層與樓梯修正
+    if (typeof sanitizeStadiumAndVipColliders143A === 'function' && !sanitizeStadiumAndVipColliders143A.__v147Wrapped) {
+      var prevSan147 = sanitizeStadiumAndVipColliders143A;
+      sanitizeStadiumAndVipColliders143A = function () {
+        var res = prevSan147.apply(this, arguments);
+        rebuildAndFixStadiumFloors147();
+        return res;
+      };
+      sanitizeStadiumAndVipColliders143A.__v147Wrapped = true;
+    }
+
+    // 3. 修復 TOWER 11 電梯選單 tpTo 高度遺失與被推走問題（對應 v146 第 17160–17195 行）
+    //    原因：teleportToFloor 呼叫 tpTo(targetX, targetZ) 後只設了 A.pos.y = targetY，但主迴圈 frame() 使用 A.jh 與 A.sup 控制高度。
+    var pendingElevatorFloorIdx147 = null;
+    var pendingElevatorTime147 = 0;
+
+    if (typeof document !== 'undefined' && !window.__v147ElevClickBound) {
+      window.__v147ElevClickBound = true;
+      document.addEventListener('click', function (ev) {
+        try {
+          var t = ev && ev.target;
+          while (t && t !== document.body) {
+            var txt = (t.textContent || '').trim();
+            if (txt.length > 0 && txt.length < 60) {
+              var m = null;
+              if (txt.indexOf('1F 美食') !== -1) m = 0;
+              else if (txt.indexOf('2F 棒球') !== -1) m = 1;
+              else if (txt.indexOf('3F 溫泉') !== -1) m = 2;
+              else if (txt.indexOf('4F 貴賓') !== -1 || txt.indexOf('4F 俱樂部') !== -1) m = 3;
+              else if (txt.indexOf('5F 景觀') !== -1) m = 4;
+              else if (txt.indexOf('RF 頂樓') !== -1) m = 5;
+              if (m !== null) {
+                pendingElevatorFloorIdx147 = m;
+                pendingElevatorTime147 = Date.now();
+                break;
+              }
+            }
+            t = t.parentElement;
+          }
+        } catch (e) {}
+      }, true);
+    }
+
+    // 解析 TOWER 11 指定樓層 (0~5) 在該 (x, z) 位置的實際地板高度
+    var resolveT11FloorHeight147 = function (x, z, floorIdx) {
+      for (var i = 0; i < t11BoundsList147.length; i++) {
+        var b = t11BoundsList147[i];
+        if (x >= b.x0 - 4.0 && x <= b.x1 + 4.0 && z >= b.z0 - 4.0 && z <= b.z1 + 4.0) {
+          if (floorIdx >= 0 && floorIdx < b.tops.length) {
+            return b.tops[floorIdx];
+          }
+        }
+      }
+      // 備援：依標準樓高 (FH = 3.6m 或 4.0m) 從 colliders 查詢該點所有樓板高度並排序
+      var tops = [];
+      if (typeof colliders !== 'undefined' && Array.isArray(colliders)) {
+        for (var j = 0; j < colliders.length; j++) {
+          var c = colliders[j];
+          if (!c || !c.on || typeof c.top !== 'number') continue;
+          if (x >= Math.min(c.x0, c.x1) - 0.5 && x <= Math.max(c.x0, c.x1) + 0.5 &&
+              z >= Math.min(c.z0, c.z1) - 0.5 && z <= Math.max(c.z0, c.z1) + 0.5) {
+            if ((Math.max(c.x0, c.x1) - Math.min(c.x0, c.x1)) >= 8.0) {
+              var exists = false;
+              for (var k = 0; k < tops.length; k++) {
+                if (Math.abs(tops[k] - c.top) < 0.2) { exists = true; break; }
+              }
+              if (!exists) tops.push(c.top);
+            }
+          }
+        }
+      }
+      tops.sort(function (a, b) { return a - b; });
+      if (floorIdx >= 0 && floorIdx < tops.length) return tops[floorIdx];
+      return floorIdx * 3.6;
+    };
+
+    var syncPlayerElevation147 = function (targetY) {
+      if (typeof targetY !== 'number' || !isFinite(targetY)) return;
+      if (typeof A !== 'undefined' && A) {
+        A.jh = targetY;
+        A.sup = targetY;
+        A.jv = 0;
+        if (A.pos) A.pos.y = targetY;
+        if (A.g && A.g.position) A.g.position.y = targetY;
+      }
+      if (typeof F !== 'undefined' && F && typeof followOn !== 'undefined' && followOn && !F.remote) {
+        F.jh = targetY;
+        F.jv = 0;
+        if (F.g && F.g.position) F.g.position.y = targetY;
+      }
+    };
+
+    if (typeof tpTo === 'function' && !tpTo.__v147Wrapped) {
+      var origTpTo147 = tpTo;
+      tpTo = function (tx, tz, ry) {
+        var res = origTpTo147.apply(this, arguments);
+        try {
+          if (pendingElevatorFloorIdx147 !== null && (Date.now() - pendingElevatorTime147) < 2500) {
+            var fIdx = pendingElevatorFloorIdx147;
+            pendingElevatorFloorIdx147 = null;
+            var fy = resolveT11FloorHeight147(tx, tz, fIdx);
+            syncPlayerElevation147(fy);
+            setTimeout(function () { syncPlayerElevation147(fy); }, 0);
+          }
+        } catch (e) {}
+        return res;
+      };
+      tpTo.__v147Wrapped = true;
+    }
+
+    // 4. 每幀確保球場入口至大廳角色可見性、高度正確不沉入地下/不累加飛走，並接住 teleportToFloor 直接寫入的 A.pos.y（對應 v146 第 4279、17171 行）
+    var lastPosY147 = (typeof A !== 'undefined' && A && A.pos && typeof A.pos.y === 'number') ? A.pos.y : 0;
+    var prevMoreTick147 = window.__moreTick2;
+    window.__moreTick2 = function (dt, t) {
+      if (typeof prevMoreTick147 === 'function') {
+        try { prevMoreTick147.apply(this, arguments); } catch (e) {}
+      }
+      try {
+        if (typeof A === 'undefined' || !A) return;
+        var p = (typeof pos !== 'undefined' && pos) ? pos : A.pos;
+        if (!p) return;
+
+        // (a) 若 teleportToFloor 剛設定了 A.pos.y（第 17171 行 A.pos.y = targetY），立即同步至 A.jh 與 A.g.position.y
+        if (A.pos && typeof A.pos.y === 'number' && isFinite(A.pos.y)) {
+          if (Math.abs(A.pos.y - lastPosY147) > 0.05 && Math.abs(A.pos.y - (A.jh || 0)) > 0.25) {
+            syncPlayerElevation147(A.pos.y);
+          } else {
+            A.pos.y = A.jh || 0;
+          }
+          lastPosY147 = A.pos.y;
+        }
+
+        // (b) 在球場範圍（含主入口廣場、手扶梯、大廳與 TOWER 11）確保玩家模型可見、不被視錐剔除或沉入地下
+        var inStadArea = ((p.z > 600 && p.z < 995) || (p.z > 1330 && p.z < 1665)) && p.x > -210 && p.x < 230;
+        if (inStadArea) {
+          // 防沉地：若 A.jh 意外小於 0，立即拉回地面支撐高度
+          if (typeof A.jh === 'number' && A.jh < 0) {
+            var sup0 = (typeof supportAt === 'function') ? Math.max(0, supportAt(p.x, p.z, 0)) : 0;
+            A.jh = sup0;
+            A.sup = sup0;
+            A.jv = 0;
+          }
+
+          if (A.g) {
+            // 校正第 4279 行 A.g.position.y += A.jh 可能造成的垂直累加偏移，確保角色腳底精準貼合 A.jh
+            if (typeof A.jh === 'number' && isFinite(A.jh) && (typeof sitting === 'undefined' || !sitting)) {
+              if (Math.abs(A.g.position.y - A.jh) > 0.02) {
+                A.g.position.y = A.jh;
+              }
+            }
+            // 確保非第一人稱模式下玩家角色在入口玻璃與屋簷下全程可見
+            var isFpv = (typeof fpvState !== 'undefined' && fpvState && fpvState.active);
+            if (!isFpv) {
+              A.g.visible = true;
+              if (!A.g.__v147UnCulled && typeof A.g.traverse === 'function') {
+                A.g.traverse(function (ch) {
+                  if (ch) {
+                    ch.frustumCulled = false;
+                  }
+                });
+                A.g.__v147UnCulled = true;
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    };
+  })();
+} catch (e147rudy) {
+  console.warn('[v147 Rudy patch error]', e147rudy);
+}
+
+// ===== 第 147 版（Idn）=====
+try {
+  if (typeof window !== 'undefined' && !window.__JIO_V147_IDN_LOADED) {
+    window.__JIO_V147_IDN_LOADED = true;
+
+    var JIO_X_147 = -1.20;
+    var DOOR_Z0_147 = 6.50;
+    var DOOR_Z1_147 = 7.40;
+    var DOOR_ZC_147 = 6.95;
+    var HOME_X_147 = 2.3125;
+
+    var near147 = function (a, b, tol) {
+      return Math.abs(a - b) < tol;
+    };
+
+    // 1. 消除 145n JIO 門口 (x = -1.2, z = 6.5~7.4) 與舊版門框/146 招牌邏輯的衝突
+    var reconcileJioDoor147 = function () {
+      // (a) 確保 145n 的西牆南北段與開口 collider 不被其他區塊覆蓋
+      if (typeof colliders !== 'undefined' && Array.isArray(colliders)) {
+        for (var i = 0; i < colliders.length; i++) {
+          var c = colliders[i];
+          if (!c) continue;
+          if (c.tag === 'jioWall_v121_lobbyWestN') {
+            c.on = true;
+            c.x0 = -1.26; c.x1 = -1.14;
+            c.z0 = 4.30;  c.z1 = DOOR_Z0_147;
+            c.__v145nWall = 1;
+          } else if (c.tag === 'jioWall_v121_lobbyWestS') {
+            c.on = true;
+            c.x0 = -1.26; c.x1 = -1.14;
+            c.z0 = DOOR_Z1_147; c.z1 = 8.80;
+            c.__v145nWall = 1;
+          } else if (c.on !== false && !c.__v145nWall) {
+            var cx0 = Math.min(c.x0, c.x1), cx1 = Math.max(c.x0, c.x1);
+            var cz0 = Math.min(c.z0, c.z1), cz1 = Math.max(c.z0, c.z1);
+            // 清除橫跨 JIO 門口通道 (x: -1.45~-0.95, z: 6.52~7.38) 的殘留阻擋碰撞盒
+            if (cx1 > -1.45 && cx0 < -0.95 && cz1 > 6.52 && cz0 < 7.38 && (cx1 - cx0) < 0.5 && (cz1 - cz0) < 1.35) {
+              c.on = false;
+            }
+          }
+        }
+      }
+
+      // (b) 隱藏 v102 在 x = -1.20 建立的過寬舊門拱護套 (z = 6.32 / 7.58)，避免與 145n 的 6.50~7.40 門框重疊穿模
+      //     同時恢復被 146 誤殺的 v102 地面迎賓暖光池 (x = -0.65, y = 0.0122, z = 6.95)
+      if (typeof scene !== 'undefined' && scene && typeof scene.traverse === 'function' && typeof THREE !== 'undefined') {
+        var wp = new THREE.Vector3();
+        scene.traverse(function (obj) {
+          if (!obj || !obj.isMesh || !obj.geometry) return;
+          if (typeof obj.getWorldPosition === 'function') obj.getWorldPosition(wp);
+          else if (obj.position) wp.copy(obj.position);
+          else return;
+
+          var gp = obj.geometry.parameters || {};
+          var gw = gp.width || 0, gh = gp.height || 0, gd = gp.depth || 0;
+
+          // v102 舊門拱護套兩側柱 (0.24 x 2.26 x 0.09 at z = 6.32 / 7.58) 與頂樑 (z = 6.95, gd ≈ 1.36~1.38)
+          if (near147(wp.x, JIO_X_147, 0.08)) {
+            if (near147(gw, 0.24, 0.03) && near147(gh, 2.26, 0.05) && (near147(wp.z, 6.32, 0.05) || near147(wp.z, 7.58, 0.05))) {
+              obj.visible = false;
+              return;
+            }
+            if (wp.y > 2.18 && wp.y < 2.32 && near147(wp.z, DOOR_ZC_147, 0.05) && gd > 1.30 && gd < 1.45) {
+              obj.visible = false;
+              return;
+            }
+          }
+
+          // 恢復被 146 第 112103 行誤判為箭頭地墊而隱藏的 v102 迎賓暖光過渡池 (x = -0.65, z = 6.95, y ≈ 0.0122)
+          if (near147(wp.x, -0.65, 0.05) && near147(wp.z, DOOR_ZC_147, 0.05) && wp.y > 0.008 && wp.y < 0.02) {
+            if (obj.material && obj.material.transparent && obj.material.depthWrite === false) {
+              obj.visible = true;
+            }
+          }
+        });
+      }
+    };
+
+    // 2. 修正 146（Kaz）家門 (x = 2.3125, z = 6.50~7.40)：門扇角度、門框、門楣牆與兩側牆體 collider
+    var fixHomeDoorAndWalls147 = function () {
+      if (typeof dFront !== 'undefined' && dFront && dFront.pv) {
+        dFront.pv.visible = true;
+        dFront.pv.position.set(HOME_X_147, 0, DOOR_Z0_147);
+        if (dFront.pv.scale) dFront.pv.scale.set(1, 1, 1);
+        dFront.locked = false;
+
+        // 確保 rot0 為標準 -Math.PI/2，使關門時 (ang=0) 沿 +X 延伸的門板 (0.45) 正確轉向 +Z 貼齊 z: 6.50~7.40
+        if (typeof dFront.rot0 !== 'number') dFront.rot0 = -Math.PI / 2;
+        if (typeof dFront.ang !== 'number') dFront.ang = dFront.open ? (dFront.openAng || Math.PI / 2.4) : 0;
+        dFront.pv.rotation.y = dFront.rot0 + dFront.ang;
+
+        if (dFront.c) {
+          dFront.c.x0 = HOME_X_147 - 0.06;
+          dFront.c.x1 = HOME_X_147 + 0.06;
+          dFront.c.z0 = DOOR_Z0_147;
+          dFront.c.z1 = DOOR_Z1_147;
+          dFront.c.on = !dFront.open;
+        }
+      }
+
+      // 確保家門門框 (z = 6.50 / 7.40)、門楣橫樑以及上方門楣牆 (y ≈ 2.2~2.5, z = 6.95) 皆可見且尺寸正確
+      if (typeof scene !== 'undefined' && scene && Array.isArray(scene.children)) {
+        for (var si = 0; si < scene.children.length; si++) {
+          var obj = scene.children[si];
+          if (!obj || !obj.isMesh || !obj.position || !obj.geometry) continue;
+          if (!near147(obj.position.x, HOME_X_147, 0.08)) continue;
+          if (obj.position.z < 6.38 || obj.position.z > 7.52) continue;
+          var p = obj.geometry.parameters || {};
+          var gw = p.width || 0, gh = p.height || 0, gd = p.depth || 0;
+          var isJamb = (near147(gw, 0.16, 0.04) && near147(gh, 2.20, 0.08) && near147(gd, 0.06, 0.04));
+          var isTopBar = (near147(gw, 0.16, 0.04) && near147(gh, 0.07, 0.04) && near147(gd, 1.02, 0.08));
+          var isHeaderWall = (near147(gw, 0.16, 0.06) && gh >= 0.45 && gh <= 0.85 && gd >= 0.85 && gd <= 1.15 && obj.position.y >= 2.0);
+          if (isJamb || isTopBar || isHeaderWall) {
+            obj.visible = true;
+            if (obj.scale) obj.scale.set(1, 1, 1);
+          }
+        }
+      }
+
+      // 修正 146 第 112054 行誤關家門南北兩側短牆 collider 的問題，並確保只清除真正卡在 [6.52, 7.38] 開口內的廢棄碰撞盒
+      if (typeof colliders !== 'undefined' && Array.isArray(colliders)) {
+        for (var ci = 0; ci < colliders.length; ci++) {
+          var colItem = colliders[ci];
+          if (!colItem) continue;
+          if (typeof dFront !== 'undefined' && dFront && colItem === dFront.c) continue;
+          var x0 = Math.min(colItem.x0, colItem.x1), x1 = Math.max(colItem.x0, colItem.x1);
+          var z0 = Math.min(colItem.z0, colItem.z1), z1 = Math.max(colItem.z0, colItem.z1);
+          if (x1 > 2.18 && x0 < 2.45 && (x1 - x0) < 0.6) {
+            // 位於門框南北兩側之外的家門走廊牆體（z1 <= 6.55 或 z0 >= 7.35），若被 146 誤關則恢復開啟，防止玩家穿牆
+            if (z1 <= DOOR_Z0_147 + 0.05 || z0 >= DOOR_Z1_147 - 0.05) {
+              colItem.on = true;
+            } else if (z0 >= DOOR_Z0_147 - 0.08 && z1 <= DOOR_Z1_147 + 0.08) {
+              // 完全落在門口開口內的殘留碰撞盒才關閉
+              colItem.on = false;
+            }
+          }
+        }
+      }
+    };
+
+    // 3. 修正 146（Kaz）走廊招牌：隱藏被移到 JIO 接待大廳室內半空 (x = -1.65 / -2.20, z = 5.92 / 7.96) 的漂浮招牌，並救回辦公室內側誤藏物件
+    var fixCorridorSigns147 = function () {
+      // (a) 146 第 112111~112124 行把 scene 下 x = -1.65 / -2.20 的招牌移到 z = 5.92 / 7.96，會在接待大廳室內半空漂浮，應直接隱藏
+      if (typeof scene !== 'undefined' && scene && Array.isArray(scene.children)) {
+        for (var i = 0; i < scene.children.length; i++) {
+          var node = scene.children[i];
+          if (!node || !node.position) continue;
+          if (near147(node.position.y, 1.58, 0.06) &&
+              (near147(node.position.x, -1.65, 0.05) || near147(node.position.x, -2.20, 0.05)) &&
+              (near147(node.position.z, 5.92, 0.20) || near147(node.position.z, 6.07, 0.20) ||
+               near147(node.position.z, 7.83, 0.20) || near147(node.position.z, 7.96, 0.20))) {
+            node.visible = false;
+            if (typeof node.traverse === 'function') {
+              node.traverse(function (ch) { if (ch) ch.visible = false; });
+            }
+          }
+        }
+      }
+
+      // (b) 146 第 112093 行把 wp.x 在 (-2.3, -0.9) 的物件全數隱藏，誤傷了 JIO 接待大廳內部 (x < -1.35) 非招牌的牆面裝飾與合法貼在 x ≈ -1.2 牆面的門牌
+      var root = (window.__JIO && window.__JIO.group) ? window.__JIO.group : null;
+      if (root && typeof root.traverse === 'function' && typeof THREE !== 'undefined') {
+        var wp = new THREE.Vector3();
+        root.traverse(function (obj) {
+          if (!obj || obj === root || !obj.isMesh || !obj.geometry) return;
+          if (obj.__jioV113SignGroup || obj.__jioV113SignPlaque || (obj.userData && obj.userData.isWayfindingSign)) return;
+          var nm = obj.name || '';
+          if (nm.indexOf('jio_wayfinding_sign_') === 0 || nm.indexOf('jioWall_v121_foyer') === 0 || nm.indexOf('jioSkirt_v121_foyer') === 0) return;
+
+          if (typeof obj.getWorldPosition === 'function') obj.getWorldPosition(wp);
+          else if (obj.position) wp.copy(obj.position);
+          else return;
+
+          // 若位於接待大廳室內 (x < -1.35, z: 5.5~8.4) 且不是 v107 插在 z ≈ 6.07/7.83 的懸空立牌，但被 146 誤藏，予以恢復
+          if (!obj.visible && wp.y > 1.15 && wp.y < 2.05 && wp.x > -2.3 && wp.x < -1.35 &&
+              (near147(wp.z, 5.75, 0.16) || near147(wp.z, 8.15, 0.16))) {
+            obj.visible = true;
+          }
+        });
+      }
+    };
+
+    var runAllFixes147 = function () {
+      reconcileJioDoor147();
+      fixHomeDoorAndWalls147();
+      fixCorridorSigns147();
+    };
+
+    runAllFixes147();
+
+    var retryTimes147 = [100, 550, 950, 1650, 3650, 5300, 9100];
+    for (var rIdx = 0; rIdx < retryTimes147.length; rIdx++) {
+      setTimeout(function () {
+        try { runAllFixes147(); } catch (err) {}
+      }, retryTimes147[rIdx]);
+    }
+
+    var prevMoreTick147 = window.__moreTick2;
+    var tickCount147 = 0;
+    window.__moreTick2 = function (dt, t) {
+      if (typeof prevMoreTick147 === 'function') {
+        try { prevMoreTick147.apply(this, arguments); } catch (err) {}
+      }
+      try {
+        if (typeof dFront !== 'undefined' && dFront && dFront.c) {
+          dFront.c.on = !dFront.open;
+        }
+        // 每 30 幀輕量巡檢一次，確保 146 的延遲計時器不會再次把漂浮招牌打開或把家門兩側牆 collider 關掉
+        tickCount147 = (tickCount147 + 1) % 30;
+        if (tickCount147 === 0) {
+          runAllFixes147();
+        }
+      } catch (err) {}
+    };
+  }
+} catch (e147idn) {
+  console.warn(e147idn);
+}
+
+// ===== 第 147 版（Kaz）=====
+try {
+  // 1. 確保 JIO 巡邏路線節點不依賴其他 try 區塊變數（修正 v146 第 112170~112233 行）
+  var waypointsDict147 = {
+    entry:         { x: -3.10, z: 6.95 },
+    reception:     { x: -3.68, z: 6.95 },
+    aisleNorthE:   { x: -5.20, z: 5.60 },
+    hubNorth:      { x: -5.20, z: 6.95 },
+    aisleEastPass: { x: -5.70, z: 8.50 },
+    aisleSouthE:   { x: -5.85, z: 9.25 },
+    aisleSouth:    { x: -7.10, z: 9.25 },
+    hubCenter:     { x: -6.80, z: 11.15 },
+    copierFront:   { x: -6.80, z: 11.42 },
+    door_dining:   { x: -10.35, z: 13.50 },
+    diningAisleN:  { x: -10.35, z: 14.85 },
+    diningIn:      { x: -10.35, z: 15.15 },
+    door_prayer:   { x: -7.35, z: 16.60 },
+    prayerIn:      { x: -7.35, z: 17.20 }
+  };
+
+  if (typeof fixedWaypoints143 === 'object' && fixedWaypoints143) {
+    for (var wk147 in fixedWaypoints143) {
+      if (Object.prototype.hasOwnProperty.call(fixedWaypoints143, wk147)) {
+        delete fixedWaypoints143[wk147];
+      }
+    }
+  }
+  if (typeof fixedWaypoints143b === 'object' && fixedWaypoints143b) {
+    for (var k147 in waypointsDict147) {
+      if (Object.prototype.hasOwnProperty.call(waypointsDict147, k147)) {
+        fixedWaypoints143b[k147] = { x: waypointsDict147[k147].x, z: waypointsDict147[k147].z };
+      }
+    }
+  }
+
+  var enforceJioWaypoints147 = function () {
+    var jio = (typeof window !== 'undefined' && window.__JIO) ? window.__JIO : null;
+    if (!jio || !jio.ready) return false;
+    jio.waypoints = jio.waypoints || {};
+    var changed = false;
+    for (var k in waypointsDict147) {
+      if (Object.prototype.hasOwnProperty.call(waypointsDict147, k)) {
+        var target = waypointsDict147[k];
+        var cur = jio.waypoints[k];
+        if (!cur) {
+          jio.waypoints[k] = { x: target.x, z: target.z };
+          changed = true;
+        } else if (cur.x !== target.x || cur.z !== target.z) {
+          cur.x = target.x;
+          cur.z = target.z;
+          changed = true;
+        }
+      }
+    }
+    if (jio.doors && jio.doors.pantryToDining) {
+      jio.doors.pantryToDining.x = -10.35;
+      jio.doors.pantryToDining.z = 13.50;
+    }
+    return changed;
+  };
+  window.__syncJioWaypoints147 = enforceJioWaypoints147;
+  enforceJioWaypoints147();
+
+  if (typeof window !== 'undefined' && !window.__v147KazTickWrapped) {
+    window.__v147KazTickWrapped = true;
+    var prevMoreTick147 = window.__moreTick2;
+    window.__moreTick2 = function (dt, t) {
+      var ret;
+      if (typeof prevMoreTick147 === 'function') {
+        try { ret = prevMoreTick147.apply(this, arguments); } catch (err) {}
+      }
+      try { enforceJioWaypoints147(); } catch (err) {}
+      return ret;
+    };
+  }
+
+  // 2. 修復 146 (Idn) clearQuickOnclick146 清空 onclick 導致快速傳送按鈕失效或重複觸發的問題（修正 v146 第 112249~112263 行）
+  var quickSpecs147 = {
+    'jio-go-work':    { x: -7.10, z: 9.25,  h: 0, ry: 0,         room: 'JIO 工作區' },
+    'jio-go-meeting': { x: -5.20, z: 5.60,  h: 0, ry: 0,         room: 'JIO 會議室' },
+    'jio-go-pantry':  { x: -10.35, z: 15.15, h: 0, ry: Math.PI,  room: 'JIO 茶水餐廳' },
+    'jio-go-prayer':  { x: -7.35, z: 17.20, h: 0, ry: Math.PI,   room: 'JIO 祈禱室' }
+  };
+
+  var fallbackTeleportJio147 = function (id) {
+    var sp = quickSpecs147[id];
+    if (!sp) return;
+    if (typeof P !== 'undefined' && P) {
+      P.x = sp.x;
+      P.z = sp.z;
+      if (typeof P.h === 'number') P.h = sp.h;
+      if (typeof P.vy === 'number') P.vy = 0;
+    }
+    if (typeof yaw !== 'undefined' && typeof sp.ry === 'number') {
+      try { yaw = sp.ry; } catch (err) {}
+    }
+    var goPanelEl = document.getElementById('goPanel');
+    if (goPanelEl) {
+      goPanelEl.hidden = true;
+      goPanelEl.style.display = 'none';
+    }
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.remove('v85-modal-open');
+    }
+  };
+
+  var setupQuickButtons147 = function () {
+    if (typeof document === 'undefined') return;
+    for (var id in quickSpecs147) {
+      if (!Object.prototype.hasOwnProperty.call(quickSpecs147, id)) continue;
+      var btn = document.getElementById(id);
+      if (!btn) continue;
+
+      if (typeof btn.onclick === 'function' && !btn.__savedOnclick147) {
+        btn.__savedOnclick147 = btn.onclick;
+      }
+      try {
+        var origDesc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'onclick');
+        if (origDesc && origDesc.set) origDesc.set.call(btn, null);
+        else btn.onclick = null;
+      } catch (err) {}
+
+      if (!btn.__onclickPropIntercepted147) {
+        btn.__onclickPropIntercepted147 = true;
+        try {
+          Object.defineProperty(btn, 'onclick', {
+            configurable: true,
+            enumerable: true,
+            get: function () { return null; },
+            set: function (fn) {
+              if (typeof fn === 'function') this.__savedOnclick147 = fn;
+            }
+          });
+        } catch (err) {}
+      }
+
+      if (!btn.__v147SingleClickBound) {
+        btn.__v147SingleClickBound = true;
+        btn.addEventListener('click', function (e) {
+          var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+          if (this.__lastClickAt147 && (now - this.__lastClickAt147) < 80) {
+            if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+            return;
+          }
+          this.__lastClickAt147 = now;
+
+          // 若該按鈕並未透過 addEventListener 綁定其他處理器，則使用攔截保留的 onclick 或安全備援執行一次傳送
+          if (!this.__bound143b && !this.__bound143bk) {
+            if (typeof this.__savedOnclick147 === 'function') {
+              this.__savedOnclick147.call(this, e);
+            } else {
+              fallbackTeleportJio147(this.id);
+            }
+          } else if (typeof this.__savedOnclick147 === 'function') {
+            var prevX = (typeof P !== 'undefined' && P) ? P.x : null;
+            var prevZ = (typeof P !== 'undefined' && P) ? P.z : null;
+            var self = this;
+            setTimeout(function () {
+              if (typeof P !== 'undefined' && P && P.x === prevX && P.z === prevZ) {
+                try { self.__savedOnclick147.call(self, e); } catch (err) { fallbackTeleportJio147(self.id); }
+              }
+            }, 0);
+          } else {
+            var prevX2 = (typeof P !== 'undefined' && P) ? P.x : null;
+            var prevZ2 = (typeof P !== 'undefined' && P) ? P.z : null;
+            var self2 = this;
+            setTimeout(function () {
+              if (typeof P !== 'undefined' && P && P.x === prevX2 && P.z === prevZ2) {
+                fallbackTeleportJio147(self2.id);
+              }
+            }, 0);
+          }
+        }, false);
+      }
+    }
+  };
+  setupQuickButtons147();
+
+  if (typeof document !== 'undefined') {
+    var goB147 = document.getElementById('goB');
+    if (goB147 && !goB147.__v147QuickGuardBound) {
+      goB147.__v147QuickGuardBound = true;
+      goB147.addEventListener('click', function () {
+        setupQuickButtons147();
+        setTimeout(setupQuickButtons147, 0);
+      }, true);
+    }
+  }
+
+  // 3. 修復 145m (手機) 搖桿重複觸發與捲動/縮放防護（修正 v146 第 4228~4231、111715~111750 行）
+  var stickEl147 = (typeof stick !== 'undefined' && stick) ? stick : document.getElementById('stick');
+  var knobEl147 = (typeof knob !== 'undefined' && knob) ? knob : document.getElementById('knob');
+
+  var updateStickByCoords147 = function (clientX, clientY) {
+    if (!stickEl147) return;
+    var r = stickEl147.getBoundingClientRect();
+    if (!r || !r.width || !r.height) return;
+    var cx = r.left + r.width / 2;
+    var cy = r.top + r.height / 2;
+    var maxR = r.width / 2 || 33;
+    var dx = (clientX - cx) / maxR;
+    var dy = (clientY - cy) / maxR;
+    var m = Math.hypot(dx, dy);
+    if (m > 1) { dx /= m; dy /= m; }
+    if (typeof sx !== 'undefined') sx = dx;
+    if (typeof sy !== 'undefined') sy = -dy;
+    if (knobEl147 && knobEl147.style) {
+      knobEl147.style.transform = 'translate(' + (dx * 33) + 'px,' + (dy * 33) + 'px)';
+    }
+  };
+
+  if (stickEl147 && !stickEl147.__v147TouchFixed) {
+    stickEl147.__v147TouchFixed = true;
+
+    // 在 capture 階段執行一次移動並攔截冒泡，消除第 4230 行與第 111716 行重複綁定造成的雙倍計算
+    stickEl147.addEventListener('pointerdown', function (e) {
+      if (e && e.cancelable) e.preventDefault();
+    }, { capture: true, passive: false });
+
+    stickEl147.addEventListener('pointermove', function (e) {
+      if (!e) return;
+      if (e.cancelable) e.preventDefault();
+      if (typeof stId !== 'undefined' && e.pointerId === stId) {
+        if (typeof stMove === 'function') {
+          stMove(e);
+        } else {
+          updateStickByCoords147(e.clientX, e.clientY);
+        }
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      }
+    }, { capture: true, passive: false });
+
+    // 在 capture 階段攔截 touchstart/touchmove：確保一定呼叫 preventDefault() 防捲動/縮放，
+    // 並在 PointerEvent 已接管 (stId !== null) 時阻止第 111724/111732 行的重複計算
+    stickEl147.addEventListener('touchstart', function (e) {
+      if (!e) return;
+      if (e.cancelable) e.preventDefault();
+      if (typeof stId !== 'undefined' && stId !== null) {
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        return;
+      }
+      var t = (e.touches && e.touches[0]) ? e.touches[0] : null;
+      if (t) {
+        updateStickByCoords147(t.clientX, t.clientY);
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      }
+    }, { capture: true, passive: false });
+
+    stickEl147.addEventListener('touchmove', function (e) {
+      if (!e) return;
+      if (e.cancelable) e.preventDefault();
+      if (typeof stId !== 'undefined' && stId !== null) {
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        return;
+      }
+      var t = (e.touches && e.touches[0]) ? e.touches[0] : null;
+      if (t) {
+        updateStickByCoords147(t.clientX, t.clientY);
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      }
+    }, { capture: true, passive: false });
+
+    var endTouch147 = function (e) {
+      if (e && e.cancelable) e.preventDefault();
+      if (typeof stId !== 'undefined' && stId !== null && window.PointerEvent) {
+        if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+        return;
+      }
+      if (typeof stId !== 'undefined') stId = null;
+      if (typeof sx !== 'undefined') sx = 0;
+      if (typeof sy !== 'undefined') sy = 0;
+      if (knobEl147 && knobEl147.style) knobEl147.style.transform = '';
+      if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+    };
+    stickEl147.addEventListener('touchend', endTouch147, { capture: true, passive: false });
+    stickEl147.addEventListener('touchcancel', endTouch147, { capture: true, passive: false });
+  }
+
+  // 為手機版 #act 與 #swap 補上雙擊縮放與長按選取防護，不阻擋既有 click 事件
+  var btnIds147 = ['act', 'swap'];
+  for (var bi147 = 0; bi147 < btnIds147.length; bi147++) {
+    var bEl147 = document.getElementById(btnIds147[bi147]);
+    if (bEl147 && !bEl147.__v147TouchGuard) {
+      bEl147.__v147TouchGuard = true;
+      bEl147.addEventListener('touchmove', function (e) {
+        if (e && e.cancelable) e.preventDefault();
+      }, { passive: false });
+    }
+  }
+} catch (e147kaz) {
+  console.warn(e147kaz);
+}
 })();
 </script>
 
