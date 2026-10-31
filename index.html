@@ -111512,6 +111512,317 @@ try {
 } catch (e) {
   console.warn(e);
 }
+
+// ===== 第 145m 版（mobile）=====
+try {
+  var isPhone145m = function () {
+    try {
+      var w = window.innerWidth || 0;
+      var h = window.innerHeight || 0;
+      var hoverNone = window.matchMedia && window.matchMedia('(hover: none)').matches;
+      var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      return !!(hoverNone || coarse || w <= 820 || (h <= 500 && w > h));
+    } catch (err) {
+      return (window.innerWidth || 0) <= 820;
+    }
+  };
+
+  var kebab145m = function (prop) {
+    return prop.replace(/[A-Z]/g, function (ch) { return '-' + ch.toLowerCase(); });
+  };
+
+  var nativeSet145m = CSSStyleDeclaration.prototype.setProperty;
+  var nativeRemove145m = CSSStyleDeclaration.prototype.removeProperty;
+  var guardList145m = [];
+
+  var blockProps145m = function (decl, prop) {
+    var i, item, name = String(prop || '').toLowerCase();
+    for (i = 0; i < guardList145m.length; i++) {
+      item = guardList145m[i];
+      if (item.decl === decl && item.props[name]) return true;
+    }
+    return false;
+  };
+
+  CSSStyleDeclaration.prototype.setProperty = function (name, value, priority) {
+    try {
+      if (isPhone145m() && blockProps145m(this, name)) return;
+    } catch (err) {}
+    return nativeSet145m.call(this, name, value, priority);
+  };
+  CSSStyleDeclaration.prototype.removeProperty = function (name) {
+    try {
+      if (isPhone145m() && blockProps145m(this, name)) return '';
+    } catch (err) {}
+    return nativeRemove145m.call(this, name);
+  };
+
+  var lockStyle145m = function (el, spec) {
+    if (!el || !el.style || !spec) return;
+    var key;
+    for (key in spec) {
+      if (!Object.prototype.hasOwnProperty.call(spec, key)) continue;
+      nativeSet145m.call(el.style, kebab145m(key), spec[key], 'important');
+    }
+  };
+
+  var guardEl145m = function (el, propList) {
+    if (!el || !el.style || el.__guard145m) return;
+    el.__guard145m = 1;
+    var props = {};
+    var i;
+    for (i = 0; i < propList.length; i++) props[propList[i]] = 1;
+    guardList145m.push({ decl: el.style, props: props });
+  };
+
+  var phoneSpec145m = function () {
+    var short = (window.innerHeight || 800) <= 500;
+    return {
+      stick: {
+        position: 'fixed', left: '16px', right: 'auto', top: 'auto',
+        bottom: '16px',
+        width: '112px', height: '112px', transform: 'none', display: 'block',
+        opacity: '1', visibility: 'visible', pointerEvents: 'auto',
+        touchAction: 'none', zIndex: '10060'
+      },
+      act: {
+        position: 'fixed', left: 'auto', right: '16px', top: 'auto',
+        bottom: '16px',
+        width: '72px', height: '72px', minWidth: '72px', minHeight: '72px',
+        transform: 'none', display: 'block', opacity: '1', visibility: 'visible',
+        pointerEvents: 'auto', touchAction: 'manipulation', zIndex: '10060',
+        borderRadius: '50%', padding: '0px'
+      },
+      swap: {
+        position: 'fixed', left: 'auto', right: '16px', top: 'auto',
+        bottom: short ? '96px' : '100px',
+        transform: 'none', display: 'block', opacity: '1', visibility: 'visible',
+        pointerEvents: 'auto', touchAction: 'manipulation', zIndex: '10060'
+      },
+      prompt: {
+        position: 'fixed', left: '50%', right: 'auto', top: 'auto',
+        bottom: short ? '78px' : '148px',
+        transform: 'translateX(-50%)',
+        width: 'min(220px, calc(100vw - 188px))',
+        height: '40px', minHeight: '40px', maxHeight: '40px',
+        margin: '0px', display: 'block', pointerEvents: 'none',
+        overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+        boxSizing: 'border-box', zIndex: '10040'
+      }
+    };
+  };
+
+  var dialogSpec145m = {
+    position: 'fixed', left: '50%', top: '50%', right: 'auto', bottom: 'auto',
+    transform: 'translate(-50%, -50%)',
+    width: 'min(340px, calc(100vw - 24px))',
+    height: 'auto', minHeight: '0px', maxHeight: 'min(78vh, 640px)',
+    whiteSpace: 'normal', overflow: 'auto',
+    zIndex: '10070', pointerEvents: 'auto', boxSizing: 'border-box'
+  };
+
+  var geomProps145m = ['position','left','right','top','bottom','width','height','min-width','min-height','max-width','max-height','transform','z-index','display','margin','padding','overflow','white-space','text-overflow','box-sizing','border-radius'];
+  var controlProps145m = geomProps145m.concat(['opacity','visibility','pointer-events','touch-action']);
+
+  var applyPhoneLock145m = function () {
+    if (!isPhone145m()) return;
+    try {
+      var spec = phoneSpec145m();
+      if (typeof stick !== 'undefined') {
+        guardEl145m(stick, controlProps145m);
+        lockStyle145m(stick, spec.stick);
+      }
+      if (typeof actBtn !== 'undefined') {
+        guardEl145m(actBtn, controlProps145m);
+        lockStyle145m(actBtn, spec.act);
+      }
+      var swapEl = document.getElementById('swap');
+      guardEl145m(swapEl, controlProps145m);
+      lockStyle145m(swapEl, spec.swap);
+      if (typeof promptEl !== 'undefined') {
+        guardEl145m(promptEl, geomProps145m.concat(['pointer-events','z-index']));
+        lockStyle145m(promptEl, spec.prompt);
+      }
+      var ids = ['pick', 'goPanel', 'playPanel', 'bookPanel'];
+      var i;
+      for (i = 0; i < ids.length; i++) {
+        var dlg = document.getElementById(ids[i]);
+        if (!dlg) continue;
+        guardEl145m(dlg, ['z-index','height','min-height','max-height','white-space','overflow','width','left','top','transform']);
+        lockStyle145m(dlg, dialogSpec145m);
+      }
+    } catch (err) {}
+  };
+
+  if (typeof document !== 'undefined' && document.head) {
+    var css145m = document.createElement('style');
+    css145m.id = 'v145m-mobile-fix';
+    css145m.textContent = [
+      '@media (hover:none),(pointer:coarse),(max-width:820px){',
+      'html body #stage,html body #c,html body #stick,html body #knob{touch-action:none !important;}',
+      'html body.v85-modal-open #stick,html body.v85-modal-open #act,html body.v85-modal-open #swap,html body.v85-modal-open #knob{',
+      'pointer-events:auto !important;opacity:1 !important;}',
+      'html body #prompt{display:block !important;}',
+      '}',
+      'html body #pick,html body #goPanel,html body #playPanel,html body #bookPanel{',
+      'height:auto !important;min-height:0 !important;max-height:min(78vh,640px) !important;',
+      'white-space:normal !important;overflow:auto !important;z-index:10070 !important;',
+      '}'
+    ].join('');
+    document.head.appendChild(css145m);
+  }
+
+  if (typeof promptEl !== 'undefined' && promptEl) {
+    var promptWantHide145m = false;
+    var promptShown145m = false;
+    var promptChangedAt145m = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    try { promptEl.removeAttribute('hidden'); } catch (err) {}
+    promptEl.style.visibility = 'hidden';
+    promptEl.style.opacity = '0';
+    Object.defineProperty(promptEl, 'hidden', {
+      configurable: true,
+      enumerable: true,
+      get: function () { return promptWantHide145m; },
+      set: function (v) {
+        var next = !!v;
+        if (next === promptWantHide145m) return;
+        promptWantHide145m = next;
+        promptChangedAt145m = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      }
+    });
+  }
+
+  if (typeof actBtn !== 'undefined' && actBtn) {
+    var actTextDesc145m = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
+    var actPending145m = actBtn.textContent || '';
+    var actCommitted145m = actPending145m;
+    var actChangedAt145m = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    Object.defineProperty(actBtn, 'textContent', {
+      configurable: true,
+      enumerable: true,
+      get: function () {
+        return actTextDesc145m && actTextDesc145m.get ? actTextDesc145m.get.call(this) : actCommitted145m;
+      },
+      set: function (v) {
+        var next = (v === null || v === undefined) ? '' : String(v);
+        if (next === actPending145m) return;
+        actPending145m = next;
+        actChangedAt145m = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      }
+    });
+  }
+
+  if (typeof stick !== 'undefined' && stick && typeof stMove === 'function') {
+    stick.addEventListener('pointermove', function (e) {
+      try {
+        if (e && e.pointerId === stId) stMove(e);
+      } catch (err) {}
+    });
+    var touchPoint145m = function (e) {
+      return (e && e.touches && e.touches[0]) ? e.touches[0] : null;
+    };
+    stick.addEventListener('touchstart', function (e) {
+      try {
+        var t = touchPoint145m(e);
+        if (!t) return;
+        stMove({ clientX: t.clientX, clientY: t.clientY });
+        if (e.cancelable) e.preventDefault();
+      } catch (err) {}
+    }, { passive: false });
+    stick.addEventListener('touchmove', function (e) {
+      try {
+        var t = touchPoint145m(e);
+        if (!t) return;
+        stMove({ clientX: t.clientX, clientY: t.clientY });
+        if (e.cancelable) e.preventDefault();
+      } catch (err) {}
+    }, { passive: false });
+    var releaseStick145m = function () {
+      try {
+        stId = null;
+        sx = 0;
+        sy = 0;
+        if (typeof knob !== 'undefined' && knob) knob.style.transform = '';
+      } catch (err) {}
+    };
+    stick.addEventListener('touchend', releaseStick145m);
+    stick.addEventListener('touchcancel', releaseStick145m);
+  }
+
+  var tickUi145m = function () {
+    var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    if (typeof promptEl !== 'undefined' && promptEl) {
+      var waited = now - promptChangedAt145m;
+      if (!promptWantHide145m && !promptShown145m && waited >= 120) {
+        promptShown145m = true;
+        promptEl.style.visibility = 'visible';
+        promptEl.style.opacity = '1';
+      } else if (promptWantHide145m && promptShown145m && waited >= 300) {
+        promptShown145m = false;
+        promptEl.style.visibility = 'hidden';
+        promptEl.style.opacity = '0';
+      }
+    }
+    if (typeof actBtn !== 'undefined' && actBtn && actPending145m !== actCommitted145m && (now - actChangedAt145m) >= 180) {
+      actCommitted145m = actPending145m;
+      if (actTextDesc145m && actTextDesc145m.set) actTextDesc145m.set.call(actBtn, actCommitted145m);
+    }
+  };
+
+  var freezeStyleProp145m = function (el, prop, value) {
+    if (!el || !el.style) return;
+    try {
+      var name = kebab145m(prop);
+      if (!el.__slots145m) el.__slots145m = {};
+      el.__slots145m[name] = value;
+      nativeSet145m.call(el.style, name, value, 'important');
+      if (el.__frozen145m && el.__frozen145m[name]) return;
+      var desc = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, prop);
+      if (!desc || typeof desc.set !== 'function' || desc.configurable === false) return;
+      if (!el.__frozen145m) el.__frozen145m = {};
+      el.__frozen145m[name] = 1;
+      var slots = el.__slots145m;
+      Object.defineProperty(el.style, prop, {
+        configurable: true,
+        enumerable: true,
+        get: function () { return desc.get ? desc.get.call(this) : slots[name]; },
+        set: function () { nativeSet145m.call(this, name, slots[name], 'important'); }
+      });
+    } catch (err) {}
+  };
+
+  var freezeSpec145m = function (el, spec) {
+    if (!el || !spec) return;
+    var key;
+    for (key in spec) {
+      if (!Object.prototype.hasOwnProperty.call(spec, key)) continue;
+      freezeStyleProp145m(el, key, spec[key]);
+    }
+  };
+
+  applyPhoneLock145m();
+  if (isPhone145m()) {
+    var specNow145m = phoneSpec145m();
+    if (typeof stick !== 'undefined') freezeSpec145m(stick, specNow145m.stick);
+    if (typeof actBtn !== 'undefined') freezeSpec145m(actBtn, specNow145m.act);
+    freezeSpec145m(document.getElementById('swap'), specNow145m.swap);
+    if (typeof promptEl !== 'undefined') freezeSpec145m(promptEl, specNow145m.prompt);
+    var dlgIds145m = ['pick', 'goPanel', 'playPanel', 'bookPanel'];
+    var di;
+    for (di = 0; di < dlgIds145m.length; di++) {
+      var dlgEl145m = document.getElementById(dlgIds145m[di]);
+      if (!dlgEl145m || dlgEl145m.hidden) continue;
+      var dlgCs145m = window.getComputedStyle ? window.getComputedStyle(dlgEl145m) : null;
+      if (dlgCs145m && dlgCs145m.display === 'none') continue;
+      freezeSpec145m(dlgEl145m, { zIndex: '10070', height: 'auto', maxHeight: 'min(78vh, 640px)', whiteSpace: 'normal' });
+    }
+  }
+  setInterval(tickUi145m, 100);
+  window.addEventListener('resize', applyPhoneLock145m);
+  window.addEventListener('orientationchange', function () { setTimeout(applyPhoneLock145m, 80); });
+} catch (e145m) {
+  console.warn(e145m);
+}
 })();
 </script>
 
