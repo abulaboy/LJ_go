@@ -111972,6 +111972,300 @@ try {
 } catch (e145n) {
   console.warn(e145n);
 }
+
+// ===== 第 146 版（Kaz）=====
+try {
+  if (typeof window !== 'undefined' && !window.__JIO_V146_KAZ_LOADED) {
+    window.__JIO_V146_KAZ_LOADED = true;
+
+    var HOME_DOOR_X_146 = 2.3125;
+    var HOME_DOOR_Z0_146 = 6.50;
+    var HOME_DOOR_Z1_146 = 7.40;
+
+    var fixHomeFrontDoor146 = function () {
+      if (Array.isArray(window.__JIO_V112_REMOVED)) {
+        window.__JIO_V112_REMOVED.length = 0;
+      }
+
+      if (typeof dFront !== 'undefined' && dFront && dFront.pv) {
+        dFront.pv.visible = true;
+        dFront.pv.position.set(HOME_DOOR_X_146, 0, HOME_DOOR_Z0_146);
+        if (dFront.pv.scale) dFront.pv.scale.set(1, 1, 1);
+        dFront.locked = false;
+
+        if (typeof dFront.pv.traverse === 'function') {
+          dFront.pv.traverse(function (ch) {
+            if (!ch) return;
+            ch.visible = true;
+            if (ch.userData && ch.userData._jioV112Removed) {
+              delete ch.userData._jioV112Removed;
+            }
+            if (ch.isMesh && ch.geometry && ch.geometry.parameters && ch.scale) {
+              var gp = ch.geometry.parameters;
+              if (typeof gp.width === 'number' && typeof gp.height === 'number' &&
+                  Math.abs(gp.width - 0.90) < 0.06 && Math.abs(gp.height - 2.18) < 0.06) {
+                ch.scale.set(1, 1, 1);
+                if (ch.position) ch.position.set(0.45, 1.09, 0);
+              } else if (ch.scale.x < 0.5 || ch.scale.y < 0.5 || ch.scale.z < 0.5) {
+                ch.scale.set(1, 1, 1);
+              }
+            }
+          });
+        }
+
+        if (dFront.c) {
+          dFront.c.x0 = HOME_DOOR_X_146 - 0.06;
+          dFront.c.x1 = HOME_DOOR_X_146 + 0.06;
+          dFront.c.z0 = HOME_DOOR_Z0_146;
+          dFront.c.z1 = HOME_DOOR_Z1_146;
+          dFront.c.on = !dFront.open;
+        }
+      }
+
+      if (typeof wallMeshes !== 'undefined' && Array.isArray(wallMeshes)) {
+        for (var w = 0; w < wallMeshes.length; w++) {
+          var wm = wallMeshes[w];
+          if (wm && wm.position && wm.position.x > 1.5) wm.visible = true;
+        }
+      }
+
+      if (typeof scene !== 'undefined' && scene && Array.isArray(scene.children)) {
+        for (var si = 0; si < scene.children.length; si++) {
+          var obj = scene.children[si];
+          if (!obj || !obj.isMesh || !obj.position || !obj.geometry) continue;
+          if (Math.abs(obj.position.x - HOME_DOOR_X_146) > 0.06) continue;
+          if (obj.position.z < 6.40 || obj.position.z > 7.50) continue;
+          var p2 = obj.geometry.parameters || {};
+          var gw = p2.width || 0, gh = p2.height || 0, gd = p2.depth || 0;
+          var isFrameJamb = (Math.abs(gw - 0.16) < 0.03 && Math.abs(gh - 2.20) < 0.06 && Math.abs(gd - 0.06) < 0.03);
+          var isFrameTop = (Math.abs(gw - 0.16) < 0.03 && Math.abs(gh - 0.07) < 0.03 && Math.abs(gd - 1.02) < 0.06);
+          if (isFrameJamb || isFrameTop) {
+            obj.visible = true;
+            if (obj.scale) obj.scale.set(1, 1, 1);
+          }
+        }
+      }
+
+      if (typeof colliders !== 'undefined' && Array.isArray(colliders)) {
+        for (var ci = 0; ci < colliders.length; ci++) {
+          var colItem = colliders[ci];
+          if (!colItem || !colItem.on) continue;
+          if (typeof dFront !== 'undefined' && dFront && colItem === dFront.c) continue;
+          if (colItem.x0 < 2.45 && colItem.x1 > 2.18 && colItem.z0 < 7.35 && colItem.z1 > 6.55) {
+            if ((colItem.z1 - colItem.z0) < 1.5 && (colItem.x1 - colItem.x0) < 0.6) colItem.on = false;
+          }
+        }
+      }
+    };
+
+    // 只清走廊上錯位的招牌。不搬、不重建公司門（第 145n 版已把大門留在 x = -1.20）。
+    var hideStrayCorridorSigns146 = function () {
+      var hideNode = function (node) {
+        if (!node) return;
+        node.visible = false;
+        if (typeof node.traverse === 'function') {
+          node.traverse(function (ch) { if (ch) ch.visible = false; });
+        }
+      };
+      var isWaySign = function (node) {
+        if (!node) return false;
+        var nm = node.name || '';
+        return !!(node.__jioV113SignGroup || node.__jioV113SignPlaque ||
+          (node.userData && node.userData.isWayfindingSign) ||
+          nm === 'jio_v113_corridor_wayfinding_signs' ||
+          nm.indexOf('jio_wayfinding_sign_') === 0);
+      };
+      var near = function (a, b, tol) { return Math.abs(a - b) < tol; };
+
+      var root = (window.__JIO && window.__JIO.group) ? window.__JIO.group : null;
+      if (root && typeof root.traverse === 'function' && typeof THREE !== 'undefined') {
+        var wp = new THREE.Vector3();
+        root.traverse(function (obj) {
+          if (!obj || obj === root) return;
+          if (isWaySign(obj)) { hideNode(obj); return; }
+          if (!obj.isMesh || !obj.geometry) return;
+          if (typeof obj.getWorldPosition === 'function') obj.getWorldPosition(wp);
+          else if (obj.position) wp.copy(obj.position);
+          else return;
+          var gp = obj.geometry.parameters || {};
+          var sy = (gp.height || (gp.radius ? gp.radius * 2 : 1)) * ((obj.scale && obj.scale.y) || 1);
+
+          // v107 把指引牌插進走廊半空（z ≈ 6.07 / 7.83）以及原本貼在門兩側的牌子
+          if (wp.y > 1.15 && wp.y < 2.05 && wp.x > -2.3 && wp.x < -0.9 &&
+              (near(wp.z, 6.07, 0.18) || near(wp.z, 7.83, 0.18) || near(wp.z, 5.75, 0.16) || near(wp.z, 8.15, 0.16))) {
+            obj.visible = false;
+            return;
+          }
+          // 跟著舊門被推到 x ≈ -2.5～-2.7 的燈箱與門牌，離開第 145n 版的門口
+          if (wp.x < -1.7 && wp.x > -2.95 && near(wp.z, 6.95, 0.4) && wp.y > 2.1 && wp.y < 2.7) {
+            obj.visible = false;
+            return;
+          }
+          // 電梯廳地面的箭頭地墊
+          if (near(wp.x, -0.68, 0.25) && near(wp.z, 6.95, 0.35) && wp.y < 0.04 && sy < 0.2) {
+            obj.visible = false;
+          }
+        });
+      }
+
+      if (typeof scene !== 'undefined' && scene && typeof scene.traverse === 'function') {
+        scene.traverse(function (node) {
+          if (!node || node === scene) return;
+          if (isWaySign(node)) { hideNode(node); return; }
+          if (!node.position || node.parent !== scene) return;
+          if (Math.abs(node.position.y - 1.58) > 0.05) return;
+          if (node.position.x !== -1.65 && node.position.x !== -2.20) return;
+          if (near(node.position.z, 6.07, 0.05)) {
+            node.position.z = 5.92;
+            if (node.rotation) node.rotation.y = 0;
+          } else if (near(node.position.z, 7.83, 0.05)) {
+            node.position.z = 7.96;
+            if (node.rotation) node.rotation.y = Math.PI;
+          }
+        });
+      }
+    };
+
+    fixHomeFrontDoor146();
+    hideStrayCorridorSigns146();
+
+    var kazRetry146 = [500, 1500, 3500, 5200, 8500];
+    for (var kazI = 0; kazI < kazRetry146.length; kazI++) {
+      setTimeout(function () {
+        try {
+          fixHomeFrontDoor146();
+          hideStrayCorridorSigns146();
+        } catch (err) {}
+      }, kazRetry146[kazI]);
+    }
+
+    var lastJioMask146 = -1;
+    var prevMoreTickKaz146 = window.__moreTick2;
+    window.__moreTick2 = function (dt, t) {
+      if (typeof prevMoreTickKaz146 === 'function') {
+        try { prevMoreTickKaz146.apply(this, arguments); } catch (err) {}
+      }
+      try {
+        if (typeof dFront !== 'undefined' && dFront && dFront.pv && !dFront.pv.visible) fixHomeFrontDoor146();
+        if (typeof dFront !== 'undefined' && dFront && dFront.c) dFront.c.on = !dFront.open;
+        var jio = window.__JIO;
+        if (jio) {
+          var mask = (jio.ready ? 1 : 0) | (jio.v92Refined ? 4 : 0) | (jio.v107Refined ? 64 : 0);
+          if (mask !== lastJioMask146) {
+            lastJioMask146 = mask;
+            hideStrayCorridorSigns146();
+          }
+        }
+      } catch (err) {}
+    };
+  }
+} catch (e146kaz) {
+  console.warn(e146kaz);
+}
+
+// ===== 第 146 版（Idn）=====
+try {
+  // v144 用 typeof 判斷區塊內的 function，嚴格模式下看不見，那些呼叫是空的。
+  // 這裡直接改路線資料。不可把 fixedWaypoints143 設成 null，否則每幀 for-in 會丟例外。
+  if (typeof fixedWaypoints143 === 'object' && fixedWaypoints143) {
+    for (var wk146 in fixedWaypoints143) {
+      if (Object.prototype.hasOwnProperty.call(fixedWaypoints143, wk146)) {
+        delete fixedWaypoints143[wk146];
+      }
+    }
+  }
+
+  if (typeof fixedWaypoints143b === 'object' && fixedWaypoints143b) {
+    fixedWaypoints143b.entry = { x: -3.10, z: 6.95 };
+    fixedWaypoints143b.reception = { x: -3.68, z: 6.95 };
+    fixedWaypoints143b.aisleNorthE = { x: -5.20, z: 5.60 };
+    fixedWaypoints143b.hubNorth = { x: -5.20, z: 6.95 };
+    fixedWaypoints143b.aisleEastPass = { x: -5.70, z: 8.50 };
+    fixedWaypoints143b.aisleSouthE = { x: -5.85, z: 9.25 };
+    fixedWaypoints143b.aisleSouth = { x: -7.10, z: 9.25 };
+    fixedWaypoints143b.hubCenter = { x: -6.80, z: 11.15 };
+    fixedWaypoints143b.copierFront = { x: -6.80, z: 11.42 };
+    fixedWaypoints143b.door_dining = { x: -10.35, z: 13.50 };
+    fixedWaypoints143b.diningAisleN = { x: -10.35, z: 14.85 };
+    fixedWaypoints143b.diningIn = { x: -10.35, z: 15.15 };
+    fixedWaypoints143b.door_prayer = { x: -7.35, z: 16.60 };
+    fixedWaypoints143b.prayerIn = { x: -7.35, z: 17.20 };
+  }
+
+  var syncJioWaypoints146 = function () {
+    var jio = (typeof window !== 'undefined' && window.__JIO) ? window.__JIO : null;
+    if (!jio || !jio.ready) return false;
+    var src = (typeof fixedWaypoints143b === 'object' && fixedWaypoints143b) ? fixedWaypoints143b : null;
+    if (!src) return false;
+
+    var mask = (jio.v88Refined ? 1 : 0) |
+               (jio.v92Refined ? 2 : 0) |
+               (jio.v99Refined ? 4 : 0) |
+               (jio.v102Refined ? 8 : 0) |
+               (jio.v104Refined ? 16 : 0) |
+               (jio.v107Refined ? 32 : 0);
+    var npcsReady = Array.isArray(jio.npcs) && jio.npcs.length > 0;
+    var wps = jio.waypoints;
+    if (typeof npcRouteApplied143b !== 'undefined' && npcRouteApplied143b &&
+        typeof lastMaskForNpc143b !== 'undefined' && mask === lastMaskForNpc143b &&
+        wps && wps.entry && wps.entry.x === -3.10 &&
+        wps.aisleEastPass && wps.aisleEastPass.x === -5.70 &&
+        wps.aisleNorthE && wps.aisleNorthE.x === -5.20 &&
+        wps.hubNorth && wps.hubNorth.x === -5.20) {
+      return true;
+    }
+
+    jio.waypoints = wps || {};
+    for (var k in src) {
+      if (Object.prototype.hasOwnProperty.call(src, k)) {
+        if (!jio.waypoints[k]) jio.waypoints[k] = { x: src[k].x, z: src[k].z };
+        else { jio.waypoints[k].x = src[k].x; jio.waypoints[k].z = src[k].z; }
+      }
+    }
+    if (jio.doors && jio.doors.pantryToDining) {
+      jio.doors.pantryToDining.x = -10.35;
+      jio.doors.pantryToDining.z = 13.50;
+    }
+    if (typeof npcRouteApplied143b !== 'undefined') npcRouteApplied143b = npcsReady;
+    if (typeof lastMaskForNpc143b !== 'undefined' && npcsReady) lastMaskForNpc143b = mask;
+    return npcsReady;
+  };
+
+  if (typeof window !== 'undefined') window.__syncJioWaypoints146 = syncJioWaypoints146;
+  syncJioWaypoints146();
+
+  if (typeof window !== 'undefined' && !window.__v146IdnTickWrapped) {
+    window.__v146IdnTickWrapped = true;
+    var prevMoreTick146 = window.__moreTick2;
+    window.__moreTick2 = function (dt, t) {
+      var ret;
+      if (typeof prevMoreTick146 === 'function') {
+        try { ret = prevMoreTick146.apply(this, arguments); } catch (err) {}
+      }
+      try { syncJioWaypoints146(); } catch (err) {}
+      return ret;
+    };
+  }
+
+  var quickIds146 = ['jio-go-work', 'jio-go-meeting', 'jio-go-pantry', 'jio-go-prayer'];
+  var clearQuickOnclick146 = function () {
+    if (typeof document === 'undefined') return;
+    for (var i = 0; i < quickIds146.length; i++) {
+      var el = document.getElementById(quickIds146[i]);
+      if (el && (el.__bound143b || el.__bound143bk)) el.onclick = null;
+    }
+  };
+  clearQuickOnclick146();
+  if (typeof document !== 'undefined') {
+    var goB146 = document.getElementById('goB');
+    if (goB146 && !goB146.__v146ClearBound) {
+      goB146.__v146ClearBound = true;
+      goB146.addEventListener('click', clearQuickOnclick146, true);
+    }
+  }
+} catch (e146idn) {
+  console.warn(e146idn);
+}
 })();
 </script>
 
