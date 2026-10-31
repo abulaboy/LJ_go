@@ -111823,6 +111823,155 @@ try {
 } catch (e145m) {
   console.warn(e145m);
 }
+
+// ===== 第 145n 版（JIO 門口）=====
+try {
+  var JIO_DOOR_X_145N = -1.2;
+  var JIO_DOOR_Z0_145N = 6.5;
+  var JIO_DOOR_Z1_145N = 7.4;
+  var JIO_DOOR_ZC_145N = 6.95;
+  var jioDoorLeaf145n = null;
+  var jioDoorBuilt145n = false;
+  var jioBadDoor145n = null;
+  var jioWallMat145n = null;
+
+  var jioFind145n = function (name) {
+    var found = null;
+    var root = (window.__JIO && window.__JIO.group) ? window.__JIO.group : null;
+    if (!root || typeof root.traverse !== 'function') return null;
+    root.traverse(function (obj) {
+      if (!found && obj && obj.name === name) found = obj;
+    });
+    return found;
+  };
+
+  var jioSpanZ145n = function (mesh, z0, z1, skirt) {
+    if (!mesh || !mesh.scale || !mesh.position) return;
+    var len = Math.abs(z1 - z0);
+    mesh.scale.z = skirt ? (len + 0.01) : len;
+    mesh.position.z = (z0 + z1) * 0.5;
+    mesh.position.x = JIO_DOOR_X_145N;
+    mesh.visible = true;
+  };
+
+  var jioHideName145n = function (name) {
+    var mesh = jioFind145n(name);
+    if (!mesh) return;
+    mesh.visible = false;
+    if (typeof mesh.traverse === 'function') {
+      mesh.traverse(function (obj) { if (obj) obj.visible = false; });
+    }
+  };
+
+  var jioClearDoorPath145n = function () {
+    if (typeof colliders === 'undefined' || !Array.isArray(colliders)) return;
+    var i, c, x0, x1, z0, z1;
+    for (i = 0; i < colliders.length; i++) {
+      c = colliders[i];
+      if (!c || c.on === false || c.__v145nWall) continue;
+      x0 = Math.min(c.x0, c.x1);
+      x1 = Math.max(c.x0, c.x1);
+      z0 = Math.min(c.z0, c.z1);
+      z1 = Math.max(c.z0, c.z1);
+      if (x1 > -3.15 && x0 < -0.95 && z1 > 6.58 && z0 < 7.32 && ((x1 - x0) < 0.5 || (z1 - z0) < 0.5)) {
+        c.on = false;
+      }
+    }
+  };
+
+  var jioTuneTaggedCol145n = function (tag, x0, x1, z0, z1) {
+    if (typeof colliders === 'undefined' || !Array.isArray(colliders)) return;
+    var i, c;
+    for (i = 0; i < colliders.length; i++) {
+      c = colliders[i];
+      if (!c || c.tag !== tag) continue;
+      c.on = true;
+      c.x0 = x0;
+      c.x1 = x1;
+      c.z0 = z0;
+      c.z1 = z1;
+      c.__v145nWall = 1;
+    }
+  };
+
+  var jioFixEntrance145n = function () {
+    var root = (window.__JIO && window.__JIO.group) ? window.__JIO.group : null;
+    if (!root) return false;
+
+    if (!jioBadDoor145n) jioBadDoor145n = jioFind145n('jioDoor_v121_mainIndianDoor');
+    if (jioBadDoor145n) {
+      jioBadDoor145n.visible = false;
+      jioBadDoor145n.position.x = 0;
+      if (typeof jioBadDoor145n.traverse === 'function') {
+        jioBadDoor145n.traverse(function (obj) { if (obj) obj.visible = false; });
+      }
+    }
+
+    jioHideName145n('jioWall_v121_foyerWestN');
+    jioHideName145n('jioSkirt_v121_foyerWestN');
+    jioHideName145n('jioWall_v121_foyerWestS');
+    jioHideName145n('jioSkirt_v121_foyerWestS');
+    jioHideName145n('jioWall_v121_header_foyerToReception');
+    jioHideName145n('jioWall_v121_header_mainDoor');
+
+    var northWall = jioFind145n('jioWall_v121_lobbyWestN');
+    var northSkirt = jioFind145n('jioSkirt_v121_lobbyWestN');
+    var southWall = jioFind145n('jioWall_v121_lobbyWestS');
+    var southSkirt = jioFind145n('jioSkirt_v121_lobbyWestS');
+    if (northWall && !jioWallMat145n) jioWallMat145n = northWall.material;
+    jioSpanZ145n(northWall, 4.30, JIO_DOOR_Z0_145N, false);
+    jioSpanZ145n(northSkirt, 4.30, JIO_DOOR_Z0_145N, true);
+    jioSpanZ145n(southWall, JIO_DOOR_Z1_145N, 8.80, false);
+    jioSpanZ145n(southSkirt, JIO_DOOR_Z1_145N, 8.80, true);
+
+    if (window.__JIO && window.__JIO.doors && window.__JIO.doors.main) {
+      window.__JIO.doors.main.x = JIO_DOOR_X_145N;
+      window.__JIO.doors.main.z = JIO_DOOR_ZC_145N;
+      window.__JIO.doors.main.w = JIO_DOOR_Z1_145N - JIO_DOOR_Z0_145N;
+      window.__JIO.doors.main.dir = 'z';
+    }
+    window.jioDoorX = JIO_DOOR_X_145N;
+
+    jioTuneTaggedCol145n('jioWall_v121_lobbyWestN', -1.26, -1.14, 4.30, JIO_DOOR_Z0_145N);
+    jioTuneTaggedCol145n('jioWall_v121_lobbyWestS', -1.26, -1.14, JIO_DOOR_Z1_145N, 8.80);
+    jioClearDoorPath145n();
+
+    if (!jioDoorBuilt145n && typeof doorFrame === 'function' && typeof hingeDoor === 'function' && typeof scene !== 'undefined') {
+      doorFrame('z', JIO_DOOR_X_145N, JIO_DOOR_Z0_145N, JIO_DOOR_Z1_145N, 2.2);
+      jioDoorLeaf145n = hingeDoor(JIO_DOOR_X_145N, JIO_DOOR_Z0_145N, JIO_DOOR_Z1_145N - JIO_DOOR_Z0_145N, 2.18, walnut, Math.PI / 2.4, { rot0: -Math.PI / 2, panel: S(0x2e1a12, 0.5) });
+      jioDoorLeaf145n.open = true;
+      jioDoorLeaf145n.ang = jioDoorLeaf145n.openAng;
+      jioDoorLeaf145n.pv.rotation.y = jioDoorLeaf145n.rot0 + jioDoorLeaf145n.ang;
+      if (jioDoorLeaf145n.c) jioDoorLeaf145n.c.on = false;
+      bx(0.16, 0.62, 1.04, jioWallMat145n || S(0xd7c3a4, 0.85), JIO_DOOR_X_145N, 2.2, JIO_DOOR_ZC_145N, { p: scene, cast: false });
+      jioDoorBuilt145n = true;
+    } else if (jioDoorLeaf145n) {
+      jioDoorLeaf145n.open = true;
+      if (jioDoorLeaf145n.c) jioDoorLeaf145n.c.on = false;
+    }
+    return true;
+  };
+
+  jioFixEntrance145n();
+  var prevTick145n = window.__moreTick2;
+  window.__moreTick2 = function (dt, t) {
+    if (typeof prevTick145n === 'function') {
+      try { prevTick145n(dt, t); } catch (err) {}
+    }
+    try {
+      if (!jioDoorBuilt145n || (jioBadDoor145n && jioBadDoor145n.visible) || (jioBadDoor145n && jioBadDoor145n.position && jioBadDoor145n.position.x < -0.4)) {
+        jioFixEntrance145n();
+      }
+    } catch (err) {}
+  };
+  var jioRetry145n = [400, 900, 1600, 3600, 5200, 9000];
+  var jioRi;
+  for (jioRi = 0; jioRi < jioRetry145n.length; jioRi++) {
+    setTimeout(jioFixEntrance145n, jioRetry145n[jioRi]);
+  }
+} catch (e145n) {
+  console.warn(e145n);
+}
 })();
 </script>
 
