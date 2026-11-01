@@ -113168,6 +113168,209 @@ try {
 } catch (e147kaz) {
   console.warn(e147kaz);
 }
+
+// ===== 第 148 版（公司門口）=====
+// 只修三件事：大門退到接待區地板東緣、平常關著（走近或按互動才開）、拆掉電梯廳到門口之間的重複牆。
+try {
+  var V148_X = -2.84;
+  var V148_Z0 = 6.50;
+  var V148_Z1 = 7.40;
+  var V148_ZC = 6.95;
+  var v148findLeaf = function () {
+    if (typeof doors === 'undefined' || !doors) return null;
+    var i, d, x, z;
+    for (i = 0; i < doors.length; i++) {
+      d = doors[i];
+      if (!d || !d.pv || !d.pv.position) continue;
+      if (typeof dFront !== 'undefined' && d === dFront) continue;
+      x = d.pv.position.x;
+      z = d.pv.position.z;
+      if (x < -0.4 && x > -4.2 && Math.abs(z - V148_Z0) < 0.08) return d;
+    }
+    return null;
+  };
+
+  var v148hide = function (obj) {
+    if (!obj || obj.__v148keep) return;
+    obj.visible = false;
+  };
+
+  var v148place = function () {
+    var leaf = v148findLeaf();
+    if (!leaf) return false;
+    leaf.pv.position.x = V148_X;
+    leaf.pv.position.z = V148_Z0;
+    leaf.rot0 = -Math.PI / 2;
+    leaf.openAng = -Math.PI / 2.4;
+    leaf.locked = false;
+    if (leaf.c) {
+      leaf.c.x0 = V148_X - 0.06;
+      leaf.c.x1 = V148_X + 0.06;
+      leaf.c.z0 = V148_Z0;
+      leaf.c.z1 = V148_Z1;
+      leaf.c.__v145nWall = 1;
+      leaf.c.__v148door = 1;
+      leaf.c.on = !leaf.open;
+    }
+
+    var px = (typeof pos !== 'undefined' && pos) ? pos.x : 99;
+    var pz = (typeof pos !== 'undefined' && pos) ? pos.z : 99;
+    var near = Math.hypot(px - V148_X, pz - V148_ZC) < 0.8;
+    if (!leaf.__v148used) {
+      if (near && leaf.open) leaf.__v148used = true;
+      else {
+        leaf.open = false;
+        leaf.ang = 0;
+        leaf.pv.rotation.y = leaf.rot0;
+        if (leaf.c) leaf.c.on = true;
+      }
+    }
+
+    if (typeof scene !== 'undefined' && scene && scene.children) {
+      var si, o, p, gw, gh, gd, oz, oy;
+      var jambs = 0;
+      for (si = 0; si < scene.children.length; si++) {
+        o = scene.children[si];
+        if (!o || !o.isMesh || !o.geometry || !o.geometry.parameters || !o.position) continue;
+        if (o.__v148keep) continue;
+        p = o.geometry.parameters;
+        gw = p.width || 0;
+        gh = p.height || 0;
+        gd = p.depth || 0;
+        oz = o.position.z;
+        oy = o.position.y;
+        if (o.position.x < -4.2 || o.position.x > -0.4) continue;
+        if (oz < 6.15 || oz > 7.75) continue;
+        var isJamb = Math.abs(gw - 0.16) < 0.04 && Math.abs(gh - 2.2) < 0.1 && Math.abs(gd - 0.06) < 0.03;
+        var isTop = Math.abs(gw - 0.16) < 0.04 && Math.abs(gh - 0.07) < 0.04 && gd > 0.85 && gd < 1.25 && oy > 1.9;
+        var isLintel = Math.abs(gw - 0.16) < 0.05 && gh > 0.45 && gh < 0.8 && gd > 0.85 && gd < 1.25 && oy > 1.9;
+        if (isJamb || isTop || isLintel) {
+          if (isJamb && jambs >= 2) { v148hide(o); continue; }
+          o.position.x = V148_X;
+          o.visible = true;
+          if (isJamb) jambs++;
+        }
+      }
+    }
+
+    var root = (window.__JIO && window.__JIO.group) ? window.__JIO.group : null;
+    if (root && typeof root.traverse === 'function' && typeof THREE !== 'undefined') {
+      var box = new THREE.Box3();
+      var hideNames = {
+        jioWall_v121_foyerNorth: 1, jioSkirt_v121_foyerNorth: 1,
+        jioWall_v121_foyerSouth: 1, jioSkirt_v121_foyerSouth: 1,
+        jioWall_v121_foyerWestN: 1, jioSkirt_v121_foyerWestN: 1,
+        jioWall_v121_foyerWestS: 1, jioSkirt_v121_foyerWestS: 1,
+        jioWall_v121_header_foyerToReception: 1,
+        jioWall_v121_header_mainDoor: 1,
+        jioDoor_v121_mainIndianDoor: 1
+      };
+      root.traverse(function (obj) {
+        if (!obj || obj.__v148keep) return;
+        var nm = obj.name || '';
+        if (hideNames[nm]) { v148hide(obj); return; }
+        if (!obj.isMesh || !obj.visible) return;
+        if (nm === 'jioWall_v121_lobbyWestN' || nm === 'jioWall_v121_lobbyWestS') return;
+        if (nm.indexOf('jioSkirt_v121_lobbyWest') === 0) return;
+        box.setFromObject(obj);
+        if (!isFinite(box.min.x)) return;
+        var cx = (box.min.x + box.max.x) * 0.5;
+        var cz = (box.min.z + box.max.z) * 0.5;
+        var h = box.max.y - box.min.y;
+        var tw = box.max.x - box.min.x;
+        var td = box.max.z - box.min.z;
+        // 擋在新門口裡的舊門片、隔板
+        if (cx < -2.55 && cx > -3.2 && cz > 6.35 && cz < 7.55 && h > 1.4 && tw < 0.35) {
+          v148hide(obj);
+          return;
+        }
+        // 舊門口兩側多疊的木柱、門框（門已經搬走）
+        if (cx > -1.55 && cx < -0.95 && cz > 6.3 && cz < 7.6 && h > 1.5 && tw < 0.4 && td < 0.45) {
+          v148hide(obj);
+        }
+      });
+    }
+
+    if (window.__JIO && window.__JIO.doors && window.__JIO.doors.main) {
+      window.__JIO.doors.main.x = V148_X;
+      window.__JIO.doors.main.z = V148_ZC;
+      window.__JIO.doors.main.w = V148_Z1 - V148_Z0;
+      window.__JIO.doors.main.dir = 'z';
+    }
+
+    if (!window.__v148walls && typeof bx === 'function') {
+      var mat = null;
+      var nw = null;
+      if (root && root.traverse) {
+        root.traverse(function (obj) {
+          if (!nw && obj && obj.name === 'jioWall_v121_lobbyWestN') nw = obj;
+        });
+      }
+      mat = (nw && nw.material) ? nw.material : (typeof S === 'function' ? S(0xe2dbcf, 0.95) : null);
+      if (mat) {
+        var nWall = bx(0.12, 2.8, V148_Z0 - 4.80, mat, V148_X, 0, (4.80 + V148_Z0) * 0.5, { p: scene, cast: false, solid: true });
+        var sWall = bx(0.12, 2.8, 8.80 - V148_Z1, mat, V148_X, 0, (V148_Z1 + 8.80) * 0.5, { p: scene, cast: false, solid: true });
+        nWall.name = 'v148_wall_n';
+        sWall.name = 'v148_wall_s';
+        nWall.__v148keep = 1;
+        sWall.__v148keep = 1;
+        if (typeof colliders !== 'undefined' && colliders.length >= 2) {
+          colliders[colliders.length - 1].__v148keep = 1;
+          colliders[colliders.length - 2].__v148keep = 1;
+        }
+        window.__v148walls = 1;
+      }
+    }
+    if (typeof colliders !== 'undefined' && colliders) {
+      var ci, c, x0, x1, z0, z1;
+      for (ci = 0; ci < colliders.length; ci++) {
+        c = colliders[ci];
+        if (!c || c.on === false || c.__v148door || c.__v148keep) continue;
+        x0 = Math.min(c.x0, c.x1);
+        x1 = Math.max(c.x0, c.x1);
+        z0 = Math.min(c.z0, c.z1);
+        z1 = Math.max(c.z0, c.z1);
+        if ((x1 - x0) < 0.55 && (z1 - z0) < 1.35 && x1 > -2.95 && x0 < -1.02 && z1 > 6.56 && z0 < 7.34) {
+          if (z0 >= V148_Z0 - 0.08 && z1 <= V148_Z1 + 0.08) c.on = false;
+          else if (x0 > -2.2) c.on = false;
+        }
+      }
+    }
+    if (typeof things !== 'undefined' && things && !window.__v148thing) {
+      var sayOpen = function () {
+        if (typeof say === 'function') say(leaf.open ? '公司門打開了。' : '公司門關上了。');
+      };
+      things.push({
+        x: V148_X + 0.5, z: V148_ZC, r: 0.85,
+        label: function () { return leaf.open ? '關大門' : '開大門'; },
+        go: function () { leaf.__v148used = true; if (typeof toggleDoor === 'function') toggleDoor(leaf); sayOpen(); }
+      });
+      things.push({
+        x: V148_X - 0.5, z: V148_ZC, r: 0.85,
+        label: function () { return leaf.open ? '關大門' : '開大門'; },
+        go: function () { leaf.__v148used = true; if (typeof toggleDoor === 'function') toggleDoor(leaf); sayOpen(); }
+      });
+      window.__v148thing = 1;
+    }
+    return true;
+  };
+
+  v148place();
+  var v148prev = window.__moreTick2;
+  window.__moreTick2 = function (dt, t) {
+    if (typeof v148prev === 'function') {
+      try { v148prev.apply(this, arguments); } catch (err) {}
+    }
+    try { v148place(); } catch (err) {}
+  };
+  var v148delays = [500, 1200, 2500, 5000, 9500, 12000];
+  var v148i;
+  for (v148i = 0; v148i < v148delays.length; v148i++) {
+    setTimeout(function () { try { v148place(); } catch (err) {} }, v148delays[v148i]);
+  }
+} catch (e148) {
+  console.warn('[v148]', e148);
+}
 })();
 </script>
 
