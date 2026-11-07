@@ -9,6 +9,7 @@
 - 不能放有版權的角色（寶可夢、卡通人物等），用原創的。
 - 改完一定要跑測試（`專案說明.md` 的「測試方式」），ERRORS 要是空的才可以推；有動到多人連線或語音，要另外測多人情況。
 - `main` 和 `gh-pages` 兩個分支要推同一個版本（Pages 從 gh-pages 發布）。
+- 改完根目錄 `index.html` 後要跑 `node tools/make_smooth.js` 更新流暢版（`smooth/`）。`v148/` 這類版本資料夾是存檔，不要改。
 - 每次改完更新 `專案說明.md` 的版本號和版本紀錄。
 - 這個 repo 是公開的：不要放家裡照片、地址或其他個人資料。
 - 不要刪 `.nojekyll`；不要 commit `tools/test.html`、`tools/check.js`。

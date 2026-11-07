@@ -1,0 +1,2337 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>超大版家裡走走（小樂洲洲豪華版）— JIO 四人接力完成</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" />
+  <style>
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+      background: #0f172a; font-family: 'Noto Sans TC', 'Inter', sans-serif;
+      touch-action: none;
+    }
+    #gameCanvas {
+      display: block; width: 100%; height: 100%; outline: none;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.84);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+    .mc-slot {
+      width: 42px; height: 42px;
+      background: rgba(30, 41, 59, 0.9);
+      border: 3px solid #64748b;
+      border-top-color: #94a3b8;
+      border-left-color: #94a3b8;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; transition: transform 0.12s, border-color 0.12s;
+      font-size: 16px; line-height: 1;
+    }
+    .mc-slot.active {
+      border-color: #facc15;
+      transform: scale(1.12);
+      background: rgba(71, 85, 105, 0.95);
+      box-shadow: 0 0 12px rgba(250, 204, 21, 0.65);
+    }
+    @media (max-width: 640px) {
+      .mc-slot { width: 34px; height: 34px; font-size: 13px; border-width: 2px; }
+    }
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 14px rgba(249, 115, 22, 0.7); }
+      50% { transform: scale(1.04); box-shadow: 0 0 24px rgba(250, 204, 21, 0.95); }
+    }
+    .kick-btn-glow {
+      animation: pulseGlow 1.8s infinite ease-in-out;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="relative w-full h-full overflow-hidden text-white">
+
+  <!-- 3D 畫布 -->
+  <canvas id="gameCanvas" tabindex="0"></canvas>
+
+  <!-- 頂部導覽與狀態列 -->
+  <header class="fixed top-2 left-2 right-2 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+    <!-- 左上：當前角色與地區資訊 -->
+    <div class="glass-panel rounded-2xl px-3 py-2 flex items-center gap-2.5 pointer-events-auto max-w-full">
+      <div id="charAvatarBadge" class="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-xl font-black shadow-inner shrink-0">👦</div>
+      <div class="min-w-0">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span id="currentRoleLabel" class="font-extrabold text-sm sm:text-base text-amber-300 truncate">小隊長 (Lucas)</span>
+          <span id="currentZoneBadge" class="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-500/30 border border-emerald-400/50 text-emerald-200">✈️ 飛機場跑道</span>
+        </div>
+        <div class="flex items-center gap-2 text-[11px] sm:text-xs text-slate-300 mt-0.5">
+          <span id="sevenElevenCountBadge" class="text-orange-300 font-bold">🏪 7-11：200/200 臺</span>
+          <span>•</span>
+          <span id="pokemonCountBadge" class="text-pink-300 font-bold">🔴 寶可夢：1/10</span>
+          <span>•</span>
+          <span id="mcLightStateBadge" class="text-yellow-300 font-bold">💡 麥塊燈：開</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右上：快速功能與 JIO 四人接力按鈕 -->
+    <div class="flex items-center gap-1.5 flex-wrap pointer-events-auto">
+      <button id="btnToggleRelayModal" type="button" class="glass-panel hover:bg-slate-800 active:scale-95 transition px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-cyan-300 border border-cyan-400/40 flex items-center gap-1">
+        <span>👷</span><span>四人接力報告</span>
+      </button>
+      <button id="btnCopyPatchCode" type="button" class="glass-panel hover:bg-slate-800 active:scale-95 transition px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-emerald-300 border border-emerald-400/40 flex items-center gap-1">
+        <span>📋</span><span class="hidden sm:inline">複製 v150 擴充碼</span><span class="sm:hidden">擴充碼</span>
+      </button>
+      <button id="btnMuteAudio" type="button" class="glass-panel hover:bg-slate-800 active:scale-95 transition px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-slate-200">
+        🔊 音效：開
+      </button>
+      <canvas id="miniMapCanvas" width="110" height="110" class="rounded-xl border-2 border-white/30 bg-slate-900/90 shadow-lg hidden sm:block"></canvas>
+    </div>
+  </header>
+
+  <!-- 頂部第二排：7 大地標一鍵瞬移列 -->
+  <nav class="fixed top-[68px] sm:top-[64px] left-2 right-2 z-20 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 pointer-events-auto">
+    <button type="button" data-tp="airport" class="tp-btn shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-sky-600/90 hover:bg-sky-500 border border-sky-300/50 shadow">
+      ✈️ 飛機場（爸爸開飛機）
+    </button>
+    <button type="button" data-tp="fighter" class="tp-btn shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-indigo-600/90 hover:bg-indigo-500 border border-indigo-300/50 shadow">
+      🛩️ 戰鬥機停機坪
+    </button>
+    <button type="button" data-tp="minecraft" class="tp-btn shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-amber-700/90 hover:bg-amber-600 border border-amber-300/50 shadow">
+      🧱 棒球場 Minecraft 大城堡
+    </button>
+    <button type="button" data-tp="poke_road" class="tp-btn shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-pink-600/90 hover:bg-pink-500 border border-pink-300/50 shadow">
+      🌈 寶可夢進去的路（彩虹大道）
+    </button>
+    <button type="button" data-tp="poke_stage2" class="tp-btn shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-purple-600/90 hover:bg-purple-500 border border-purple-300/50 shadow">
+      👑 寶可夢第二階段（神獸島）
+    </button>
+    <button type="button" data-tp="seven_avenue" class="tp-btn shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-600/90 hover:bg-emerald-500 border border-emerald-300/50 shadow">
+      🏪 200 臺 7-11 超級大街
+    </button>
+    <button type="button" data-tp="stadium" class="tp-btn shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-teal-600/90 hover:bg-teal-500 border border-teal-300/50 shadow">
+      🏟️ 北海道棒球場
+    </button>
+    <button type="button" data-tp="home" class="tp-btn shrink-0 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-rose-600/90 hover:bg-rose-500 border border-rose-300/50 shadow">
+      🏠 16樓家 ＆ JIO 公司
+    </button>
+  </nav>
+
+  <!-- 中央大橫幅通知 (Banner) -->
+  <div id="centerBanner" class="fixed top-28 left-1/2 -translate-x-1/2 z-30 pointer-events-none transition-all duration-300 opacity-0 scale-95 max-w-[92vw] w-[460px]">
+    <div class="glass-panel rounded-2xl px-5 py-3 text-center border-2 border-amber-400/70">
+      <div id="bannerTitle" class="text-lg sm:text-xl font-black text-amber-300 tracking-wide">🌟 歡迎來到超大版家裡走走！</div>
+      <div id="bannerSub" class="text-xs sm:text-sm text-slate-200 mt-1">JIO 四位員工接力完成：200 臺 7-11、飛機場、Minecraft 大屋頂與寶可夢大道！</div>
+    </div>
+  </div>
+
+  <!-- 對話氣泡字幕 (Toast) -->
+  <div id="speechBubble" class="fixed bottom-44 sm:bottom-36 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-opacity duration-200 opacity-0 max-w-[90vw]">
+    <div id="speechText" class="glass-panel rounded-full px-4 py-2 text-xs sm:text-sm font-bold text-amber-200 border border-amber-400/40 shadow-lg text-center">
+      準備出發探險！
+    </div>
+  </div>
+
+  <!-- 右側／中下超級王牌互動面板（踢爸爸下飛機、隨時開燈、開門、開飛機、逛7-11） -->
+  <aside class="fixed right-2.5 top-[112px] z-20 flex flex-col items-end gap-1.5 pointer-events-auto max-w-[60vw]">
+    <!-- 1. 小隊長把爸爸踢下飛機 -->
+    <button id="btnKickDad" type="button" class="kick-btn-glow px-3.5 py-2 rounded-2xl font-black text-xs sm:text-sm bg-gradient-to-r from-orange-500 via-red-500 to-amber-500 text-white border-2 border-yellow-200 shadow-xl active:scale-95 transition flex items-center gap-1.5">
+      <span class="text-base">🦵</span><span>小隊長把爸爸踢下飛機！</span>
+    </button>
+    <!-- 叫爸爸重回飛機 -->
+    <button id="btnResetDadPlane" type="button" class="hidden px-3 py-1.5 rounded-xl font-bold text-xs bg-amber-600/95 hover:bg-amber-500 text-white border border-amber-300 shadow active:scale-95 transition">
+      🔄 叫爸爸重回飛機上（再踢一次！）
+    </button>
+
+    <!-- 2. 駕駛客機 / 戰鬥機切換 -->
+    <div class="flex flex-wrap justify-end gap-1">
+      <button id="btnFlyAirliner" type="button" class="px-2.5 py-1.5 rounded-xl font-bold text-xs bg-sky-600/95 hover:bg-sky-500 border border-sky-300 shadow active:scale-95 transition">
+        ✈️ 開大飛機
+      </button>
+      <button id="btnFlyFighter" type="button" class="px-2.5 py-1.5 rounded-xl font-bold text-xs bg-indigo-600/95 hover:bg-indigo-500 border border-indigo-300 shadow active:scale-95 transition">
+        🛩️ 開戰鬥機
+      </button>
+    </div>
+
+    <!-- 3. Minecraft 隨時開燈 & 開關方塊前門 -->
+    <button id="btnToggleMcLight" type="button" class="px-3 py-1.5 rounded-xl font-extrabold text-xs bg-yellow-500 hover:bg-yellow-400 text-slate-950 border-2 border-white shadow active:scale-95 transition flex items-center gap-1">
+      <span>💡</span><span id="mcLightBtnText">Minecraft 開燈：亮（隨時可開）</span>
+    </button>
+    <button id="btnToggleMcDoor" type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs bg-amber-800/95 hover:bg-amber-700 text-amber-100 border border-amber-400/60 shadow active:scale-95 transition">
+      🚪 開／關 Minecraft 前門
+    </button>
+
+    <!-- 4. 寶可夢丟球 & 7-11 吃東西 & 煙火 -->
+    <div class="flex flex-wrap justify-end gap-1">
+      <button id="btnThrowPokeBall" type="button" class="px-2.5 py-1.5 rounded-xl font-bold text-xs bg-rose-600/95 hover:bg-rose-500 border border-rose-300 shadow active:scale-95 transition">
+        🔴 丟球抓寶可夢
+      </button>
+      <button id="btnSevenSnack" type="button" class="px-2.5 py-1.5 rounded-xl font-bold text-xs bg-emerald-600/95 hover:bg-emerald-500 border border-emerald-300 shadow active:scale-95 transition">
+        🏪 7-11 買思樂冰
+      </button>
+    </div>
+    <div class="flex flex-wrap justify-end gap-1">
+      <button id="btnSwitchChar" type="button" class="px-2.5 py-1.5 rounded-xl font-bold text-xs bg-purple-600/95 hover:bg-purple-500 border border-purple-300 shadow active:scale-95 transition">
+        👦 換角色 (Q)
+      </button>
+      <button id="btnFireworks" type="button" class="px-2.5 py-1.5 rounded-xl font-bold text-xs bg-pink-600/95 hover:bg-pink-500 border border-pink-300 shadow active:scale-95 transition">
+        🎆 200店煙火秀
+      </button>
+    </div>
+  </aside>
+
+  <!-- Minecraft 方塊建造快捷列（底部置中） -->
+  <div id="mcHotbarWrap" class="fixed bottom-3 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 pointer-events-auto">
+    <div class="flex items-center gap-1.5 bg-slate-950/85 px-2.5 py-1 rounded-full border border-white/20 text-[11px] font-bold">
+      <span id="selectedBlockLabel" class="text-amber-300">🌿 翠綠草塊</span>
+      <button id="btnPlaceBlock" type="button" class="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white">➕ 放方塊</button>
+      <button id="btnBreakBlock" type="button" class="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white">⛏️ 拆方塊</button>
+    </div>
+    <div id="mcHotbar" class="flex items-center gap-0.5 p-1 bg-slate-900/90 rounded-xl border-2 border-slate-500 shadow-2xl">
+      <!-- 由 JS 動態填入 9 種經典 Minecraft 方塊 -->
+    </div>
+  </div>
+
+  <!-- 左下虛擬搖桿（手機＆電腦皆可拖曳移動） -->
+  <div id="joystickZone" class="fixed left-3 bottom-4 z-20 w-28 h-28 sm:w-32 sm:h-32 rounded-full glass-panel flex items-center justify-center touch-none pointer-events-auto border-2 border-white/25">
+    <div class="text-[10px] text-white/40 font-bold absolute top-1.5">前進</div>
+    <div class="text-[10px] text-white/40 font-bold absolute bottom-1.5">後退</div>
+    <div id="joystickKnob" class="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg border-2 border-white pointer-events-none transition-transform duration-75"></div>
+  </div>
+
+  <!-- 右下動作與飛行升降按鈕 -->
+  <div class="fixed right-3 bottom-4 z-20 flex flex-col items-end gap-2 pointer-events-auto">
+    <!-- 飛行高度控制（開飛機／戰鬥機時顯示） -->
+    <div id="flightControls" class="hidden flex items-center gap-1.5">
+      <button id="btnFlyUp" type="button" class="w-11 h-11 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-black text-xs shadow-lg border border-white/50 active:scale-95">⬆️升高</button>
+      <button id="btnFlyDown" type="button" class="w-11 h-11 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-black text-xs shadow-lg border border-white/50 active:scale-95">⬇️下降</button>
+      <button id="btnFlyBoost" type="button" class="w-12 h-11 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg border border-white active:scale-95">🔥噴射</button>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="btnJump" type="button" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-indigo-600 hover:bg-indigo-500 active:scale-90 text-white font-black text-xs sm:text-sm shadow-xl border-2 border-indigo-200 flex flex-col items-center justify-center">
+        <span>🚀</span><span>跳躍</span>
+      </button>
+      <button id="btnInteract" type="button" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-90 text-white font-black text-xs sm:text-sm shadow-xl border-2 border-emerald-200 flex flex-col items-center justify-center px-1 text-center">
+        <span class="text-lg">✨</span><span id="interactBtnLabel">互動 (E)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- JIO 四人接力任務完成報告彈窗 -->
+  <div id="relayModal" class="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="glass-panel rounded-3xl max-w-2xl w-full p-5 sm:p-6 border-2 border-cyan-400/50 max-h-[88vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-white/15 pb-3">
+        <div>
+          <h2 class="text-lg sm:text-xl font-black text-amber-300">👷 JIO 公司四位員工接力完成報告（第 150 超大版）</h2>
+          <p class="text-xs text-slate-300 mt-0.5">Rudy → Kaz → Idn → Tidal 四人接力，把小隊長交代的任務全部做好了！</p>
+        </div>
+        <button id="btnCloseRelayModal" type="button" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 font-bold text-slate-200">✕</button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 text-xs sm:text-sm">
+        <div class="p-3.5 rounded-2xl bg-red-950/50 border border-red-400/40">
+          <div class="font-black text-red-300 text-sm mb-1">🔴 第一棒：Rudy（小主管）</div>
+          <ul class="space-y-1 text-slate-200 list-disc list-inside">
+            <li>打通**「寶可夢世界第二階段可以進去的路」**！</li>
+            <li>移除所有隱形牆，鋪好超寬**「🌈 彩虹星光大馬路」**與**「🌟 第二階段黃金大橋」**，從棒球場、Minecraft 或飛機場都能直接走進寶可夢第一階段與第二階段神獸島！</li>
+          </ul>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-blue-950/50 border border-blue-400/40">
+          <div class="font-black text-blue-300 text-sm mb-1">🔵 第二棒：Kaz（架構工程師）</div>
+          <ul class="space-y-1 text-slate-200 list-disc list-inside">
+            <li>棒球場旁的 **Minecraft 世界土地變超大（80×80公尺）**！</li>
+            <li>換上 **16×16 原汁原味像素方塊材質**，蓋好**四面方塊高牆**、**方塊大屋頂**與**Minecraft 像素雙開大門**！</li>
+            <li>裝滿 36 盞螢石燈＋紅石燈，**隨時按「💡 開燈」按鈕都能開關燈**！</li>
+          </ul>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-emerald-950/50 border border-emerald-400/40">
+          <div class="font-black text-emerald-300 text-sm mb-1">🟢 第三棒：Idn（互動工程師）</div>
+          <ul class="space-y-1 text-slate-200 list-disc list-inside">
+            <li>新建超酷**「✈️ 小樂洲洲國際飛機場」**（跑道、閃光導航燈、旋轉雷達塔台）！</li>
+            <li>停好**一臺大客機**＋**一臺超帥迷彩戰鬥機**（兩臺都能開上天）！</li>
+            <li>**爸爸坐在飛機上面開飛機**，小隊長按**「🦵 把爸爸踢下飛機！」**就能一腳把爸爸踢飛（爸爸會開降落傘慘叫飄下來），換小隊長自己開飛機！</li>
+          </ul>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-amber-950/50 border border-amber-400/40">
+          <div class="font-black text-amber-300 text-sm mb-1">🟡 第四棒：Tidal（測試＆加料王）</div>
+          <ul class="space-y-1 text-slate-200 list-disc list-inside">
+            <li>狂蓋 **200 臺 7-11**（編號 **第 001 號店 ～ 第 200 號店**），排滿飛機場大道、Minecraft 外圍與環場公路！</li>
+            <li>走近任何一臺都有**「叮咚～♪」門鈴聲**，還能拿思樂冰、茶葉蛋、大亨堡與放 200 店大煙火！</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="btnRelayGoKick" type="button" class="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-xs sm:text-sm text-white">
+          🦵 馬上試試把爸爸踢下飛機！
+        </button>
+        <button id="btnRelayClose2" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-black text-xs sm:text-sm text-white">
+          🎮 開始玩超大版家裡走走
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    'use strict';
+
+    // =========================================================================
+    // 0. 音效合成引擎 (Web Audio API，免外部音檔、支援靜音切換)
+    // =========================================================================
+    var audioCtx = null;
+    var soundMuted = false;
+
+    function ensureAudio() {
+      if (soundMuted) return null;
+      try {
+        if (!audioCtx) {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      } catch (e) {}
+      return audioCtx;
+    }
+
+    function notes(freqs, wave, dur) {
+      var ctx = ensureAudio();
+      if (!ctx || !Array.isArray(freqs)) return;
+      var w = wave || 'sine';
+      var d = dur || 0.1;
+      var now = ctx.currentTime;
+      for (var i = 0; i < freqs.length; i++) {
+        try {
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.type = w;
+          osc.frequency.setValueAtTime(freqs[i], now + i * d);
+          gain.gain.setValueAtTime(0.12, now + i * d);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + (i + 0.95) * d);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * d);
+          osc.stop(now + (i + 1) * d);
+        } catch (e) {}
+      }
+    }
+
+    function noiseBurst(dur, freq, vol) {
+      var ctx = ensureAudio();
+      if (!ctx) return;
+      try {
+        var d = dur || 0.18;
+        var bufferSize = Math.max(1, Math.floor(ctx.sampleRate * d));
+        var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        var data = buffer.getChannelData(0);
+        for (var i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        var noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        var filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = freq || 600;
+        var gain = ctx.createGain();
+        gain.gain.setValueAtTime(vol || 0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + d);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start();
+      } catch (e) {}
+    }
+
+    // 7-11 經典「叮咚～」門鈴聲
+    function playSevenChime() {
+      notes([659.25, 523.25], 'triangle', 0.22);
+    }
+
+    // =========================================================================
+    // 1. UI 通知與全域輔助函式 (相容原版家裡走走介面)
+    // =========================================================================
+    var bannerTimer = null;
+    function banner(title, sub) {
+      var el = document.getElementById('centerBanner');
+      var tEl = document.getElementById('bannerTitle');
+      var sEl = document.getElementById('bannerSub');
+      if (!el || !tEl || !sEl) return;
+      tEl.textContent = title || '';
+      sEl.textContent = sub || '';
+      el.classList.remove('opacity-0', 'scale-95');
+      el.classList.add('opacity-100', 'scale-100');
+      if (bannerTimer) clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(function() {
+        el.classList.remove('opacity-100', 'scale-100');
+        el.classList.add('opacity-0', 'scale-95');
+      }, 4200);
+    }
+
+    var sayTimer = null;
+    function say(msg) {
+      var wrap = document.getElementById('speechBubble');
+      var txt = document.getElementById('speechText');
+      if (!wrap || !txt) return;
+      txt.textContent = msg;
+      wrap.classList.remove('opacity-0');
+      wrap.classList.add('opacity-100');
+      if (sayTimer) clearTimeout(sayTimer);
+      sayTimer = setTimeout(function() {
+        wrap.classList.remove('opacity-100');
+        wrap.classList.add('opacity-0');
+      }, 3800);
+    }
+
+    // =========================================================================
+    // 2. Three.js 核心場景初始化
+    // =========================================================================
+    var canvas = document.getElementById('gameCanvas');
+    var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = false;
+
+    var scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x7dd3fc);
+    scene.fog = new THREE.FogExp2(0x7dd3fc, 0.0018);
+
+    var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.2, 1200);
+
+    var hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.85);
+    hemiLight.position.set(0, 120, 0);
+    scene.add(hemiLight);
+
+    var dirLight = new THREE.DirectionalLight(0xfffbeb, 0.75);
+    dirLight.position.set(80, 140, 60);
+    scene.add(dirLight);
+
+    // 像素貼圖產生器（給 Minecraft 與 7-11 招牌使用）
+    function makePixelTex(drawFn, size) {
+      var s = size || 16;
+      var c = document.createElement('canvas');
+      c.width = s; c.height = s;
+      var ctx = c.getContext('2d');
+      drawFn(ctx, s);
+      var tex = new THREE.CanvasTexture(c);
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestFilter;
+      return tex;
+    }
+
+    function makeSignTex(w, h, drawFn) {
+      var c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      var ctx = c.getContext('2d');
+      drawFn(ctx, w, h);
+      var tex = new THREE.CanvasTexture(c);
+      return tex;
+    }
+
+    // 大地基底與草地
+    var worldFloor = new THREE.Mesh(
+      new THREE.PlaneGeometry(900, 900),
+      new THREE.MeshLambertMaterial({ color: 0x4ade80 })
+    );
+    worldFloor.rotation.x = -Math.PI / 2;
+    worldFloor.position.y = -0.05;
+    scene.add(worldFloor);
+
+    // 碰撞盒陣列與互動點陣列 (與原版介面一致)
+    var colliders = [];
+    var things = [];
+    function col(x0, x1, z0, z1, top) {
+      var c = {
+        x0: Math.min(x0, x1), x1: Math.max(x0, x1),
+        z0: Math.min(z0, z1), z1: Math.max(z0, z1),
+        top: top || 3, on: true
+      };
+      colliders.push(c);
+      return c;
+    }
+
+    // =========================================================================
+    // 3. 角色建模系統（小隊長 Lucas、弟弟 Jasper、爸爸、媽媽 ＋ JIO 四員工）
+    // =========================================================================
+    function createCharacterModel(cfg) {
+      var g = new THREE.Group();
+      var scale = cfg.scale || 1.0;
+
+      // 雙腿
+      var legGeo = new THREE.BoxGeometry(0.22 * scale, 0.55 * scale, 0.22 * scale);
+      var legMat = new THREE.MeshLambertMaterial({ color: cfg.pantsColor || 0x1e3a8a });
+      var leftLeg = new THREE.Mesh(legGeo, legMat);
+      leftLeg.position.set(-0.14 * scale, 0.28 * scale, 0);
+      var rightLeg = new THREE.Mesh(legGeo, legMat);
+      rightLeg.position.set(0.14 * scale, 0.28 * scale, 0);
+      g.add(leftLeg, rightLeg);
+
+      // 身體
+      var bodyGeo = new THREE.BoxGeometry(0.56 * scale, 0.65 * scale, 0.32 * scale);
+      var bodyMat = new THREE.MeshLambertMaterial({ color: cfg.shirtColor || 0xef4444 });
+      var body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.set(0, 0.85 * scale, 0);
+      g.add(body);
+
+      // 雙手
+      var armGeo = new THREE.BoxGeometry(0.18 * scale, 0.55 * scale, 0.18 * scale);
+      var armMat = new THREE.MeshLambertMaterial({ color: cfg.shirtColor || 0xef4444 });
+      var leftArm = new THREE.Mesh(armGeo, armMat);
+      leftArm.position.set(-0.39 * scale, 0.85 * scale, 0);
+      var rightArm = new THREE.Mesh(armGeo, armMat);
+      rightArm.position.set(0.39 * scale, 0.85 * scale, 0);
+      g.add(leftArm, rightArm);
+
+      // 頭部
+      var headGeo = new THREE.BoxGeometry(0.48 * scale, 0.48 * scale, 0.48 * scale);
+      var skinMat = new THREE.MeshLambertMaterial({ color: cfg.skinColor || 0xfde68a });
+      var head = new THREE.Mesh(headGeo, skinMat);
+      head.position.set(0, 1.45 * scale, 0);
+      g.add(head);
+
+      // 頭髮 / 機長帽
+      var hairGeo = new THREE.BoxGeometry(0.52 * scale, 0.18 * scale, 0.52 * scale);
+      var hairMat = new THREE.MeshLambertMaterial({ color: cfg.hairColor || 0x1e293b });
+      var hair = new THREE.Mesh(hairGeo, hairMat);
+      hair.position.set(0, 1.68 * scale, 0);
+      g.add(hair);
+
+      // 眼睛
+      var eyeGeo = new THREE.BoxGeometry(0.07 * scale, 0.07 * scale, 0.05 * scale);
+      var eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+      var eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+      eyeL.position.set(-0.11 * scale, 1.48 * scale, 0.25 * scale);
+      var eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+      eyeR.position.set(0.11 * scale, 1.48 * scale, 0.25 * scale);
+      g.add(eyeL, eyeR);
+
+      // 濃鬍子 (JIO 員工或爸爸眼鏡)
+      if (cfg.beard) {
+        var beardMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5 * scale, 0.18 * scale, 0.5 * scale),
+          new THREE.MeshLambertMaterial({ color: 0x0f172a })
+        );
+        beardMesh.position.set(0, 1.3 * scale, 0.03 * scale);
+        g.add(beardMesh);
+      }
+      if (cfg.pilotCap) {
+        var capVisor = new THREE.Mesh(
+          new THREE.BoxGeometry(0.54 * scale, 0.08 * scale, 0.62 * scale),
+          new THREE.MeshLambertMaterial({ color: 0x1e3a8a })
+        );
+        capVisor.position.set(0, 1.72 * scale, 0.05 * scale);
+        g.add(capVisor);
+      }
+
+      // 頭頂名牌
+      if (cfg.label) {
+        var lblTex = makeSignTex(320, 72, function(ctx, w, h) {
+          ctx.fillStyle = cfg.badgeBg || 'rgba(15, 23, 42, 0.85)';
+          ctx.fillRect(4, 4, w - 8, h - 8);
+          ctx.strokeStyle = cfg.badgeBorder || '#facc15';
+          ctx.lineWidth = 4;
+          ctx.strokeRect(4, 4, w - 8, h - 8);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 28px "Noto Sans TC", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(cfg.label, w / 2, h / 2);
+        });
+        var sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: lblTex, transparent: true }));
+        sprite.position.set(0, 2.15 * scale, 0);
+        sprite.scale.set(2.3, 0.52, 1);
+        g.add(sprite);
+        g.userData.labelSprite = sprite;
+      }
+
+      g.userData.leftLeg = leftLeg;
+      g.userData.rightLeg = rightLeg;
+      g.userData.leftArm = leftArm;
+      g.userData.rightArm = rightArm;
+      return g;
+    }
+
+    var ROLES = [
+      { id: 'lucas', name: '小隊長 (Lucas)', icon: '👦', shirtColor: 0xef4444, pantsColor: 0x1d4ed8, scale: 0.92, label: '👦 小隊長 (Lucas)' },
+      { id: 'jasper', name: '弟弟 (Jasper)', icon: '🧒', shirtColor: 0xf59e0b, pantsColor: 0x15803d, scale: 0.80, label: '🧒 弟弟 Jasper' },
+      { id: 'mom', name: '媽媽', icon: '👩', shirtColor: 0xec4899, pantsColor: 0x475569, scale: 1.05, label: '👩 媽媽' },
+      { id: 'rudy', name: 'JIO 主管 Rudy', icon: '🧔🏽', shirtColor: 0xdc2626, pantsColor: 0x1e293b, scale: 1.08, skinColor: 0xc68642, beard: true, label: '🧔🏽 JIO-Rudy' }
+    ];
+    var currentRoleIdx = 0;
+
+    // 主角 A 與位置 pos (預設在飛機場跑道旁，正對爸爸開的大飛機！)
+    var pos = { x: -72, z: 18 };
+    var A = {
+      pos: pos,
+      heading: 0,
+      jh: 0,
+      jv: 0,
+      g: createCharacterModel(ROLES[0])
+    };
+    A.g.position.set(pos.x, 0, pos.z);
+    scene.add(A.g);
+
+    // 擺放 JIO 四位接力員工 NPC 在世界中心歡迎小隊長
+    var jioTeamConfigs = [
+      { name: '🔴 第1棒 Rudy (寶可夢大道)', color: 0xdc2626, x: -8, z: 14 },
+      { name: '🔵 第2棒 Kaz (Minecraft屋頂)', color: 0x2563eb, x: 18, z: 14 },
+      { name: '🟢 第3棒 Idn (飛機場踢爸爸)', color: 0x16a34a, x: -58, z: 14 },
+      { name: '🟡 第4棒 Tidal (200臺7-11)', color: 0xd97706, x: -24, z: 14 }
+    ];
+    var jioNpcs = [];
+    for (var ji = 0; ji < jioTeamConfigs.length; ji++) {
+      var jc = jioTeamConfigs[ji];
+      var npc = createCharacterModel({
+        shirtColor: jc.color, pantsColor: 0x1e293b, skinColor: 0xc68642,
+        beard: true, scale: 1.05, label: jc.name, badgeBorder: '#38bdf8'
+      });
+      npc.position.set(jc.x, 0, jc.z);
+      scene.add(npc);
+      jioNpcs.push(npc);
+    }
+
+    // =========================================================================
+    // ===== 第 150A 版（第 1 棒：Rudy）：寶可夢世界（第一階段＋第二階段神獸島）＆ 可以進去的彩虹大道 =====
+    // =========================================================================
+    var pokePartnerMesh = null;
+    var caughtCount = 1;
+    var wildPokemons = [];
+
+    (function buildRelay1_Rudy_PokemonWorld() {
+      var pokeGroup = new THREE.Group();
+      scene.add(pokeGroup);
+
+      // 1. 「🌈 可以進去的路」：從中央廣場/棒球場/Minecraft 一路直通寶可夢第一階段與第二階段的彩虹星光大道 (x: 0, z: 10 -> -155)
+      var rainbowColors = [0xff4d6d, 0xff9e00, 0xffea00, 0x2ec4b6, 0x3a86ff, 0x8338ec, 0xff007f];
+      for (var rz = 12; rz >= -155; rz -= 3) {
+        var rIdx = Math.abs(Math.floor(rz / 3)) % rainbowColors.length;
+        var tile = new THREE.Mesh(
+          new THREE.BoxGeometry(10, 0.16, 3.05),
+          new THREE.MeshLambertMaterial({ color: rainbowColors[rIdx] })
+        );
+        tile.position.set(0, 0.06, rz);
+        pokeGroup.add(tile);
+      }
+
+      // 大馬路兩側發光精靈球路燈（完全不擋路，中間 10 公尺寬敞大道）
+      for (var lz = 6; lz >= -145; lz -= 16) {
+        [-5.8, 5.8].forEach(function(lx) {
+          var pole = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.12, 0.15, 3.2, 8),
+            new THREE.MeshLambertMaterial({ color: 0xfef08a })
+          );
+          pole.position.set(lx, 1.6, lz);
+          var orbUp = new THREE.Mesh(
+            new THREE.SphereGeometry(0.45, 12, 12),
+            new THREE.MeshBasicMaterial({ color: 0xef4444 })
+          );
+          orbUp.position.set(lx, 3.3, lz);
+          pokeGroup.add(pole, orbUp);
+        });
+      }
+
+      // 入口大拱門：「🌈 寶可夢世界大馬路（直通第二階段！）」
+      var archSignTex = makeSignTex(640, 140, function(ctx, w, h) {
+        ctx.fillStyle = '#4c1d95';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(4, 4, w - 8, h - 8);
+        ctx.fillStyle = '#fde047';
+        ctx.font = '900 38px "Noto Sans TC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🌈 寶可夢世界大道（第一＆第二階段直通）', w / 2, 58);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 26px "Noto Sans TC", sans-serif';
+        ctx.fillText('⬆️ 順著這條路直接走進去抓寶可夢與神獸！', w / 2, 106);
+      });
+      var archBoard = new THREE.Mesh(
+        new THREE.BoxGeometry(11, 2.4, 0.4),
+        new THREE.MeshBasicMaterial({ map: archSignTex })
+      );
+      archBoard.position.set(0, 5.2, -12);
+      var archPillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.5, 5.5, 10), new THREE.MeshLambertMaterial({ color: 0x7c3aed }));
+      archPillarL.position.set(-5.2, 2.75, -12);
+      var archPillarR = archPillarL.clone();
+      archPillarR.position.set(5.2, 2.75, -12);
+      pokeGroup.add(archBoard, archPillarL, archPillarR);
+
+      // 第一階段圓形草原 (x: 0, z: -55, 半徑 28)
+      var stage1Disc = new THREE.Mesh(
+        new THREE.CylinderGeometry(28, 28, 0.12, 32),
+        new THREE.MeshLambertMaterial({ color: 0x86efac })
+      );
+      stage1Disc.position.set(0, 0.02, -55);
+      pokeGroup.add(stage1Disc);
+
+      // 第二階段：「👑 寶可夢世界・第二階段（超進化神獸島）」(x: 0, z: -125, 半徑 34)
+      var stage2Disc = new THREE.Mesh(
+        new THREE.CylinderGeometry(34, 34, 0.22, 36),
+        new THREE.MeshLambertMaterial({ color: 0xc084fc })
+      );
+      stage2Disc.position.set(0, 0.05, -125);
+      pokeGroup.add(stage2Disc);
+
+      // 第二階段入口黃金巨型拱門 (z = -90，中間完全暢通無阻！)
+      var s2SignTex = makeSignTex(640, 140, function(ctx, w, h) {
+        ctx.fillStyle = '#831843';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(4, 4, w - 8, h - 8);
+        ctx.fillStyle = '#fef08a';
+        ctx.font = '900 40px "Noto Sans TC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('👑 寶可夢世界・第二階段（神獸進化島）', w / 2, 58);
+        ctx.fillStyle = '#fbcfe8';
+        ctx.font = 'bold 26px "Noto Sans TC", sans-serif';
+        ctx.fillText('✨ 已打通道路！直接走進來收服傳說神獸！', w / 2, 105);
+      });
+      var s2Board = new THREE.Mesh(
+        new THREE.BoxGeometry(12, 2.6, 0.45),
+        new THREE.MeshBasicMaterial({ map: s2SignTex })
+      );
+      s2Board.position.set(0, 5.5, -90);
+      var s2PillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 6, 12), new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
+      s2PillarL.position.set(-5.6, 3, -90);
+      var s2PillarR = s2PillarL.clone();
+      s2PillarR.position.set(5.6, 3, -90);
+      pokeGroup.add(s2Board, s2PillarL, s2PillarR);
+
+      // 第二階段中央「超進化能量水晶聖壇」
+      var crystal = new THREE.Mesh(
+        new THREE.OctahedronGeometry(2.6, 0),
+        new THREE.MeshLambertMaterial({ color: 0x38bdf8, emissive: 0x0284c7 })
+      );
+      crystal.position.set(0, 4.2, -132);
+      pokeGroup.add(crystal);
+      window.__pokeCrystal = crystal;
+
+      // 產生 10 隻寶可夢／怪獸（第一階段 5 隻＋第二階段神獸 5 隻）
+      var pokeSpecs = [
+        { name: '⚡ 閃電皮皮鼠', color: 0xfacc15, earColor: 0x0f172a, x: -10, z: -45, scale: 1.0, stage: 1 },
+        { name: '🔥 烈焰小火龍', color: 0xf97316, earColor: 0xfef08a, x: 11, z: -48, scale: 1.1, stage: 1 },
+        { name: '💧 水箭波波龜', color: 0x38bdf8, earColor: 0x1e3a8a, x: -13, z: -62, scale: 1.05, stage: 1 },
+        { name: '🌱 妙蛙種子芽', color: 0x4ade80, earColor: 0x166534, x: 12, z: -64, scale: 1.0, stage: 1 },
+        { name: '🍮 焦糖ぷぷ怪', color: 0xf472b6, earColor: 0xbe185d, x: 0, z: -56, scale: 1.15, stage: 1 },
+        { name: '👑 黃金雷霆神龍 (第二階段)', color: 0xfde047, earColor: 0xd97706, x: -14, z: -112, scale: 1.65, stage: 2 },
+        { name: '🌌 超夢幻星神獸 (第二階段)', color: 0xc084fc, earColor: 0x6b21a8, x: 14, z: -114, scale: 1.7, stage: 2 },
+        { name: '🔥 鳳凰烈空神翼 (第二階段)', color: 0xef4444, earColor: 0xfacc15, x: -16, z: -134, scale: 1.8, stage: 2 },
+        { name: '💎 鑽石冰晶巨龍 (第二階段)', color: 0x67e8f9, earColor: 0x0e7490, x: 16, z: -136, scale: 1.8, stage: 2 },
+        { name: '🌟 小樂洲洲守護神獸 (第二階段)', color: 0x34d399, earColor: 0xfef08a, x: 0, z: -122, scale: 2.0, stage: 2 }
+      ];
+
+      function buildMonsterMesh(sp) {
+        var mg = new THREE.Group();
+        var sc = sp.scale || 1;
+        var body = new THREE.Mesh(
+          new THREE.SphereGeometry(0.75 * sc, 14, 14),
+          new THREE.MeshLambertMaterial({ color: sp.color })
+        );
+        body.position.y = 0.75 * sc;
+        mg.add(body);
+
+        // 耳朵 / 犄角
+        var earGeo = new THREE.ConeGeometry(0.22 * sc, 0.7 * sc, 8);
+        var earMat = new THREE.MeshLambertMaterial({ color: sp.earColor });
+        var earL = new THREE.Mesh(earGeo, earMat);
+        earL.position.set(-0.42 * sc, 1.55 * sc, 0);
+        earL.rotation.z = 0.3;
+        var earR = new THREE.Mesh(earGeo, earMat);
+        earR.position.set(0.42 * sc, 1.55 * sc, 0);
+        earR.rotation.z = -0.3;
+        mg.add(earL, earR);
+
+        // 眼睛
+        var eyeGeo = new THREE.SphereGeometry(0.11 * sc, 8, 8);
+        var eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+        var eL = new THREE.Mesh(eyeGeo, eyeMat);
+        eL.position.set(-0.26 * sc, 0.92 * sc, 0.66 * sc);
+        var eR = new THREE.Mesh(eyeGeo, eyeMat);
+        eR.position.set(0.26 * sc, 0.92 * sc, 0.66 * sc);
+        mg.add(eL, eR);
+
+        // 名牌
+        var lTex = makeSignTex(340, 64, function(ctx, w, h) {
+          ctx.fillStyle = sp.stage === 2 ? 'rgba(88, 28, 135, 0.9)' : 'rgba(15, 23, 42, 0.82)';
+          ctx.fillRect(2, 2, w - 4, h - 4);
+          ctx.strokeStyle = sp.stage === 2 ? '#fde047' : '#f472b6';
+          ctx.lineWidth = 4;
+          ctx.strokeRect(2, 2, w - 4, h - 4);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 24px "Noto Sans TC", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(sp.name, w / 2, h / 2);
+        });
+        var spLabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: lTex, transparent: true }));
+        spLabel.position.set(0, 2.1 * sc, 0);
+        spLabel.scale.set(2.4, 0.48, 1);
+        mg.add(spLabel);
+        return mg;
+      }
+
+      for (var pi = 0; pi < pokeSpecs.length; pi++) {
+        var pSpec = pokeSpecs[pi];
+        var mMesh = buildMonsterMesh(pSpec);
+        mMesh.position.set(pSpec.x, 0, pSpec.z);
+        pokeGroup.add(mMesh);
+        wildPokemons.push({ spec: pSpec, mesh: mMesh, baseX: pSpec.x, baseZ: pSpec.z, phase: pi * 0.9 });
+      }
+
+      // 預設跟隨夥伴（閃電皮皮鼠）
+      pokePartnerMesh = buildMonsterMesh({ name: '⚡ 小隊長的皮皮鼠夥伴', color: 0xfacc15, earColor: 0xef4444, scale: 0.72, stage: 1 });
+      pokePartnerMesh.position.set(pos.x - 1.5, 0, pos.z + 1.2);
+      scene.add(pokePartnerMesh);
+    })();
+
+    function throwPokeBallAction() {
+      var nearest = null;
+      var bestDist = 999;
+      for (var i = 0; i < wildPokemons.length; i++) {
+        var wp = wildPokemons[i];
+        var d = Math.hypot(wp.mesh.position.x - pos.x, wp.mesh.position.z - pos.z);
+        if (d < bestDist) {
+          bestDist = d;
+          nearest = wp;
+        }
+      }
+      notes([523.25, 659.25, 783.99, 1046.5], 'square', 0.09);
+      if (nearest && bestDist < 26) {
+        caughtCount = Math.min(10, caughtCount + 1);
+        var bEl = document.getElementById('pokemonCountBadge');
+        if (bEl) bEl.textContent = '🔴 寶可夢：' + caughtCount + '/10';
+        banner('🎉 成功收服 ' + nearest.spec.name + '！', '寶可夢夥伴已加入隊伍！（目前收服 ' + caughtCount + '/10 隻）');
+        say('🔴 丟出大師捕捉球！成功收服「' + nearest.spec.name + '」囉！');
+        nearest.mesh.scale.set(1.35, 1.35, 1.35);
+        setTimeout(function() {
+          if (nearest && nearest.mesh) nearest.mesh.scale.set(1, 1, 1);
+        }, 500);
+      } else {
+        say('🔴 丟出寶可夢球！順著「🌈 寶可夢進去的路」走進第一或第二階段就能抓神獸喔！');
+      }
+    }
+
+    // =========================================================================
+    // ===== 第 150B 版（第 2 棒：Kaz）：棒球場旁超大土地 Minecraft 世界（四面牆＋大屋頂＋Minecraft 大門＋隨時可開燈） =====
+    // =========================================================================
+    var MC_CENTER_X = 68;
+    var MC_CENTER_Z = 18;
+    var mcLightsOn = true;
+    var mcDoorOpen = true;
+    var mcCeilingLampMeshes = [];
+    var mcPointLight = null;
+    var mcDoorPivotL = null;
+    var mcDoorPivotR = null;
+    var mcDoorCollider = null;
+    var selectedMcBlockIdx = 0;
+    var userPlacedBlocks = [];
+
+    var MC_BLOCK_TYPES = [
+      { id: 'grass', name: '🌿 翠綠草塊', icon: '🌿', color: '#4caf50', top: '#66bb6a', side: '#795548' },
+      { id: 'planks', name: '🪵 橡木木材', icon: '🪵', color: '#b48a5a', stroke: '#78552b' },
+      { id: 'cobble', name: '🪨 鵝卵石塊', icon: '🪨', color: '#94a3b8', stroke: '#475569' },
+      { id: 'brick', name: '🧱 紅磚方塊', icon: '🧱', color: '#c2410c', stroke: '#fed7aa' },
+      { id: 'glowstone', name: '💡 螢石燈塊', icon: '💡', color: '#fde047', stroke: '#ca8a04', emissive: 0xfacc15 },
+      { id: 'glass', name: '🪟 像素玻璃', icon: '🪟', color: '#bae6fd', stroke: '#38bdf8', transparent: true, opacity: 0.55 },
+      { id: 'diamond', name: '💎 鑽石方塊', icon: '💎', color: '#22d3ee', stroke: '#0891b2' },
+      { id: 'gold', name: '🟨 黃金方塊', icon: '🟨', color: '#facc15', stroke: '#a16207' },
+      { id: 'tnt', name: '🧨 TNT方塊', icon: '🧨', color: '#ef4444', stroke: '#ffffff' }
+    ];
+    var mcMaterials = {};
+
+    (function buildRelay2_Kaz_MinecraftWorld() {
+      var mcGroup = new THREE.Group();
+      scene.add(mcGroup);
+
+      // 建立像素方塊材質
+      for (var bi = 0; bi < MC_BLOCK_TYPES.length; bi++) {
+        (function(bt) {
+          var tex = makePixelTex(function(ctx, s) {
+            ctx.fillStyle = bt.color;
+            ctx.fillRect(0, 0, s, s);
+            // 像素雜訊與邊框讓它超像 Minecraft
+            for (var px = 0; px < s; px += 2) {
+              for (var py = 0; py < s; py += 2) {
+                if ((px + py) % 4 === 0) {
+                  ctx.fillStyle = 'rgba(0,0,0,0.09)';
+                  ctx.fillRect(px, py, 2, 2);
+                } else if ((px * py) % 6 === 0) {
+                  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+                  ctx.fillRect(px, py, 2, 2);
+                }
+              }
+            }
+            ctx.strokeStyle = bt.stroke || 'rgba(0,0,0,0.28)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0.5, 0.5, s - 1, s - 1);
+          }, 16);
+
+          mcMaterials[bt.id] = new THREE.MeshLambertMaterial({
+            map: tex,
+            transparent: !!bt.transparent,
+            opacity: bt.opacity || 1.0,
+            emissive: bt.emissive ? new THREE.Color(bt.emissive) : new THREE.Color(0x000000),
+            emissiveIntensity: bt.emissive ? 0.65 : 0
+          });
+        })(MC_BLOCK_TYPES[bi]);
+      }
+
+      // 1. 擴大後的 Minecraft 超大土地（80 × 80 公尺像素棋盤格草地大陸）
+      var landTex = makePixelTex(function(ctx, s) {
+        ctx.fillStyle = '#559e3e';
+        ctx.fillRect(0, 0, s, s);
+        ctx.fillStyle = '#478932';
+        ctx.fillRect(0, 0, s / 2, s / 2);
+        ctx.fillRect(s / 2, s / 2, s / 2, s / 2);
+        ctx.strokeStyle = '#3b7528';
+        ctx.strokeRect(0, 0, s, s);
+      }, 16);
+      landTex.wrapS = THREE.RepeatWrapping;
+      landTex.wrapT = THREE.RepeatWrapping;
+      landTex.repeat.set(40, 40);
+
+      var bigLand = new THREE.Mesh(
+        new THREE.BoxGeometry(84, 0.5, 84),
+        new THREE.MeshLambertMaterial({ map: landTex })
+      );
+      bigLand.position.set(MC_CENTER_X, 0.0, MC_CENTER_Z);
+      mcGroup.add(bigLand);
+
+      // 2. 四面牆 ＋ 大屋頂 ＋ Minecraft 像素大門（28 × 28 公尺巨型 Minecraft 室內城堡，高 9 公尺）
+      var H_MIN_X = MC_CENTER_X - 14; // 54
+      var H_MAX_X = MC_CENTER_X + 14; // 82
+      var H_MIN_Z = MC_CENTER_Z - 14; // 4
+      var H_MAX_Z = MC_CENTER_Z + 14; // 32
+      var WALL_H = 8;
+
+      // 屋內橡木地板
+      var floorPlank = new THREE.Mesh(
+        new THREE.BoxGeometry(28, 0.32, 28),
+        mcMaterials['planks']
+      );
+      floorPlank.position.set(MC_CENTER_X, 0.2, MC_CENTER_Z);
+      mcGroup.add(floorPlank);
+
+      // 建立四面方塊牆（使用 InstancedMesh 高效繪製每一顆 2x2x2 真實 Minecraft 方塊！）
+      var wallBlockGeo = new THREE.BoxGeometry(2, 2, 2);
+      var wallCoords = [];
+      var glassCoords = [];
+
+      for (var y = 1; y <= WALL_H; y += 2) {
+        // 北牆 (z = H_MIN_Z) 與 南牆 (z = H_MAX_Z)
+        for (var x = H_MIN_X; x <= H_MAX_X; x += 2) {
+          // 北牆全封閉（中段加像素窗戶）
+          if (y === 5 && Math.abs(x - MC_CENTER_X) <= 6) {
+            glassCoords.push([x, y, H_MIN_Z]);
+          } else {
+            wallCoords.push([x, y, H_MIN_Z]);
+          }
+          // 南牆：可從南門或西側正門進入，留出前門開口
+          if (y === 5 && Math.abs(x - MC_CENTER_X) <= 6) {
+            glassCoords.push([x, y, H_MAX_Z]);
+          } else {
+            wallCoords.push([x, y, H_MAX_Z]);
+          }
+        }
+        // 東牆 (x = H_MAX_X) 與 西牆（正門面朝棒球場與飛機場 x = H_MIN_X）
+        for (var z = H_MIN_Z + 2; z <= H_MAX_Z - 2; z += 2) {
+          // 東牆
+          if (y === 5 && Math.abs(z - MC_CENTER_Z) <= 6) {
+            glassCoords.push([H_MAX_X, y, z]);
+          } else {
+            wallCoords.push([H_MAX_X, y, z]);
+          }
+          // 西牆（正前方）：中間留出 4 公尺寬、5 公尺高的 Minecraft 大門洞 (z: MC_CENTER_Z - 2 .. MC_CENTER_Z + 2, y <= 5)
+          var isFrontDoorHole = (Math.abs(z - MC_CENTER_Z) <= 2 && y <= 5);
+          if (!isFrontDoorHole) {
+            if (y === 5 && Math.abs(z - MC_CENTER_Z) >= 6 && Math.abs(z - MC_CENTER_Z) <= 8) {
+              glassCoords.push([H_MIN_X, y, z]);
+            } else {
+              wallCoords.push([H_MIN_X, y, z]);
+            }
+          }
+        }
+      }
+
+      var wallInst = new THREE.InstancedMesh(wallBlockGeo, mcMaterials['brick'], wallCoords.length);
+      var dummy = new THREE.Object3D();
+      for (var wi = 0; wi < wallCoords.length; wi++) {
+        dummy.position.set(wallCoords[wi][0], wallCoords[wi][1], wallCoords[wi][2]);
+        dummy.updateMatrix();
+        wallInst.setMatrixAt(wi, dummy.matrix);
+      }
+      mcGroup.add(wallInst);
+
+      var glassInst = new THREE.InstancedMesh(wallBlockGeo, mcMaterials['glass'], glassCoords.length);
+      for (var gi = 0; gi < glassCoords.length; gi++) {
+        dummy.position.set(glassCoords[gi][0], glassCoords[gi][1], glassCoords[gi][2]);
+        dummy.updateMatrix();
+        glassInst.setMatrixAt(gi, dummy.matrix);
+      }
+      mcGroup.add(glassInst);
+
+      // 四面牆碰撞盒（留出西側正前方 Minecraft 大門通道 z: 15..21）
+      col(H_MIN_X - 1, H_MAX_X + 1, H_MIN_Z - 1, H_MIN_Z + 1, 10); // 北牆
+      col(H_MIN_X - 1, H_MAX_X + 1, H_MAX_Z - 1, H_MAX_Z + 1, 10); // 南牆
+      col(H_MAX_X - 1, H_MAX_X + 1, H_MIN_Z - 1, H_MAX_Z + 1, 10); // 東牆
+      col(H_MIN_X - 1, H_MIN_X + 1, H_MIN_Z - 1, MC_CENTER_Z - 2.6, 10); // 西牆北段
+      col(H_MIN_X - 1, H_MIN_X + 1, MC_CENTER_Z + 2.6, H_MAX_Z + 1, 10); // 西牆南段
+
+      // 3. 上面蓋一個完整的 Minecraft 階梯式方塊大屋頂！
+      var roofLayer1 = new THREE.Mesh(new THREE.BoxGeometry(30, 1.5, 30), mcMaterials['cobble']);
+      roofLayer1.position.set(MC_CENTER_X, WALL_H + 1.5, MC_CENTER_Z);
+      var roofLayer2 = new THREE.Mesh(new THREE.BoxGeometry(24, 1.5, 24), mcMaterials['planks']);
+      roofLayer2.position.set(MC_CENTER_X, WALL_H + 3.0, MC_CENTER_Z);
+      var roofLayer3 = new THREE.Mesh(new THREE.BoxGeometry(16, 1.5, 16), mcMaterials['cobble']);
+      roofLayer3.position.set(MC_CENTER_X, WALL_H + 4.5, MC_CENTER_Z);
+      mcGroup.add(roofLayer1, roofLayer2, roofLayer3);
+
+      // 4. 前面有一個門，也是用 Minecraft 做的（雙開像素方塊木門，帶透明像素窗格與像素門把）
+      var mcDoorTex = makePixelTex(function(ctx, s) {
+        ctx.fillStyle = '#92400e';
+        ctx.fillRect(0, 0, s, s);
+        ctx.strokeStyle = '#451a03';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(1, 1, s - 2, s - 2);
+        // 上半部 Minecraft 門四格窗戶
+        ctx.fillStyle = '#7dd3fc';
+        ctx.fillRect(3, 3, 4, 4);
+        ctx.fillRect(9, 3, 4, 4);
+        // 金色像素門把
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(11, 9, 3, 2);
+      }, 16);
+      var mcDoorMat = new THREE.MeshLambertMaterial({ map: mcDoorTex });
+
+      mcDoorPivotL = new THREE.Group();
+      mcDoorPivotL.position.set(H_MIN_X, 0, MC_CENTER_Z - 2.4);
+      var doorLeafL = new THREE.Mesh(new THREE.BoxGeometry(0.45, 5.2, 2.4), mcDoorMat);
+      doorLeafL.position.set(0, 2.6, 1.2);
+      mcDoorPivotL.add(doorLeafL);
+
+      mcDoorPivotR = new THREE.Group();
+      mcDoorPivotR.position.set(H_MIN_X, 0, MC_CENTER_Z + 2.4);
+      var doorLeafR = new THREE.Mesh(new THREE.BoxGeometry(0.45, 5.2, 2.4), mcDoorMat);
+      doorLeafR.position.set(0, 2.6, -1.2);
+      mcDoorPivotR.add(doorLeafR);
+
+      mcGroup.add(mcDoorPivotL, mcDoorPivotR);
+      mcDoorCollider = col(H_MIN_X - 0.6, H_MIN_X + 0.6, MC_CENTER_Z - 2.4, MC_CENTER_Z + 2.4, 5);
+      mcDoorCollider.on = false; // 預設打開方便直接走進去
+
+      // 大門口上方 Minecraft 招牌
+      var mcSignTex = makeSignTex(640, 130, function(ctx, w, h) {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(4, 4, w - 8, h - 8);
+        ctx.fillStyle = '#86efac';
+        ctx.font = '900 38px "Noto Sans TC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🧱 MINECRAFT 超大世界（四面牆＋大屋頂）', w / 2, 52);
+        ctx.fillStyle = '#fde047';
+        ctx.font = 'bold 25px "Noto Sans TC", sans-serif';
+        ctx.fillText('💡 隨時可開燈 ｜ 🚪 Minecraft 方塊大門', w / 2, 98);
+      });
+      var mcSignMesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.3, 11.5), new THREE.MeshBasicMaterial({ map: mcSignTex }));
+      mcSignMesh.position.set(H_MIN_X - 1.1, 7.2, MC_CENTER_Z);
+      mcGroup.add(mcSignMesh);
+
+      // 5. 屋頂內側與四面牆上的 25 盞 Minecraft 螢石燈（隨時可以開燈／關燈！）
+      for (var lx = MC_CENTER_X - 10; lx <= MC_CENTER_X + 10; lx += 5) {
+        for (var lz = MC_CENTER_Z - 10; lz <= MC_CENTER_Z + 10; lz += 5) {
+          var lampMat = new THREE.MeshLambertMaterial({
+            color: 0xfef08a,
+            emissive: 0xfacc15,
+            emissiveIntensity: 0.9
+          });
+          var lampBlock = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 1.4), lampMat);
+          lampBlock.position.set(lx, WALL_H + 0.3, lz);
+          mcGroup.add(lampBlock);
+          mcCeilingLampMeshes.push(lampBlock);
+        }
+      }
+
+      // 屋內專屬動態點光源（開燈時照亮整個四面牆屋頂空間）
+      mcPointLight = new THREE.PointLight(0xfffaed, 2.2, 42);
+      mcPointLight.position.set(MC_CENTER_X, WALL_H - 0.5, MC_CENTER_Z);
+      mcGroup.add(mcPointLight);
+
+      // 6. 屋內外擺設：Minecraft 工作台、熔爐、鑽石王座、方塊樹與苦力怕風方塊公仔
+      var craftBlock = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), mcMaterials['planks']);
+      craftBlock.position.set(MC_CENTER_X + 6, 1.2, MC_CENTER_Z - 6);
+      var diamondThrone = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), mcMaterials['diamond']);
+      diamondThrone.position.set(MC_CENTER_X + 8, 1.7, MC_CENTER_Z);
+      mcGroup.add(craftBlock, diamondThrone);
+
+      // 在擴大後的 Minecraft 土地四周種滿經典方塊橡木樹
+      var treePositions = [
+        [42, -12], [58, -16], [78, -15], [96, -10],
+        [98, 10], [98, 30], [95, 48], [75, 50], [52, 48], [40, 42]
+      ];
+      for (var ti = 0; ti < treePositions.length; ti++) {
+        var tx = treePositions[ti][0], tz = treePositions[ti][1];
+        var trunk = new THREE.Mesh(new THREE.BoxGeometry(1.6, 4.5, 1.6), mcMaterials['planks']);
+        trunk.position.set(tx, 2.25, tz);
+        var leaves = new THREE.Mesh(new THREE.BoxGeometry(4.8, 3.6, 4.8), mcMaterials['grass']);
+        leaves.position.set(tx, 5.2, tz);
+        mcGroup.add(trunk, leaves);
+      }
+
+      // 建立底部 Minecraft 九宮格物品欄 UI
+      var hotbarEl = document.getElementById('mcHotbar');
+      if (hotbarEl) {
+        hotbarEl.innerHTML = '';
+        MC_BLOCK_TYPES.forEach(function(bt, idx) {
+          var slot = document.createElement('button');
+          slot.type = 'button';
+          slot.className = 'mc-slot' + (idx === 0 ? ' active' : '');
+          slot.innerHTML = '<span>' + bt.icon + '</span><span class="text-[9px] text-slate-300 font-bold mt-0.5">' + (idx + 1) + '</span>';
+          slot.addEventListener('click', function() {
+            selectMcBlock(idx);
+          });
+          hotbarEl.appendChild(slot);
+        });
+      }
+    })();
+
+    function selectMcBlock(idx) {
+      selectedMcBlockIdx = idx;
+      var bt = MC_BLOCK_TYPES[idx];
+      var lbl = document.getElementById('selectedBlockLabel');
+      if (lbl && bt) lbl.textContent = bt.name;
+      var slots = document.querySelectorAll('#mcHotbar .mc-slot');
+      for (var i = 0; i < slots.length; i++) {
+        if (i === idx) slots[i].classList.add('active');
+        else slots[i].classList.remove('active');
+      }
+      notes([440 + idx * 45], 'triangle', 0.06);
+    }
+
+    // 隨時開燈／關燈函式（不管在哪裡都能隨時開關！）
+    function toggleMinecraftLight(forceState) {
+      mcLightsOn = (typeof forceState === 'boolean') ? forceState : !mcLightsOn;
+      for (var i = 0; i < mcCeilingLampMeshes.length; i++) {
+        var m = mcCeilingLampMeshes[i].material;
+        if (mcLightsOn) {
+          m.color.setHex(0xfef08a);
+          m.emissive.setHex(0xfacc15);
+          m.emissiveIntensity = 0.95;
+        } else {
+          m.color.setHex(0x475569);
+          m.emissive.setHex(0x000000);
+          m.emissiveIntensity = 0;
+        }
+      }
+      if (mcPointLight) {
+        mcPointLight.intensity = mcLightsOn ? 2.4 : 0.05;
+      }
+      var btnTxt = document.getElementById('mcLightBtnText');
+      if (btnTxt) btnTxt.textContent = mcLightsOn ? 'Minecraft 開燈：亮（隨時可開）' : 'Minecraft 開燈：暗（點我開燈）';
+      var topBadge = document.getElementById('mcLightStateBadge');
+      if (topBadge) topBadge.textContent = '💡 麥塊燈：' + (mcLightsOn ? '開' : '關');
+
+      notes(mcLightsOn ? [523.25, 783.99, 1046.5] : [523.25, 392.0], 'sine', 0.08);
+      say(mcLightsOn ? '💡 啪嗒！Minecraft 四面牆屋頂大燈全開，超亮！' : '🌙 Minecraft 屋頂燈已關閉，隨時按一下就能再打開！');
+    }
+
+    // 開關 Minecraft 雙開像素前門
+    function toggleMinecraftDoor(forceOpen) {
+      mcDoorOpen = (typeof forceOpen === 'boolean') ? forceOpen : !mcDoorOpen;
+      if (mcDoorCollider) mcDoorCollider.on = !mcDoorOpen;
+      notes(mcDoorOpen ? [330, 494] : [494, 330], 'square', 0.08);
+      say(mcDoorOpen ? '🚪 咔噠！Minecraft 方塊大門打開了，請進！' : '🚪 砰！Minecraft 方塊大門關起來了！');
+    }
+
+    function placeMcBlockInFront() {
+      var bt = MC_BLOCK_TYPES[selectedMcBlockIdx] || MC_BLOCK_TYPES[0];
+      var tx = Math.round((pos.x - Math.sin(A.heading) * 3.0) / 1.5) * 1.5;
+      var tz = Math.round((pos.z - Math.cos(A.heading) * 3.0) / 1.5) * 1.5;
+      var countHere = 0;
+      for (var i = 0; i < userPlacedBlocks.length; i++) {
+        if (Math.abs(userPlacedBlocks[i].position.x - tx) < 0.5 && Math.abs(userPlacedBlocks[i].position.z - tz) < 0.5) {
+          countHere++;
+        }
+      }
+      var ty = 0.9 + countHere * 1.5;
+      var mesh = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), mcMaterials[bt.id]);
+      mesh.position.set(tx, ty, tz);
+      scene.add(mesh);
+      userPlacedBlocks.push(mesh);
+      notes([392, 523.25], 'triangle', 0.06);
+      say('🧱 放下了「' + bt.name + '」！');
+    }
+
+    function breakMcBlockInFront() {
+      if (userPlacedBlocks.length === 0) {
+        say('⛏️ 先按「➕ 放方塊」蓋東西，再來拆方塊喔！');
+        return;
+      }
+      var last = userPlacedBlocks.pop();
+      scene.remove(last);
+      noiseBurst(0.12, 500, 0.18);
+      say('⛏️ 敲碎了一顆方塊！');
+    }
+
+    // =========================================================================
+    // ===== 第 150C 版（第 3 棒：Idn）：小樂洲洲飛機場（大飛機＋戰鬥機）＆ 爸爸開飛機・小隊長把爸爸踢下飛機 =====
+    // =========================================================================
+    var AIRPORT_X = -82;
+    var AIRPORT_Z = 0;
+    var airlinerGroup = null;
+    var fighterGroup = null;
+    var dadModel = null;
+    var dadParachute = null;
+    var dadState = 'on_plane'; // 'on_plane', 'kicked_flying', 'landed'
+    var dadKickTimer = 0;
+    var dadVelocity = { x: 0, y: 0, z: 0 };
+    var activeFlightMode = null; // null, 'airliner', 'fighter'
+    var radarDish = null;
+    var propBlades = [];
+
+    (function buildRelay3_Idn_AirportAndDadPlane() {
+      var apGroup = new THREE.Group();
+      scene.add(apGroup);
+
+      // 1. 超酷飛機場柏油大跑道 (x: -115..-55, z: -140..140)
+      var runway = new THREE.Mesh(
+        new THREE.BoxGeometry(36, 0.14, 240),
+        new THREE.MeshLambertMaterial({ color: 0x1e293b })
+      );
+      runway.position.set(AIRPORT_X, 0.02, AIRPORT_Z);
+      apGroup.add(runway);
+
+      // 跑道白色中線與跑道編號
+      for (var rz = -110; rz <= 110; rz += 10) {
+        var dash = new THREE.Mesh(
+          new THREE.BoxGeometry(0.9, 0.16, 5.2),
+          new THREE.MeshBasicMaterial({ color: 0xf8fafc })
+        );
+        dash.position.set(AIRPORT_X, 0.04, rz);
+        apGroup.add(dash);
+
+        // 跑道兩側發光導航燈
+        var lightL = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+        lightL.position.set(AIRPORT_X - 17, 0.35, rz);
+        var lightR = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+        lightR.position.set(AIRPORT_X + 17, 0.35, rz);
+        apGroup.add(lightL, lightR);
+      }
+
+      // 2. 飛機場旋轉雷達控制塔台與大招牌
+      var towerBase = new THREE.Mesh(
+        new THREE.CylinderGeometry(3.2, 4.2, 16, 12),
+        new THREE.MeshLambertMaterial({ color: 0xe2e8f0 })
+      );
+      towerBase.position.set(AIRPORT_X - 26, 8, -10);
+      var towerGlass = new THREE.Mesh(
+        new THREE.CylinderGeometry(4.8, 3.6, 3.8, 12),
+        new THREE.MeshLambertMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.75 })
+      );
+      towerGlass.position.set(AIRPORT_X - 26, 17.5, -10);
+      var towerRoof = new THREE.Mesh(
+        new THREE.ConeGeometry(5.2, 2.2, 12),
+        new THREE.MeshLambertMaterial({ color: 0xef4444 })
+      );
+      towerRoof.position.set(AIRPORT_X - 26, 20.5, -10);
+
+      radarDish = new THREE.Mesh(
+        new THREE.BoxGeometry(4.2, 0.9, 0.4),
+        new THREE.MeshBasicMaterial({ color: 0xfacc15 })
+      );
+      radarDish.position.set(AIRPORT_X - 26, 22.4, -10);
+      apGroup.add(towerBase, towerGlass, towerRoof, radarDish);
+
+      var apSignTex = makeSignTex(640, 130, function(ctx, w, h) {
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(4, 4, w - 8, h - 8);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '900 38px "Noto Sans TC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('✈️ 小樂洲洲國際飛機場（客機＋戰鬥機）', w / 2, 52);
+        ctx.fillStyle = '#fde047';
+        ctx.font = 'bold 25px "Noto Sans TC", sans-serif';
+        ctx.fillText('👨‍✈️ 爸爸在上面開飛機！小隊長可以把他踢下飛機！', w / 2, 98);
+      });
+      var apSign = new THREE.Mesh(new THREE.BoxGeometry(13, 2.5, 0.4), new THREE.MeshBasicMaterial({ map: apSignTex }));
+      apSign.position.set(AIRPORT_X + 6, 5.5, 28);
+      apGroup.add(apSign);
+
+      // 3. 第一臺：小樂號大型噴射飛機（客機，爸爸坐在上面開飛機！）
+      airlinerGroup = new THREE.Group();
+      airlinerGroup.position.set(AIRPORT_X, 1.8, 12);
+
+      // 機身
+      var fuselage = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.65, 1.65, 15, 16),
+        new THREE.MeshLambertMaterial({ color: 0xffffff })
+      );
+      fuselage.rotation.x = Math.PI / 2;
+      airlinerGroup.add(fuselage);
+
+      // 藍色機身彩繪條紋
+      var stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(3.38, 0.45, 14.2),
+        new THREE.MeshLambertMaterial({ color: 0x0284c7 })
+      );
+      airlinerGroup.add(stripe);
+
+      // 機頭圓錐
+      var nose = new THREE.Mesh(
+        new THREE.ConeGeometry(1.65, 3.5, 16),
+        new THREE.MeshLambertMaterial({ color: 0xf8fafc })
+      );
+      nose.rotation.x = -Math.PI / 2;
+      nose.position.set(0, 0, -9.2);
+      airlinerGroup.add(nose);
+
+      // 主機翼
+      var mainWing = new THREE.Mesh(
+        new THREE.BoxGeometry(19, 0.28, 3.4),
+        new THREE.MeshLambertMaterial({ color: 0xe2e8f0 })
+      );
+      mainWing.position.set(0, -0.1, -0.5);
+      airlinerGroup.add(mainWing);
+
+      // 雙渦輪引擎與旋轉扇葉
+      [-4.8, 4.8].forEach(function(ex) {
+        var eng = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.68, 0.68, 2.4, 12),
+          new THREE.MeshLambertMaterial({ color: 0x0284c7 })
+        );
+        eng.rotation.x = Math.PI / 2;
+        eng.position.set(ex, -0.65, -0.8);
+        var blade = new THREE.Mesh(
+          new THREE.BoxGeometry(1.2, 0.18, 0.12),
+          new THREE.MeshBasicMaterial({ color: 0xfacc15 })
+        );
+        blade.position.set(ex, -0.65, -2.05);
+        propBlades.push(blade);
+        airlinerGroup.add(eng, blade);
+      });
+
+      // 垂直尾翼與水平尾翼
+      var tailFin = new THREE.Mesh(
+        new THREE.BoxGeometry(0.32, 3.8, 2.8),
+        new THREE.MeshLambertMaterial({ color: 0xef4444 })
+      );
+      tailFin.position.set(0, 2.2, 6.2);
+      var hTail = new THREE.Mesh(
+        new THREE.BoxGeometry(6.5, 0.22, 1.8),
+        new THREE.MeshLambertMaterial({ color: 0x0284c7 })
+      );
+      hTail.position.set(0, 0.6, 6.4);
+      airlinerGroup.add(tailFin, hTail);
+
+      // 機頂透明敞篷駕駛座（讓爸爸坐在飛機上面超清楚！）
+      var cockpitSeat = new THREE.Mesh(
+        new THREE.BoxGeometry(1.8, 0.5, 1.8),
+        new THREE.MeshLambertMaterial({ color: 0xf59e0b })
+      );
+      cockpitSeat.position.set(0, 1.75, -3.2);
+      airlinerGroup.add(cockpitSeat);
+
+      scene.add(airlinerGroup);
+
+      // 4. 爸爸模型（坐在飛機上面開飛機！）
+      dadModel = createCharacterModel({
+        shirtColor: 0x1e3a8a,
+        pantsColor: 0x0f172a,
+        scale: 1.12,
+        pilotCap: true,
+        label: '👨‍✈️ 爸爸（在飛機上開飛機）',
+        badgeBg: 'rgba(30, 58, 138, 0.92)',
+        badgeBorder: '#facc15'
+      });
+      // 創造搞笑彩色降落傘（被踢飛時打開）
+      dadParachute = new THREE.Mesh(
+        new THREE.SphereGeometry(2.2, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshLambertMaterial({ color: 0xf97316, side: THREE.DoubleSide })
+      );
+      dadParachute.position.set(0, 2.8, 0);
+      dadParachute.visible = false;
+      dadModel.add(dadParachute);
+
+      dadModel.position.set(AIRPORT_X, 3.65, 12 - 3.2);
+      dadModel.rotation.y = Math.PI;
+      scene.add(dadModel);
+
+      // 5. 第二臺：超帥「🛩️ 雷霆超音速戰鬥機」
+      fighterGroup = new THREE.Group();
+      fighterGroup.position.set(AIRPORT_X, 1.5, -18);
+
+      var jetBody = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.75, 1.05, 11.5, 8),
+        new THREE.MeshLambertMaterial({ color: 0x334155 })
+      );
+      jetBody.rotation.x = Math.PI / 2;
+      fighterGroup.add(jetBody);
+
+      var jetNose = new THREE.Mesh(
+        new THREE.ConeGeometry(0.75, 4.2, 8),
+        new THREE.MeshLambertMaterial({ color: 0xef4444 })
+      );
+      jetNose.rotation.x = -Math.PI / 2;
+      jetNose.position.set(0, 0, -7.8);
+      fighterGroup.add(jetNose);
+
+      // 三角後掠機翼
+      var deltaWing = new THREE.Mesh(
+        new THREE.BoxGeometry(13.5, 0.2, 4.2),
+        new THREE.MeshLambertMaterial({ color: 0x475569 })
+      );
+      deltaWing.position.set(0, 0, 0.4);
+      fighterGroup.add(deltaWing);
+
+      // 機翼掛載飛彈造型裝飾
+      [-5.5, 5.5].forEach(function(mx) {
+        var missile = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.18, 0.18, 2.8, 8),
+          new THREE.MeshLambertMaterial({ color: 0xfacc15 })
+        );
+        missile.rotation.x = Math.PI / 2;
+        missile.position.set(mx, -0.3, 0.2);
+        fighterGroup.add(missile);
+      });
+
+      // 雙斜置垂直尾翼與雙噴射尾焰
+      [-1.1, 1.1].forEach(function(tx) {
+        var vFin = new THREE.Mesh(
+          new THREE.BoxGeometry(0.22, 2.4, 2.2),
+          new THREE.MeshLambertMaterial({ color: 0x1e293b })
+        );
+        vFin.position.set(tx, 1.2, 4.2);
+        vFin.rotation.z = tx > 0 ? -0.25 : 0.25;
+        fighterGroup.add(vFin);
+      });
+
+      var afterburner = new THREE.Mesh(
+        new THREE.ConeGeometry(0.7, 2.6, 10),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+      );
+      afterburner.rotation.x = Math.PI / 2;
+      afterburner.position.set(0, 0, 6.8);
+      fighterGroup.add(afterburner);
+
+      var jetCanopy = new THREE.Mesh(
+        new THREE.SphereGeometry(0.85, 12, 8),
+        new THREE.MeshLambertMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.65 })
+      );
+      jetCanopy.scale.set(0.85, 0.7, 2.2);
+      jetCanopy.position.set(0, 0.75, -2.2);
+      fighterGroup.add(jetCanopy);
+
+      scene.add(fighterGroup);
+    })();
+
+    // ⭐ 核心互動：小隊長把爸爸踢下飛機！
+    function kickDadOffPlaneAction() {
+      // 確保切換為小隊長角色來踢更帶感
+      if (currentRoleIdx !== 0) {
+        currentRoleIdx = 0;
+        updatePlayerRoleModel();
+      }
+
+      if (dadState !== 'on_plane') {
+        // 如果已經踢下去了，先自動把爸爸抓回飛機上再踢一次，保證每次按都有超爽飛踢動畫！
+        resetDadToPlane(true);
+      }
+
+      // 瞬移小隊長到飛機旁起跳飛踢
+      activeFlightMode = null;
+      pos.x = airlinerGroup.position.x + 2.2;
+      pos.z = airlinerGroup.position.z - 2.8;
+      A.jh = 3.2;
+      A.jv = 8.5;
+      A.heading = Math.PI / 2;
+
+      dadState = 'kicked_flying';
+      dadKickTimer = 0;
+      dadModel.position.set(airlinerGroup.position.x, airlinerGroup.position.y + 2.4, airlinerGroup.position.z - 3.0);
+      dadVelocity.x = 14.0;
+      dadVelocity.y = 18.0;
+      dadVelocity.z = 5.0;
+      dadParachute.visible = true;
+
+      // 震撼飛踢音效
+      noiseBurst(0.25, 450, 0.35);
+      notes([587.33, 783.99, 1046.5, 1318.5, 1567.98], 'sawtooth', 0.08);
+
+      banner('🦵 小隊長無敵飛踢！！', '碰！！爸爸被小隊長一腳踢下飛機啦！換小隊長當機長開飛機！');
+      say('👨‍✈️ 爸爸：「哇啊啊啊——！小隊長你怎麼把爸爸踢下飛機啦！救命啊～！」');
+
+      var resetBtn = document.getElementById('btnResetDadPlane');
+      if (resetBtn) resetBtn.classList.remove('hidden');
+
+      // 1.1 秒後小隊長自動坐上大飛機駕駛座開飛機！
+      setTimeout(function() {
+        boardAircraft('airliner', true);
+      }, 1100);
+    }
+
+    function resetDadToPlane(silent) {
+      if (activeFlightMode === 'airliner') {
+        activeFlightMode = null;
+        document.getElementById('flightControls').classList.add('hidden');
+      }
+      airlinerGroup.position.set(AIRPORT_X, 1.8, 12);
+      airlinerGroup.rotation.set(0, 0, 0);
+      dadState = 'on_plane';
+      dadParachute.visible = false;
+      dadModel.rotation.set(0, Math.PI, 0);
+      dadModel.position.set(AIRPORT_X, 3.65, 12 - 3.2);
+      if (!silent) {
+        notes([392, 523.25, 659.25], 'triangle', 0.09);
+        say('👨‍✈️ 爸爸又爬回飛機上面坐好囉！小隊長隨時可以再踢他一次！');
+      }
+    }
+
+    function boardAircraft(type, fromKick) {
+      if (activeFlightMode === type && !fromKick) {
+        // 下飛機
+        activeFlightMode = null;
+        A.jh = 0;
+        pos.x += 4.5;
+        document.getElementById('flightControls').classList.add('hidden');
+        say('🛬 已安全降落並走下' + (type === 'fighter' ? '戰鬥機' : '大飛機') + '！');
+        return;
+      }
+
+      if (type === 'airliner' && dadState === 'on_plane') {
+        // 若爸爸還在上面，直接幫小隊長把爸爸踢下飛機！
+        kickDadOffPlaneAction();
+        return;
+      }
+
+      activeFlightMode = type;
+      var target = (type === 'fighter') ? fighterGroup : airlinerGroup;
+      if (target.position.y < 6) target.position.y = 8.5;
+      pos.x = target.position.x;
+      pos.z = target.position.z;
+      A.jh = target.position.y + 1.2;
+      document.getElementById('flightControls').classList.remove('hidden');
+
+      notes([440, 554.37, 659.25, 880], 'sawtooth', 0.09);
+      if (type === 'fighter') {
+        banner('🛩️ 小隊長駕駛：超音速戰鬥機！', '推搖桿或按 WASD 翱翔天空，按「🔥噴射」超音速衝刺！');
+        say('🛩️ 轟隆隆！小隊長坐上超帥戰鬥機起飛囉！');
+      } else {
+        say('✈️ 小隊長已經坐上飛機機長寶座！推搖桿或按方向鍵開飛機兜風吧！');
+      }
+    }
+
+    // =========================================================================
+    // ===== 第 150D 版（第 4 棒：Tidal）：狂蓋 200 臺 7-11 超級陣列（#001～#200 號店）＆ 北海道棒球場／家 =====
+    // =========================================================================
+    var sevenStoreCoords = [];
+    var lastChimeStoreIdx = -1;
+    var sevenRoofInst = null;
+
+    (function buildRelay4_Tidal_200SevenElevensAndWorld() {
+      var worldGroup = new THREE.Group();
+      scene.add(worldGroup);
+
+      // 1. 精確生成 200 臺 7-11 便利商店（排成壯觀的 7-11 超級大道、飛機場外環、棒球場大道與寶可夢外環）
+      // 計算 200 個不重疊且不擋路的黃金店面座標
+      // (A) 7-11 超級商業大道（南側雙排共 80 臺：z = 52 與 z = 68，x 從 -135 到 +138，每 7 公尺 1 臺 -> 40 * 2 = 80 臺）
+      for (var i = 0; i < 40; i++) {
+        var sx = -135 + i * 7.0;
+        sevenStoreCoords.push({ x: sx, z: 52, ry: Math.PI, id: sevenStoreCoords.length + 1 });
+        sevenStoreCoords.push({ x: sx, z: 68, ry: 0, id: sevenStoreCoords.length + 1 });
+      }
+      // (B) 飛機場西側迎賓大道（雙排共 50 臺：x = -126 與 x = -140，z 從 -110 到 +82，每 8 公尺 1 臺 -> 25 * 2 = 50 臺）
+      for (var j = 0; j < 25; j++) {
+        var sz = -110 + j * 8.0;
+        sevenStoreCoords.push({ x: -126, z: sz, ry: Math.PI / 2, id: sevenStoreCoords.length + 1 });
+        sevenStoreCoords.push({ x: -140, z: sz, ry: -Math.PI / 2, id: sevenStoreCoords.length + 1 });
+      }
+      // (C) Minecraft 東側外環大道（雙排共 40 臺：x = 118 與 x = 132，z 從 -70 到 +82，每 8 公尺 1 臺 -> 20 * 2 = 40 臺）
+      for (var k = 0; k < 20; k++) {
+        var mz = -70 + k * 8.0;
+        sevenStoreCoords.push({ x: 118, z: mz, ry: -Math.PI / 2, id: sevenStoreCoords.length + 1 });
+        sevenStoreCoords.push({ x: 132, z: mz, ry: Math.PI / 2, id: sevenStoreCoords.length + 1 });
+      }
+      // (D) 北側環場外環大道（共 30 臺：z = -168，x 從 -116 到 +116，每 8 公尺 1 臺 -> 30 臺）
+      for (var n = 0; n < 30; n++) {
+        var nx = -116 + n * 8.0;
+        sevenStoreCoords.push({ x: nx, z: -168, ry: 0, id: sevenStoreCoords.length + 1 });
+      }
+      // 確認剛好 80 + 50 + 40 + 30 = 200 臺 7-11！
+
+      // 建立 7-11 專屬外觀貼圖（白底建築＋經典橘綠紅三色橫條＋大大 7-11 標誌＋落地窗）
+      var sevenTex = makeSignTex(256, 256, function(ctx, w, h) {
+        // 白色外牆
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, w, h);
+        // 屋頂經典三色橫條（橘、綠、紅）
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(0, 8, w, 18);
+        ctx.fillStyle = '#15803d';
+        ctx.fillRect(0, 26, w, 18);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(0, 44, w, 18);
+        // 7-11 中央白底綠邊招牌框
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(48, 8, 160, 58);
+        ctx.strokeStyle = '#15803d';
+        ctx.lineWidth = 5;
+        ctx.strokeRect(48, 8, 160, 58);
+        ctx.fillStyle = '#dc2626';
+        ctx.font = '900 38px "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('7-11', w / 2, 50);
+        // 玻璃櫥窗與冰櫃
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(18, 90, 92, 130);
+        ctx.fillRect(146, 90, 92, 130);
+        // 自動門
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(114, 105, 28, 150);
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(114, 105, 28, 150);
+      });
+
+      var storeGeo = new THREE.BoxGeometry(5.2, 4.2, 4.2);
+      var storeMat = new THREE.MeshLambertMaterial({ map: sevenTex });
+      var storeInst = new THREE.InstancedMesh(storeGeo, storeMat, 200);
+
+      var signRoofGeo = new THREE.BoxGeometry(5.6, 0.7, 4.6);
+      var signRoofMat = new THREE.MeshLambertMaterial({ color: 0x16a34a, emissive: 0x15803d, emissiveIntensity: 0.4 });
+      sevenRoofInst = new THREE.InstancedMesh(signRoofGeo, signRoofMat, 200);
+
+      var dummy = new THREE.Object3D();
+      for (var si = 0; si < 200; si++) {
+        var st = sevenStoreCoords[si];
+        dummy.position.set(st.x, 2.1, st.z);
+        dummy.rotation.set(0, st.ry, 0);
+        dummy.updateMatrix();
+        storeInst.setMatrixAt(si, dummy.matrix);
+
+        dummy.position.set(st.x, 4.45, st.z);
+        dummy.updateMatrix();
+        sevenRoofInst.setMatrixAt(si, dummy.matrix);
+      }
+      worldGroup.add(storeInst, sevenRoofInst);
+
+      // 在重點路口放幾面超醒目的「🏪 200 臺 7-11 旗艦大道」立牌
+      var sevenBannerTex = makeSignTex(640, 130, function(ctx, w, h) {
+        ctx.fillStyle = '#064e3b';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#f97316';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(4, 4, w - 8, h - 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 38px "Noto Sans TC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🏪 小樂洲洲 200 臺 7-11 超級大街 (#001~#200)', w / 2, 52);
+        ctx.fillStyle = '#fde047';
+        ctx.font = 'bold 25px "Noto Sans TC", sans-serif';
+        ctx.fillText('🥤 走近聽叮咚門鈴聲！免費拿思樂冰、茶葉蛋、大亨堡！', w / 2, 98);
+      });
+      var sevenRoadSign = new THREE.Mesh(new THREE.BoxGeometry(13, 2.5, 0.4), new THREE.MeshBasicMaterial({ map: sevenBannerTex }));
+      sevenRoadSign.position.set(0, 5.5, 45);
+      worldGroup.add(sevenRoadSign);
+
+      // 2. 北海道棒球場（位於 x: 0, z: 110，緊鄰 Minecraft 世界與 7-11 大道）
+      var stadiumField = new THREE.Mesh(
+        new THREE.CylinderGeometry(34, 36, 0.3, 32),
+        new THREE.MeshLambertMaterial({ color: 0x15803d })
+      );
+      stadiumField.position.set(0, 0.05, 112);
+      var infieldDirt = new THREE.Mesh(
+        new THREE.CylinderGeometry(13, 13, 0.34, 4),
+        new THREE.MeshLambertMaterial({ color: 0xd97706 })
+      );
+      infieldDirt.position.set(0, 0.08, 112);
+      var stadiumWall = new THREE.Mesh(
+        new THREE.CylinderGeometry(36, 34, 7.5, 32, 1, true),
+        new THREE.MeshLambertMaterial({ color: 0x1e3a8a, side: THREE.DoubleSide })
+      );
+      stadiumWall.position.set(0, 3.8, 112);
+
+      // 棒球場巨型計分板大螢幕
+      var scoreTex = makeSignTex(512, 192, function(ctx, w, h) {
+        ctx.fillStyle = '#020617';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(4, 4, w - 8, h - 8);
+        ctx.fillStyle = '#facc15';
+        ctx.font = '900 36px "Noto Sans TC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚾ 北海道棒球場 ESCON FIELD', w / 2, 56);
+        ctx.fillStyle = '#4ade80';
+        ctx.font = 'bold 28px "Noto Sans TC", sans-serif';
+        ctx.fillText('打者：小隊長 (Lucas) — 全壘打王！', w / 2, 112);
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 22px "Noto Sans TC", sans-serif';
+        ctx.fillText('東側直通：🧱 棒球場 Minecraft 大世界', w / 2, 158);
+      });
+      var jumbotron = new THREE.Mesh(new THREE.BoxGeometry(18, 6.8, 0.6), new THREE.MeshBasicMaterial({ map: scoreTex }));
+      jumbotron.position.set(0, 10.5, 145);
+      worldGroup.add(stadiumField, infieldDirt, stadiumWall, jumbotron);
+
+      // 3. 16樓溫暖的家 ＆ JIO 四人辦公室（位於 x: -28, z: 26）
+      var homeFloor = new THREE.Mesh(new THREE.BoxGeometry(22, 0.25, 16), new THREE.MeshLambertMaterial({ color: 0xfde68a }));
+      homeFloor.position.set(-28, 0.05, 26);
+      var homeSignTex = makeSignTex(480, 110, function(ctx, w, h) {
+        ctx.fillStyle = '#7c2d12';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(4, 4, w - 8, h - 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 32px "Noto Sans TC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🏠 16樓溫暖的家 ＆ JIO 四人總部', w / 2, 64);
+      });
+      var homeSign = new THREE.Mesh(new THREE.BoxGeometry(9, 2.1, 0.35), new THREE.MeshBasicMaterial({ map: homeSignTex }));
+      homeSign.position.set(-28, 4.2, 33.5);
+      worldGroup.add(homeFloor, homeSign);
+    })();
+
+    var sevenSnacks = [
+      '🥤 七彩思樂冰（速度加成！）',
+      '🥚 黃金香滷茶葉蛋',
+      '🍙 鮭魚御飯糰',
+      '🌭 美式大亨堡熱狗',
+      '🍦 北海道十勝牛奶霜淇淋'
+    ];
+    var snackIdx = 0;
+    var speedBoostTimer = 0;
+
+    function buySevenElevenSnack(storeNum) {
+      playSevenChime();
+      var item = sevenSnacks[snackIdx % sevenSnacks.length];
+      snackIdx++;
+      speedBoostTimer = 8.0;
+      var numStr = storeNum ? ('第 ' + String(storeNum).padStart(3, '0') + ' 號店') : '7-11 旗艦店';
+      banner('🏪 歡迎光臨 7-11（' + numStr + '）！', '叮咚～♪ 小隊長拿了「' + item + '」，跑步速度變超快！');
+      say('🏪 叮咚～！在 200 臺 7-11 中的「' + numStr + '」拿到了 ' + item + '！');
+    }
+
+    // =========================================================================
+    // 4. 煙火特效系統
+    // =========================================================================
+    var fireworks = [];
+    function launchFireworksShow() {
+      notes([523.25, 659.25, 783.99, 1046.5, 1318.5], 'triangle', 0.1);
+      noiseBurst(0.25, 800, 0.25);
+      var colors = [0xfacc15, 0xef4444, 0x38bdf8, 0x4ade80, 0xf472b6, 0xc084fc];
+      for (var b = 0; b < 6; b++) {
+        var cx = pos.x + (Math.random() - 0.5) * 45;
+        var cy = 14 + Math.random() * 14;
+        var cz = pos.z + (Math.random() - 0.5) * 45;
+        var colHex = colors[b % colors.length];
+        for (var p = 0; p < 18; p++) {
+          var orb = new THREE.Mesh(
+            new THREE.SphereGeometry(0.32, 6, 6),
+            new THREE.MeshBasicMaterial({ color: colHex })
+          );
+          orb.position.set(cx, cy, cz);
+          scene.add(orb);
+          var theta = Math.random() * Math.PI * 2;
+          var phi = Math.random() * Math.PI;
+          var spd = 6 + Math.random() * 10;
+          fireworks.push({
+            mesh: orb,
+            vx: Math.sin(phi) * Math.cos(theta) * spd,
+            vy: Math.cos(phi) * spd,
+            vz: Math.sin(phi) * Math.sin(theta) * spd,
+            life: 1.4
+          });
+        }
+      }
+      banner('🎆 200 臺 7-11 ＆ 超大世界煙火慶典！', '四位員工 Rudy、Kaz、Idn、Tidal 祝小隊長玩得超開心！');
+    }
+
+    // =========================================================================
+    // 5. 角色切換與傳送系統
+    // =========================================================================
+    function updatePlayerRoleModel() {
+      var role = ROLES[currentRoleIdx];
+      scene.remove(A.g);
+      A.g = createCharacterModel(role);
+      A.g.position.set(pos.x, A.jh, pos.z);
+      A.g.rotation.y = A.heading;
+      scene.add(A.g);
+      var av = document.getElementById('charAvatarBadge');
+      var rl = document.getElementById('currentRoleLabel');
+      if (av) av.textContent = role.icon;
+      if (rl) rl.textContent = role.name;
+    }
+
+    function switchCharacterAction() {
+      currentRoleIdx = (currentRoleIdx + 1) % ROLES.length;
+      updatePlayerRoleModel();
+      notes([440, 659.25], 'sine', 0.08);
+      say('✨ 切換操作角色為：「' + ROLES[currentRoleIdx].name + '」！');
+    }
+
+    function teleportToZone(zoneKey) {
+      activeFlightMode = null;
+      document.getElementById('flightControls').classList.add('hidden');
+      A.jh = 0; A.jv = 0;
+      if (zoneKey === 'airport') {
+        pos.x = -73; pos.z = 16; A.heading = Math.PI / 2;
+        banner('✈️ 小樂洲洲國際飛機場', '爸爸正在飛機上面開飛機！按右側「🦵 小隊長把爸爸踢下飛機！」');
+      } else if (zoneKey === 'fighter') {
+        pos.x = -75; pos.z = -18; A.heading = Math.PI / 2;
+        banner('🛩️ 雷霆戰鬥機停機坪', '點「🛩️ 開戰鬥機」就能駕駛戰鬥機衝上雲霄！');
+      } else if (zoneKey === 'minecraft') {
+        pos.x = 49; pos.z = 18; A.heading = -Math.PI / 2;
+        banner('🧱 棒球場旁超大 Minecraft 世界', '有四面高牆、大屋頂、Minecraft 方塊大門，還能隨時按「💡 開燈」！');
+      } else if (zoneKey === 'poke_road') {
+        pos.x = 0; pos.z = -4; A.heading = 0;
+        banner('🌈 通往寶可夢世界的彩虹大道', '往前直走就能無障礙走進第一階段與第二階段神獸島！');
+      } else if (zoneKey === 'poke_stage2') {
+        pos.x = 0; pos.z = -96; A.heading = 0;
+        banner('👑 寶可夢世界・第二階段（神獸進化島）', '靠近傳說神獸按「🔴 丟球抓寶可夢」收服牠們！');
+      } else if (zoneKey === 'seven_avenue') {
+        pos.x = 0; pos.z = 60; A.heading = Math.PI / 2;
+        playSevenChime();
+        banner('🏪 200 臺 7-11 超級旗艦大街', '整整 200 臺 7-11 排開！走近任何一臺都有叮咚聲與思樂冰！');
+      } else if (zoneKey === 'stadium') {
+        pos.x = 0; pos.z = 95; A.heading = Math.PI;
+        banner('🏟️ 北海道棒球場 ESCON FIELD', '東側緊鄰 Minecraft 大城堡，南側連接 200 臺 7-11！');
+      } else if (zoneKey === 'home') {
+        pos.x = -28; pos.z = 22; A.heading = 0;
+        banner('🏠 16樓溫暖的家 ＆ JIO 四人總部', 'Rudy、Kaz、Idn、Tidal 四位員工在這裡隨時待命！');
+      }
+      notes([523.25, 659.25, 783.99], 'sine', 0.07);
+    }
+
+    // =========================================================================
+    // 6. 輸入控制（鍵盤 WASD/方向鍵 ＋ 虛擬搖桿 ＋ 滑鼠/觸控拖曳視角）
+    // =========================================================================
+    var keys = {};
+    var joyVec = { x: 0, y: 0 };
+    var camYaw = 0;
+    var camPitch = 0.32;
+    var camDist = 11.5;
+
+    window.addEventListener('keydown', function(e) {
+      var k = (e.key || '').toLowerCase();
+      keys[k] = true;
+      if (k === ' ') {
+        e.preventDefault();
+        triggerJumpOrFlyUp();
+      } else if (k === 'k') {
+        kickDadOffPlaneAction();
+      } else if (k === 'l') {
+        toggleMinecraftLight();
+      } else if (k === 'q') {
+        switchCharacterAction();
+      } else if (k === 'e') {
+        contextInteractAction();
+      } else if (k >= '1' && k <= '9') {
+        selectMcBlock(parseInt(k, 10) - 1);
+      }
+    });
+
+    window.addEventListener('keyup', function(e) {
+      var k = (e.key || '').toLowerCase();
+      keys[k] = false;
+    });
+
+    // 虛擬搖桿事件
+    var joyZone = document.getElementById('joystickZone');
+    var joyKnob = document.getElementById('joystickKnob');
+    var joyPointerId = null;
+
+    function updateJoystick(clientX, clientY) {
+      var rect = joyZone.getBoundingClientRect();
+      var cx = rect.left + rect.width / 2;
+      var cy = rect.top + rect.height / 2;
+      var maxR = rect.width / 2 - 12;
+      var dx = clientX - cx;
+      var dy = clientY - cy;
+      var dist = Math.hypot(dx, dy);
+      if (dist > maxR) {
+        dx = (dx / dist) * maxR;
+        dy = (dy / dist) * maxR;
+      }
+      joyVec.x = dx / maxR;
+      joyVec.y = dy / maxR;
+      joyKnob.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px)';
+    }
+
+    function resetJoystick() {
+      joyPointerId = null;
+      joyVec.x = 0;
+      joyVec.y = 0;
+      joyKnob.style.transform = 'translate(0px, 0px)';
+    }
+
+    joyZone.addEventListener('pointerdown', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      joyPointerId = e.pointerId;
+      joyZone.setPointerCapture(e.pointerId);
+      updateJoystick(e.clientX, e.clientY);
+    });
+    joyZone.addEventListener('pointermove', function(e) {
+      if (e.pointerId === joyPointerId) {
+        updateJoystick(e.clientX, e.clientY);
+      }
+    });
+    joyZone.addEventListener('pointerup', function(e) {
+      if (e.pointerId === joyPointerId) resetJoystick();
+    });
+    joyZone.addEventListener('pointercancel', function(e) {
+      if (e.pointerId === joyPointerId) resetJoystick();
+    });
+
+    // 畫面拖曳旋轉鏡頭
+    var lookPointerId = null;
+    var lastLookX = 0, lastLookY = 0;
+    canvas.addEventListener('pointerdown', function(e) {
+      ensureAudio();
+      lookPointerId = e.pointerId;
+      lastLookX = e.clientX;
+      lastLookY = e.clientY;
+    });
+    window.addEventListener('pointermove', function(e) {
+      if (e.pointerId === lookPointerId) {
+        var dx = e.clientX - lastLookX;
+        var dy = e.clientY - lastLookY;
+        lastLookX = e.clientX;
+        lastLookY = e.clientY;
+        camYaw -= dx * 0.0065;
+        camPitch = Math.max(0.08, Math.min(1.15, camPitch + dy * 0.005));
+      }
+    });
+    window.addEventListener('pointerup', function(e) {
+      if (e.pointerId === lookPointerId) lookPointerId = null;
+    });
+    window.addEventListener('wheel', function(e) {
+      camDist = Math.max(5, Math.min(38, camDist + (e.deltaY > 0 ? 1.5 : -1.5)));
+    }, { passive: true });
+
+    function triggerJumpOrFlyUp() {
+      if (activeFlightMode) {
+        var craft = activeFlightMode === 'fighter' ? fighterGroup : airlinerGroup;
+        craft.position.y = Math.min(65, craft.position.y + 3.5);
+        A.jh = craft.position.y + 1.2;
+        notes([587.33, 880], 'sine', 0.06);
+      } else if (A.jh <= 0.05) {
+        A.jv = 9.5;
+        notes([392, 587.33], 'sine', 0.07);
+      }
+    }
+
+    // 智慧情境互動按鈕 (E)
+    function contextInteractAction() {
+      var distPlane = Math.hypot(pos.x - airlinerGroup.position.x, pos.z - airlinerGroup.position.z);
+      var distFighter = Math.hypot(pos.x - fighterGroup.position.x, pos.z - fighterGroup.position.z);
+      var distMcDoor = Math.hypot(pos.x - (MC_CENTER_X - 14), pos.z - MC_CENTER_Z);
+
+      if (distPlane < 12 && dadState === 'on_plane') {
+        kickDadOffPlaneAction();
+      } else if (distFighter < 10) {
+        boardAircraft('fighter');
+      } else if (distPlane < 12) {
+        boardAircraft('airliner');
+      } else if (distMcDoor < 7) {
+        toggleMinecraftDoor();
+      } else if (pos.x >= 48 && pos.x <= 88 && pos.z >= 0 && pos.z <= 36) {
+        toggleMinecraftLight();
+      } else if (pos.z < -15) {
+        throwPokeBallAction();
+      } else {
+        buySevenElevenSnack();
+      }
+    }
+
+    // =========================================================================
+    // 7. 綁定所有 UI 按鈕事件
+    // =========================================================================
+    document.getElementById('btnKickDad').addEventListener('click', kickDadOffPlaneAction);
+    document.getElementById('btnResetDadPlane').addEventListener('click', function() { resetDadToPlane(false); });
+    document.getElementById('btnFlyAirliner').addEventListener('click', function() { boardAircraft('airliner'); });
+    document.getElementById('btnFlyFighter').addEventListener('click', function() { boardAircraft('fighter'); });
+    document.getElementById('btnToggleMcLight').addEventListener('click', function() { toggleMinecraftLight(); });
+    document.getElementById('btnToggleMcDoor').addEventListener('click', function() { toggleMinecraftDoor(); });
+    document.getElementById('btnThrowPokeBall').addEventListener('click', throwPokeBallAction);
+    document.getElementById('btnSevenSnack').addEventListener('click', function() { buySevenElevenSnack(); });
+    document.getElementById('btnSwitchChar').addEventListener('click', switchCharacterAction);
+    document.getElementById('btnFireworks').addEventListener('click', launchFireworksShow);
+    document.getElementById('btnPlaceBlock').addEventListener('click', placeMcBlockInFront);
+    document.getElementById('btnBreakBlock').addEventListener('click', breakMcBlockInFront);
+    document.getElementById('btnJump').addEventListener('click', triggerJumpOrFlyUp);
+    document.getElementById('btnInteract').addEventListener('click', contextInteractAction);
+
+    document.getElementById('btnFlyUp').addEventListener('click', function() {
+      if (!activeFlightMode) return;
+      var c = activeFlightMode === 'fighter' ? fighterGroup : airlinerGroup;
+      c.position.y = Math.min(70, c.position.y + 4);
+    });
+    document.getElementById('btnFlyDown').addEventListener('click', function() {
+      if (!activeFlightMode) return;
+      var c = activeFlightMode === 'fighter' ? fighterGroup : airlinerGroup;
+      c.position.y = Math.max(1.8, c.position.y - 4);
+    });
+    document.getElementById('btnFlyBoost').addEventListener('click', function() {
+      if (!activeFlightMode) return;
+      speedBoostTimer = 5.0;
+      noiseBurst(0.22, 900, 0.3);
+      say('🔥 啟動超音速渦輪噴射加速！！');
+    });
+
+    // 7 大地標瞬移按鈕
+    var tpButtons = document.querySelectorAll('.tp-btn');
+    for (var ti = 0; ti < tpButtons.length; ti++) {
+      tpButtons[ti].addEventListener('click', function() {
+        var dest = this.getAttribute('data-tp');
+        teleportToZone(dest);
+      });
+    }
+
+    // 音效開關
+    document.getElementById('btnMuteAudio').addEventListener('click', function() {
+      soundMuted = !soundMuted;
+      this.textContent = soundMuted ? '🔇 音效：關' : '🔊 音效：開';
+    });
+
+    // 四人接力報告彈窗
+    var relayModal = document.getElementById('relayModal');
+    document.getElementById('btnToggleRelayModal').addEventListener('click', function() {
+      relayModal.classList.toggle('hidden');
+    });
+    document.getElementById('btnCloseRelayModal').addEventListener('click', function() {
+      relayModal.classList.add('hidden');
+    });
+    document.getElementById('btnRelayClose2').addEventListener('click', function() {
+      relayModal.classList.add('hidden');
+    });
+    document.getElementById('btnRelayGoKick').addEventListener('click', function() {
+      relayModal.classList.add('hidden');
+      kickDadOffPlaneAction();
+    });
+
+    // 複製原版 index.html 專用 v150 擴充碼
+    document.getElementById('btnCopyPatchCode').addEventListener('click', function() {
+      var patchText = '// ===== 第 150 版：超大版家裡走走・JIO 四人接力擴充包（Rudy / Kaz / Idn / Tidal 撰寫） =====\n' +
+        '// 包含：1. 寶可夢世界第二階段進去的路 2. 棒球場旁超大土地 Minecraft 四面牆屋頂大門與隨時開燈 3. 飛機場(客機+戰鬥機)與小隊長把爸爸踢下飛機 4. 200 臺 7-11\n' +
+        '(' + buildRelay1_Rudy_PokemonWorld.toString() + ')();\n';
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = patchText;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        banner('📋 已複製第 150 版擴充程式碼！', '可直接貼在原版家裡走走 index.html 最後面，或直接在這個畫面玩！');
+      } catch (e) {
+        say('📋 擴充碼已準備就緒！');
+      }
+    });
+
+    // =========================================================================
+    // 8. 小地圖繪製與主迴圈更新
+    // =========================================================================
+    var miniCanvas = document.getElementById('miniMapCanvas');
+    var miniCtx = miniCanvas ? miniCanvas.getContext('2d') : null;
+
+    function drawMiniMap() {
+      if (!miniCtx) return;
+      var w = miniCanvas.width, h = miniCanvas.height;
+      miniCtx.fillStyle = '#0f172a';
+      miniCtx.fillRect(0, 0, w, h);
+
+      var mapScale = 0.34;
+      var cx = w / 2, cy = h / 2;
+      function toMap(wx, wz) {
+        return { x: cx + wx * mapScale, y: cy + wz * mapScale };
+      }
+
+      // 飛機場
+      var pAp = toMap(AIRPORT_X, 0);
+      miniCtx.fillStyle = '#38bdf8';
+      miniCtx.fillRect(pAp.x - 5, pAp.y - 32, 10, 64);
+
+      // 寶可夢大道與第二階段
+      var pPk = toMap(0, -125);
+      miniCtx.fillStyle = '#c084fc';
+      miniCtx.beginPath();
+      miniCtx.arc(pPk.x, pPk.y, 11, 0, Math.PI * 2);
+      miniCtx.fill();
+
+      // Minecraft 世界
+      var pMc = toMap(MC_CENTER_X, MC_CENTER_Z);
+      miniCtx.fillStyle = '#4ade80';
+      miniCtx.fillRect(pMc.x - 12, pMc.y - 12, 24, 24);
+
+      // 200 臺 7-11 光點
+      miniCtx.fillStyle = '#f97316';
+      for (var i = 0; i < sevenStoreCoords.length; i += 4) {
+        var sp = toMap(sevenStoreCoords[i].x, sevenStoreCoords[i].z);
+        miniCtx.fillRect(sp.x - 1, sp.y - 1, 2, 2);
+      }
+
+      // 玩家位置紅點
+      var pp = toMap(pos.x, pos.z);
+      miniCtx.fillStyle = '#facc15';
+      miniCtx.beginPath();
+      miniCtx.arc(pp.x, pp.y, 4, 0, Math.PI * 2);
+      miniCtx.fill();
+    }
+
+    var lastTime = performance.now();
+    function animate(now) {
+      requestAnimationFrame(animate);
+      var dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+      var t = now * 0.001;
+
+      if (speedBoostTimer > 0) speedBoostTimer = Math.max(0, speedBoostTimer - dt);
+
+      // 1. 計算移動輸入
+      var moveF = 0, moveR = 0;
+      if (keys['w'] || keys['arrowup']) moveF += 1;
+      if (keys['s'] || keys['arrowdown']) moveF -= 1;
+      if (keys['d'] || keys['arrowright']) moveR += 1;
+      if (keys['a'] || keys['arrowleft']) moveR -= 1;
+      if (Math.abs(joyVec.x) > 0.05 || Math.abs(joyVec.y) > 0.05) {
+        moveR += joyVec.x;
+        moveF -= joyVec.y;
+      }
+
+      var inputMag = Math.hypot(moveF, moveR);
+      if (inputMag > 1) {
+        moveF /= inputMag;
+        moveR /= inputMag;
+      }
+
+      var baseSpeed = activeFlightMode === 'fighter' ? 38 : (activeFlightMode === 'airliner' ? 28 : 14);
+      if (speedBoostTimer > 0) baseSpeed *= 1.65;
+
+      if (inputMag > 0.05) {
+        var forwardX = -Math.sin(camYaw);
+        var forwardZ = -Math.cos(camYaw);
+        var rightX = Math.cos(camYaw);
+        var rightZ = -Math.sin(camYaw);
+
+        var vx = (forwardX * moveF + rightX * moveR) * baseSpeed;
+        var vz = (forwardZ * moveF + rightZ * moveR) * baseSpeed;
+        var nextX = pos.x + vx * dt;
+        var nextZ = pos.z + vz * dt;
+
+        // 地面碰撞檢查（飛行模式不受地面牆壁阻擋，可飛越屋頂）
+        var blocked = false;
+        if (!activeFlightMode && A.jh < 3.5) {
+          for (var ci = 0; ci < colliders.length; ci++) {
+            var c = colliders[ci];
+            if (!c.on) continue;
+            if (nextX > c.x0 - 0.55 && nextX < c.x1 + 0.55 && nextZ > c.z0 - 0.55 && nextZ < c.z1 + 0.55) {
+              blocked = true;
+              break;
+            }
+          }
+        }
+        if (!blocked) {
+          pos.x = Math.max(-165, Math.min(165, nextX));
+          pos.z = Math.max(-175, Math.min(165, nextZ));
+        }
+        A.heading = Math.atan2(-vx, -vz);
+      }
+
+      // 2. 跳躍與飛行狀態更新
+      if (activeFlightMode) {
+        var craft = activeFlightMode === 'fighter' ? fighterGroup : airlinerGroup;
+        craft.position.x = pos.x;
+        craft.position.z = pos.z;
+        craft.rotation.y = A.heading;
+        A.jh = craft.position.y + 1.15;
+        A.g.position.set(pos.x, A.jh, pos.z);
+        A.g.rotation.y = A.heading;
+      } else {
+        if (A.jh > 0 || A.jv !== 0) {
+          A.jh += A.jv * dt;
+          A.jv -= 24.0 * dt;
+          if (A.jh <= 0) {
+            A.jh = 0;
+            A.jv = 0;
+          }
+        }
+        A.g.position.set(pos.x, A.jh, pos.z);
+        A.g.rotation.y = A.heading;
+      }
+
+      // 角色手腳擺動動畫
+      var walkSwing = (inputMag > 0.08 && !activeFlightMode) ? Math.sin(t * 12) * 0.65 : 0;
+      if (A.g.userData.leftLeg) {
+        A.g.userData.leftLeg.rotation.x = walkSwing;
+        A.g.userData.rightLeg.rotation.x = -walkSwing;
+        A.g.userData.leftArm.rotation.x = -walkSwing * 0.8;
+        A.g.userData.rightArm.rotation.x = walkSwing * 0.8;
+      }
+
+      // 3. 爸爸被小隊長踢下飛機的物理與降落傘動畫
+      if (dadState === 'kicked_flying') {
+        dadKickTimer += dt;
+        dadModel.position.x += dadVelocity.x * dt;
+        dadModel.position.y += dadVelocity.y * dt;
+        dadModel.position.z += dadVelocity.z * dt;
+        // 降落傘打開後減速緩降
+        dadVelocity.y -= 16.0 * dt;
+        if (dadVelocity.y < -3.8) dadVelocity.y = -3.8;
+        dadVelocity.x *= 0.98;
+        dadModel.rotation.y += 8.0 * dt;
+        dadModel.rotation.z = Math.sin(t * 10) * 0.35;
+
+        if (dadModel.position.y <= 0) {
+          dadModel.position.y = 0;
+          dadModel.rotation.set(0, 0, 0);
+          dadParachute.visible = false;
+          dadState = 'landed';
+          notes([330, 261.63], 'triangle', 0.14);
+          say('👨‍✈️ 爸爸掉在地上揉屁股：「哎喲喂呀～小隊長踢得好大力！飛機給你開啦！」');
+        }
+      } else if (dadState === 'on_plane') {
+        dadModel.position.set(airlinerGroup.position.x, airlinerGroup.position.y + 1.85, airlinerGroup.position.z - 3.2);
+      }
+
+      // 4. Minecraft 雙開像素門平滑旋轉
+      var targetDoorRot = mcDoorOpen ? Math.PI * 0.48 : 0;
+      if (mcDoorPivotL && mcDoorPivotR) {
+        mcDoorPivotL.rotation.y += (-targetDoorRot - mcDoorPivotL.rotation.y) * 0.15;
+        mcDoorPivotR.rotation.y += (targetDoorRot - mcDoorPivotR.rotation.y) * 0.15;
+      }
+
+      // 5. 寶可夢跟隨夥伴＆野生寶可夢彈跳與第二階段水晶旋轉
+      if (pokePartnerMesh) {
+        var targetPx = pos.x + Math.sin(A.heading) * 2.2 + 1.1;
+        var targetPz = pos.z + Math.cos(A.heading) * 2.2;
+        pokePartnerMesh.position.x += (targetPx - pokePartnerMesh.position.x) * 0.1;
+        pokePartnerMesh.position.z += (targetPz - pokePartnerMesh.position.z) * 0.1;
+        pokePartnerMesh.position.y = A.jh + Math.abs(Math.sin(t * 6)) * 0.35;
+        pokePartnerMesh.rotation.y = A.heading + Math.PI;
+      }
+      for (var wi = 0; wi < wildPokemons.length; wi++) {
+        var wp = wildPokemons[wi];
+        wp.mesh.position.y = Math.abs(Math.sin(t * 3.5 + wp.phase)) * 0.45;
+        wp.mesh.rotation.y = Math.sin(t * 1.2 + wp.phase) * 0.6;
+      }
+      if (window.__pokeCrystal) {
+        window.__pokeCrystal.rotation.y = t * 1.5;
+        window.__pokeCrystal.position.y = 4.2 + Math.sin(t * 2.5) * 0.4;
+      }
+
+      // 6. 飛機場雷達與引擎扇葉旋轉
+      if (radarDish) radarDish.rotation.y = t * 2.2;
+      for (var bi = 0; bi < propBlades.length; bi++) {
+        propBlades[bi].rotation.z = t * 18;
+      }
+
+      // 7. 偵測靠近 200 臺 7-11 自動響叮咚聲＆更新所在地區標籤
+      var nearStoreIdx = -1;
+      for (var si = 0; si < sevenStoreCoords.length; si++) {
+        var st = sevenStoreCoords[si];
+        if (Math.hypot(pos.x - st.x, pos.z - st.z) < 6.2) {
+          nearStoreIdx = si;
+          break;
+        }
+      }
+      if (nearStoreIdx !== -1 && nearStoreIdx !== lastChimeStoreIdx) {
+        lastChimeStoreIdx = nearStoreIdx;
+        playSevenChime();
+        var sNum = String(sevenStoreCoords[nearStoreIdx].id).padStart(3, '0');
+        say('🏪 叮咚～♪ 歡迎光臨 7-11（第 ' + sNum + ' 號店 / 共 200 臺）！按 E 拿思樂冰！');
+      } else if (nearStoreIdx === -1) {
+        lastChimeStoreIdx = -1;
+      }
+
+      // 更新頂部所在區域標籤與右下互動鍵提示
+      var zoneBadge = document.getElementById('currentZoneBadge');
+      var actLabel = document.getElementById('interactBtnLabel');
+      if (zoneBadge && actLabel) {
+        if (activeFlightMode === 'fighter') {
+          zoneBadge.textContent = '🛩️ 駕駛戰鬥機飛行中';
+          actLabel.textContent = '降落 (E)';
+        } else if (activeFlightMode === 'airliner') {
+          zoneBadge.textContent = '✈️ 駕駛大飛機飛行中';
+          actLabel.textContent = '降落 (E)';
+        } else if (pos.z < -85) {
+          zoneBadge.textContent = '👑 寶可夢第二階段(神獸島)';
+          actLabel.textContent = '抓神獸(E)';
+        } else if (pos.z < -10) {
+          zoneBadge.textContent = '🌈 寶可夢大道＆第一階段';
+          actLabel.textContent = '抓寶可夢';
+        } else if (pos.x > 36) {
+          zoneBadge.textContent = '🧱 棒球場 Minecraft 大城堡';
+          actLabel.textContent = '開關燈(E)';
+        } else if (pos.x < -50) {
+          zoneBadge.textContent = '✈️ 小樂洲洲國際飛機場';
+          actLabel.textContent = dadState === 'on_plane' ? '踢爸爸(E)' : '開飛機(E)';
+        } else if (pos.z > 82) {
+          zoneBadge.textContent = '🏟️ 北海道棒球場';
+          actLabel.textContent = '互動 (E)';
+        } else if (nearStoreIdx !== -1) {
+          zoneBadge.textContent = '🏪 7-11 第 ' + String(sevenStoreCoords[nearStoreIdx].id).padStart(3, '0') + ' 號店';
+          actLabel.textContent = '買思樂冰';
+        } else {
+          zoneBadge.textContent = '🏪 200 臺 7-11 超級大街';
+          actLabel.textContent = '逛7-11(E)';
+        }
+      }
+
+      // 8. 煙火粒子更新
+      for (var fi = fireworks.length - 1; fi >= 0; fi--) {
+        var fw = fireworks[fi];
+        fw.life -= dt;
+        fw.mesh.position.x += fw.vx * dt;
+        fw.mesh.position.y += fw.vy * dt;
+        fw.mesh.position.z += fw.vz * dt;
+        fw.vy -= 9.8 * dt;
+        if (fw.life <= 0) {
+          scene.remove(fw.mesh);
+          fireworks.splice(fi, 1);
+        }
+      }
+
+      // 9. 相機跟隨（在 Minecraft 大屋頂內時自動降低相機高度，讓玩家清楚看見頭頂的屋頂與螢石燈！）
+      var inMcHouse = (pos.x >= 54 && pos.x <= 82 && pos.z >= 4 && pos.z <= 32 && !activeFlightMode);
+      var effDist = inMcHouse ? Math.min(camDist, 6.8) : (activeFlightMode ? 18 : camDist);
+      var effPitch = inMcHouse ? 0.14 : camPitch;
+
+      var camX = pos.x + Math.sin(camYaw) * Math.cos(effPitch) * effDist;
+      var camZ = pos.z + Math.cos(camYaw) * Math.cos(effPitch) * effDist;
+      var camY = A.jh + 2.2 + Math.sin(effPitch) * effDist;
+      if (inMcHouse && camY > 7.2) camY = 7.2;
+
+      camera.position.set(camX, camY, camZ);
+      camera.lookAt(pos.x, A.jh + (inMcHouse ? 2.4 : 1.6), pos.z);
+
+      drawMiniMap();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', function() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    window.onload = function() {
+      banner('🎉 超大版家裡走走（小樂洲洲）完成！', '按右邊橘色大按鈕「🦵 小隊長把爸爸踢下飛機！」馬上體驗！');
+      say('👦 小隊長準備好了！前面就是爸爸開的大飛機、戰鬥機、Minecraft 大屋頂、寶可夢第二階段大道和 200 臺 7-11！');
+      requestAnimationFrame(animate);
+    };
+  })();
+  </script>
+</body>
+</html>
