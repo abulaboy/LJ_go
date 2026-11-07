@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>超大版家裡走走（小樂洲洲豪華版）</title>
+  <style>
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #0f172a; color: #ffffff;
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      touch-action: none;
+    }
+    #gameCanvas {
+      position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 1;
+    }
+    .hud-top {
+      position: fixed; top: 8px; left: 8px; right: 8px; z-index: 20;
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px;
+      pointer-events: none;
+    }
+    .glass {
+      background: rgba(15, 23, 42, 0.86);
+      border: 1.5px solid rgba(255, 255, 255, 0.22);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      border-radius: 14px;
+      pointer-events: auto;
+    }
+    .status-card {
+      display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+    }
+    .avatar-box {
+      width: 36px; height: 36px; border-radius: 10px; background: #f59e0b;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .status-title { font-size: 14px; font-weight: 900; color: #fde047; display: flex; align-items: center; gap: 6px; }
+    .zone-pill {
+      font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
+      background: rgba(16, 185, 129, 0.28); border: 1px solid #34d399; color: #a7f3d0;
+    }
+    .status-sub { font-size: 11px; color: #cbd5e1; margin-top: 2px; font-weight: 700; }
+    .top-actions { display: flex; align-items: center; gap: 6px; pointer-events: auto; }
+    .btn {
+      border: none; cursor: pointer; font-family: inherit; font-weight: 800;
+      transition: transform 0.1s, filter 0.15s; pointer-events: auto;
+    }
+    .btn:active { transform: scale(0.93); }
+    .btn-sm {
+      padding: 6px 10px; border-radius: 10px; font-size: 12px; color: #fff;
+      background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(255,255,255,0.25);
+    }
+    .tp-bar {
+      position: fixed; top: 64px; left: 8px; right: 8px; z-index: 20;
+      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
+      pointer-events: auto; scrollbar-width: none;
+    }
+    .tp-bar::-webkit-scrollbar { display: none; }
+    .tp-chip {
+      flex-shrink: 0; padding: 6px 11px; border-radius: 10px; font-size: 12px; color: #fff;
+      border: 1px solid rgba(255,255,255,0.35); box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .side-panel {
+      position: fixed; right: 8px; top: 104px; z-index: 20;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+      pointer-events: none; max-width: 65vw;
+    }
+    .btn-kick {
+      padding: 9px 14px; border-radius: 14px; font-size: 13px; font-weight: 900; color: #fff;
+      background: linear-gradient(135deg, #f97316, #ef4444, #eab308);
+      border: 2px solid #fef08a; box-shadow: 0 0 18px rgba(249, 115, 22, 0.85);
+      animation: pulse 1.6s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .btn-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; pointer-events: none; }
+    .btn-action {
+      padding: 6px 10px; border-radius: 10px; font-size: 12px; color: #fff;
+      border: 1.5px solid rgba(255,255,255,0.4); box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+    }
+    .banner-box {
+      position: fixed; top: 104px; left: 50%; transform: translateX(-50%); z-index: 25;
+      width: min(430px, 90vw); padding: 10px 16px; text-align: center;
+      border: 2px solid #facc15; pointer-events: none; transition: opacity 0.25s;
+    }
+    .banner-title { font-size: 16px; font-weight: 900; color: #fde047; }
+    .banner-sub { font-size: 12px; color: #f1f5f9; margin-top: 3px; font-weight: 600; }
+    .toast-box {
+      position: fixed; bottom: 138px; left: 50%; transform: translateX(-50%); z-index: 22;
+      max-width: 90vw; padding: 7px 16px; border-radius: 999px;
+      font-size: 13px; font-weight: 800; color: #fef08a; text-align: center;
+      border: 1.5px solid rgba(250, 204, 21, 0.5); pointer-events: none; transition: opacity 0.2s;
+    }
+    .hotbar-wrap {
+      position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 20;
+      display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: auto;
+    }
+    .hotbar-top {
+      display: flex; align-items: center; gap: 6px; padding: 3px 10px;
+      border-radius: 999px; background: rgba(15,23,42,0.9); border: 1px solid rgba(255,255,255,0.2);
+      font-size: 11px; font-weight: 800;
+    }
+    .hotbar-slots {
+      display: flex; gap: 3px; padding: 4px; border-radius: 10px;
+      background: rgba(15, 23, 42, 0.92); border: 2px solid #64748b;
+    }
+    .mc-slot {
+      width: 34px; height: 34px; border-radius: 6px; background: #1e293b;
+      border: 2px solid #475569; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; font-size: 14px; cursor: pointer; color: #fff;
+    }
+    .mc-slot.active { border-color: #facc15; background: #334155; transform: scale(1.1); }
+    .joy-zone {
+      position: fixed; left: 12px; bottom: 12px; z-index: 20;
+      width: 108px; height: 108px; border-radius: 50%;
+      background: rgba(15, 23, 42, 0.78); border: 2px solid rgba(255,255,255,0.28);
+      display: flex; align-items: center; justify-content: center; touch-action: none;
+    }
+    .joy-knob {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fbbf24, #ea580c);
+      border: 2px solid #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: none;
+    }
+    .br-controls {
+      position: fixed; right: 12px; bottom: 12px; z-index: 20;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none;
+    }
+    .round-btn {
+      width: 60px; height: 60px; border-radius: 50%; color: #fff;
+      font-size: 12px; font-weight: 900; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,0.6);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+    }
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 50; background: rgba(2, 6, 23, 0.82);
+      display: flex; align-items: center; justify-content: center; padding: 14px;
+    }
+    .modal-card {
+      width: min(620px, 95vw); max-height: 86vh; overflow-y: auto;
+      padding: 18px; border-radius: 20px; border: 2px solid #38bdf8;
+    }
+    .relay-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 10px; margin-top: 12px;
+    }
+    .relay-item {
+      padding: 10px 12px; border-radius: 12px; font-size: 12px; line-height: 1.5;
+      background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(255,255,255,0.18);
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 520px) {
+      .mc-slot { width: 28px; height: 28px; font-size: 12px; }
+      .joy-zone { width: 92px; height: 92px; }
+      .round-btn { width: 52px; height: 52px; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="gameCanvas" tabindex="0"></canvas>
+
+  <!-- 頂部狀態列 -->
+  <header class="hud-top">
+    <div class="glass status-card">
+      <div id="charAvatarBadge" class="avatar-box">👦</div>
+      <div>
+        <div class="status-title">
+          <span id="currentRoleLabel">小隊長 (Lucas)</span>
+          <span id="currentZoneBadge" class="zone-pill">✈️ 飛機場跑道</span>
+        </div>
+        <div class="status-sub">
+          <span id="sevenElevenCountBadge" style="color:#fdba74;">🏪 7-11：200/200 臺</span> •
+          <span id="pokemonCountBadge" style="color:#f9a8d4;">🔴 寶可夢：1/10</span> •
+          <span id="mcLightStateBadge" style="color:#fde047;">💡 麥塊燈：開</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button id="btnToggleRelayModal" type="button" class="btn btn-sm" style="border-color:#38bdf8;color:#7dd3fc;">👷 四人接力報告</button>
+      <button id="btnMuteAudio" type="button" class="btn btn-sm">🔊 音效：開</button>
+    </div>
+  </header>
+
+  <!-- 7 大地標瞬移列 -->
+  <nav class="tp-bar">
+    <button type="button" data-tp="airport" class="btn tp-chip" style="background:#0284c7;">✈️ 飛機場（爸爸開飛機）</button>
+    <button type="button" data-tp="fighter" class="btn tp-chip" style="background:#4f46e5;">🛩️ 戰鬥機停機坪</button>
+    <button type="button" data-tp="minecraft" class="btn tp-chip" style="background:#b45309;">🧱 棒球場 Minecraft 城堡</button>
+    <button type="button" data-tp="poke_road" class="btn tp-chip" style="background:#db2777;">🌈 寶可夢進去的路</button>
+    <button type="button" data-tp="poke_stage2" class="btn tp-chip" style="background:#7e22ce;">👑 寶可夢第二階段(神獸島)</button>
+    <button type="button" data-tp="seven_avenue" class="btn tp-chip" style="background:#059669;">🏪 200 臺 7-11 大街</button>
+    <button type="button" data-tp="stadium" class="btn tp-chip" style="background:#0d9488;">🏟️ 北海道棒球場</button>
+  </nav>
+
+  <!-- 中央橫幅 -->
+  <div id="centerBanner" class="glass banner-box">
+    <div id="bannerTitle" class="banner-title">🎉 超大版家裡走走（小樂洲洲）完成！</div>
+    <div id="bannerSub" class="banner-sub">按右邊橘色「🦵 小隊長把爸爸踢下飛機！」馬上體驗！</div>
+  </div>
+
+  <!-- 對話氣泡 -->
+  <div id="speechBubble" class="glass toast-box">
+    <span id="speechText">👦 小隊長準備好了！前面就是爸爸開的大飛機、戰鬥機、Minecraft 大屋頂、寶可夢大道和 200 臺 7-11！</span>
+  </div>
+
+  <!-- 右側王牌互動按鈕群 -->
+  <aside class="side-panel">
+    <button id="btnKickDad" type="button" class="btn btn-kick">🦵 小隊長把爸爸踢下飛機！</button>
+    <button id="btnResetDadPlane" type="button" class="btn btn-action hidden" style="background:#d97706;">🔄 叫爸爸重回飛機上（再踢一次！）</button>
+
+    <div class="btn-row">
+      <button id="btnFlyAirliner" type="button" class="btn btn-action" style="background:#0284c7;">✈️ 開大飛機</button>
+      <button id="btnFlyFighter" type="button" class="btn btn-action" style="background:#4f46e5;">🛩️ 開戰鬥機</button>
+    </div>
+
+    <button id="btnToggleMcLight" type="button" class="btn btn-action" style="background:#eab308;color:#0f172a;font-weight:900;">
+      💡 <span id="mcLightBtnText">Minecraft 開燈：亮（隨時可開）</span>
+    </button>
+    <button id="btnToggleMcDoor" type="button" class="btn btn-action" style="background:#78350f;">🚪 開／關 Minecraft 前門</button>
+
+    <div class="btn-row">
+      <button id="btnThrowPokeBall" type="button" class="btn btn-action" style="background:#e11d48;">🔴 丟球抓寶可夢</button>
+      <button id="btnSevenSnack" type="button" class="btn btn-action" style="background:#059669;">🏪 7-11 買思樂冰</button>
+    </div>
+
+    <div class="btn-row">
+      <button id="btnSwitchChar" type="button" class="btn btn-action" style="background:#7c3aed;">👦 換角色 (Q)</button>
+      <button id="btnFireworks" type="button" class="btn btn-action" style="background:#db2777;">🎆 200店煙火秀</button>
+    </div>
+  </aside>
+
+  <!-- 底部 Minecraft 方塊快捷列 -->
+  <div class="hotbar-wrap">
+    <div class="hotbar-top">
+      <span id="selectedBlockLabel" style="color:#fde047;">🌿 翠綠草塊</span>
+      <button id="btnPlaceBlock" type="button" class="btn" style="background:#16a34a;color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;">➕ 放方塊</button>
+      <button id="btnBreakBlock" type="button" class="btn" style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;">⛏️ 拆方塊</button>
+    </div>
+    <div id="mcHotbar" class="hotbar-slots"></div>
+  </div>
+
+  <!-- 左下搖桿 -->
+  <div id="joystickZone" class="joy-zone">
+    <div id="joystickKnob" class="joy-knob"></div>
+  </div>
+
+  <!-- 右下跳躍與互動 -->
+  <div class="br-controls">
+    <div id="flightControls" class="btn-row hidden">
+      <button id="btnFlyUp" type="button" class="btn btn-action" style="background:#0284c7;">⬆️升高</button>
+      <button id="btnFlyDown" type="button" class="btn btn-action" style="background:#334155;">⬇️下降</button>
+      <button id="btnFlyBoost" type="button" class="btn btn-action" style="background:#f59e0b;color:#000;">🔥噴射</button>
+    </div>
+    <div class="btn-row">
+      <button id="btnJump" type="button" class="btn round-btn" style="background:#4f46e5;"><span>🚀</span><span>跳躍</span></button>
+      <button id="btnInteract" type="button" class="btn round-btn" style="background:#059669;width:66px;height:66px;"><span style="font-size:16px;">✨</span><span id="interactBtnLabel">互動(E)</span></button>
+    </div>
+  </div>
+
+  <!-- JIO 四人接力完成報告彈窗 -->
+  <div id="relayModal" class="modal-backdrop hidden">
+    <div class="glass modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:10px;">
+        <div>
+          <div style="font-size:17px;font-weight:900;color:#fde047;">👷 JIO 公司四位員工接力完成報告</div>
+          <div style="font-size:12px;color:#cbd5e1;">Rudy → Kaz → Idn → Tidal 四人接力完成小隊長的所有任務！</div>
+        </div>
+        <button id="btnCloseRelayModal" type="button" class="btn btn-sm">✕</button>
+      </div>
+      <div class="relay-grid">
+        <div class="relay-item">
+          <div style="color:#fca5a5;font-weight:900;margin-bottom:4px;">🔴 第一棒：Rudy（寶可夢大道）</div>
+          <div>打通「寶可夢世界第二階段可以進去的路」！鋪好超寬彩虹星光大道，一路直通第一階段與第二階段神獸島！</div>
+        </div>
+        <div class="relay-item">
+          <div style="color:#93c5fd;font-weight:900;margin-bottom:4px;">🔵 第二棒：Kaz（Minecraft 大世界）</div>
+          <div>棒球場旁 Minecraft 土地變超大，蓋好四面方塊高牆、大屋頂、Minecraft 方塊前門，隨時按「💡 開燈」都能開關燈！</div>
+        </div>
+        <div class="relay-item">
+          <div style="color:#86efac;font-weight:900;margin-bottom:4px;">🟢 第三棒：Idn（飛機場＆踢爸爸）</div>
+          <div>蓋好飛機場（一臺大飛機＋一臺戰鬥機），爸爸坐在飛機上面開飛機，小隊長按一下就能把爸爸踢下飛機自己開！</div>
+        </div>
+        <div class="relay-item">
+          <div style="color:#fde047;font-weight:900;margin-bottom:4px;">🟡 第四棒：Tidal（200 臺 7-11）</div>
+          <div>狂蓋 200 臺 7-11（第 001～200 號店），走近有「叮咚～♪」門鈴聲，可免費拿思樂冰加速與放 200 店大煙火！</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:8px;">
+        <button id="btnRelayGoKick" type="button" class="btn btn-action" style="background:#ea580c;">🦵 馬上把爸爸踢下飛機！</button>
+        <button id="btnRelayClose2" type="button" class="btn btn-action" style="background:#059669;">🎮 繼續玩</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    'use strict';
+
+    // =========================================================================
+    // 0. 音效合成器 (Web Audio API)
+    // =========================================================================
+    var audioCtx = null;
+    var soundMuted = false;
+
+    function ensureAudio() {
+      if (soundMuted) return null;
+      try {
+        if (!audioCtx) {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      } catch (e) {}
+      return audioCtx;
+    }
+
+    function notes(freqs, wave, dur) {
+      var ctx = ensureAudio();
+      if (!ctx || !freqs) return;
+      var now = ctx.currentTime;
+      var d = dur || 0.09;
+      for (var i = 0; i < freqs.length; i++) {
+        try {
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.type = wave || 'sine';
+          osc.frequency.setValueAtTime(freqs[i], now + i * d);
+          gain.gain.setValueAtTime(0.11, now + i * d);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + (i + 0.95) * d);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * d);
+          osc.stop(now + (i + 1) * d);
+        } catch (e) {}
+      }
+    }
+
+    function playSevenChime() {
+      notes([659.25, 523.25], 'triangle', 0.22);
+    }
+
+    // =========================================================================
+    // 1. UI 訊息輔助
+    // =========================================================================
+    var bannerTimer = null;
+    function banner(title, sub) {
+      var box = document.getElementById('centerBanner');
+      var tEl = document.getElementById('bannerTitle');
+      var sEl = document.getElementById('bannerSub');
+      if (!box || !tEl || !sEl) return;
+      tEl.textContent = title;
+      sEl.textContent = sub;
+      box.style.opacity = '1';
+      if (bannerTimer) clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(function() { box.style.opacity = '0'; }, 4200);
+    }
+
+    var sayTimer = null;
+    function say(msg) {
+      var box = document.getElementById('speechBubble');
+      var txt = document.getElementById('speechText');
+      if (!box || !txt) return;
+      txt.textContent = msg;
+      box.style.opacity = '1';
+      if (sayTimer) clearTimeout(sayTimer);
+      sayTimer = setTimeout(function() { box.style.opacity = '0.88'; }, 4000);
+    }
+
+    // =========================================================================
+    // 2. 遊戲世界狀態（100% 內建即時 3D 投影引擎，完全不依賴外部 CDN 即可 60FPS 秒開！）
+    // =========================================================================
+    var canvas = document.getElementById('gameCanvas');
+    var ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    var ROLES = [
+      { name: '小隊長 (Lucas)', icon: '👦', shirt: '#ef4444', pants: '#1d4ed8' },
+      { name: '弟弟 (Jasper)', icon: '🧒', shirt: '#f59e0b', pants: '#15803d' },
+      { name: '媽媽', icon: '👩', shirt: '#ec4899', pants: '#475569' },
+      { name: 'JIO 主管 Rudy', icon: '🧔🏽', shirt: '#dc2626', pants: '#1e293b' }
+    ];
+    var roleIdx = 0;
+
+    // 玩家座標與鏡頭狀態（預設在飛機場，正對爸爸開的大飛機！）
+    var player = { x: -64, y: 0, z: 16, vy: 0, heading: 0.9 };
+    var camYaw = 0;
+    var camPitch = 0.35;
+    var camDist = 22;
+
+    // 飛機場與爸爸狀態
+    var airliner = { x: -80, y: 0, z: 6, heading: 0 };
+    var fighter = { x: -80, y: 0, z: -26, heading: 0 };
+    var dad = { state: 'on_plane', x: -80, y: 4.5, z: 4, vx: 0, vy: 0, vz: 0, rot: 0 };
+    var flightMode = null; // null, 'airliner', 'fighter'
+    var boostTimer = 0;
+
+    // Minecraft 世界狀態（位於棒球場旁 x: 65, z: 12，超大土地 76x76，四面牆＋屋頂＋前門＋隨時開燈）
+    var MC = { cx: 65, cz: 12, lightsOn: true, doorOpen: true };
+    var MC_BLOCKS = [
+      { name: '🌿 翠綠草塊', icon: '🌿', color: '#4ade80', top: '#22c55e' },
+      { name: '🪵 橡木方塊', icon: '🪵', color: '#b45309', top: '#d97706' },
+      { name: '🪨 鵝卵石塊', icon: '🪨', color: '#64748b', top: '#94a3b8' },
+      { name: '🧱 紅磚方塊', icon: '🧱', color: '#dc2626', top: '#ef4444' },
+      { name: '💡 螢石燈塊', icon: '💡', color: '#facc15', top: '#fef08a' },
+      { name: '🪟 像素玻璃', icon: '🪟', color: '#38bdf8', top: '#bae6fd' },
+      { name: '💎 鑽石方塊', icon: '💎', color: '#06b6d4', top: '#67e8f9' },
+      { name: '🟨 黃金方塊', icon: '🟨', color: '#eab308', top: '#fde047' },
+      { name: '🧨 TNT方塊', icon: '🧨', color: '#b91c1c', top: '#f87171' }
+    ];
+    var selectedBlockIdx = 0;
+    var customBlocks = [];
+
+    // 建立底部 Minecraft 九宮格按鈕
+    var hotbarEl = document.getElementById('mcHotbar');
+    MC_BLOCKS.forEach(function(b, idx) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mc-slot' + (idx === 0 ? ' active' : '');
+      btn.innerHTML = '<span>' + b.icon + '</span>';
+      btn.addEventListener('click', function() {
+        selectedBlockIdx = idx;
+        document.getElementById('selectedBlockLabel').textContent = b.name;
+        var all = hotbarEl.querySelectorAll('.mc-slot');
+        for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', i === idx);
+        notes([440 + idx * 40], 'triangle', 0.05);
+      });
+      hotbarEl.appendChild(btn);
+    });
+
+    // 200 臺 7-11 座標陣列 (#001 ~ #200)
+    var sevenStores = [];
+    (function init200SevenElevens() {
+      // 1. 7-11 超級大街雙排 (80 臺)
+      for (var i = 0; i < 40; i++) {
+        var sx = -135 + i * 7.0;
+        sevenStores.push({ id: sevenStores.length + 1, x: sx, z: 54 });
+        sevenStores.push({ id: sevenStores.length + 1, x: sx, z: 70 });
+      }
+      // 2. 飛機場西側雙排 (50 臺)
+      for (var j = 0; j < 25; j++) {
+        var sz = -105 + j * 7.5;
+        sevenStores.push({ id: sevenStores.length + 1, x: -115, z: sz });
+        sevenStores.push({ id: sevenStores.length + 1, x: -129, z: sz });
+      }
+      // 3. Minecraft 東側雙排 (40 臺)
+      for (var k = 0; k < 20; k++) {
+        var mz = -70 + k * 7.5;
+        sevenStores.push({ id: sevenStores.length + 1, x: 112, z: mz });
+        sevenStores.push({ id: sevenStores.length + 1, x: 126, z: mz });
+      }
+      // 4. 寶可夢神獸島北側外環 (30 臺)
+      for (var n = 0; n < 30; n++) {
+        var nx = -112 + n * 7.8;
+        sevenStores.push({ id: sevenStores.length + 1, x: nx, z: -158 });
+      }
+    })();
+
+    // 寶可夢第一階段與第二階段神獸
+    var pokemons = [
+      { name: '⚡ 閃電皮皮鼠', icon: '⚡', color: '#facc15', x: -10, z: -42, stage: 1 },
+      { name: '🔥 烈焰小火龍', icon: '🔥', color: '#f97316', x: 10, z: -46, stage: 1 },
+      { name: '💧 水箭波波龜', icon: '💧', color: '#38bdf8', x: -12, z: -60, stage: 1 },
+      { name: '🌱 妙蛙種子芽', icon: '🌱', color: '#4ade80', x: 12, z: -62, stage: 1 },
+      { name: '🍮 焦糖噗噗怪', icon: '🍮', color: '#f472b6', x: 0, z: -52, stage: 1 },
+      { name: '👑 黃金雷霆神龍(二階)', icon: '🐉', color: '#fde047', x: -14, z: -108, stage: 2 },
+      { name: '🌌 超夢幻星神獸(二階)', icon: '🦄', color: '#c084fc', x: 14, z: -110, stage: 2 },
+      { name: '🔥 鳳凰烈空神翼(二階)', icon: '🦅', color: '#ef4444', x: -15, z: -128, stage: 2 },
+      { name: '💎 鑽石冰晶巨龍(二階)', icon: '💎', color: '#67e8f9', x: 15, z: -130, stage: 2 },
+      { name: '🌟 小樂洲洲守護王(二階)', icon: '👑', color: '#34d399', x: 0, z: -120, stage: 2 }
+    ];
+    var caughtCount = 1;
+    var fireworks = [];
+    var lastSevenChimeId = -1;
+
+    // =========================================================================
+    // 3. 核心互動函式（踢爸爸下飛機、開飛機/戰鬥機、Minecraft隨時開燈、開門、抓寶可夢、逛7-11）
+    // =========================================================================
+    function kickDadOffPlaneAction() {
+      roleIdx = 0; // 小隊長親自飛踢
+      document.getElementById('charAvatarBadge').textContent = ROLES[0].icon;
+      document.getElementById('currentRoleLabel').textContent = ROLES[0].name;
+
+      if (dad.state !== 'on_plane') {
+        dad.state = 'on_plane';
+      }
+      flightMode = null;
+      document.getElementById('flightControls').classList.add('hidden');
+
+      player.x = airliner.x + 4;
+      player.z = airliner.z + 2;
+      player.y = 4.2;
+      player.vy = 9;
+
+      dad.state = 'kicked_flying';
+      dad.x = airliner.x;
+      dad.y = airliner.y + 6.5;
+      dad.z = airliner.z;
+      dad.vx = 13;
+      dad.vy = 17;
+      dad.vz = 4;
+
+      notes([587.33, 783.99, 1046.5, 1318.5, 1567.98], 'sawtooth', 0.08);
+      banner('🦵 小隊長無敵飛踢！！', '碰！！爸爸被小隊長一腳踢下飛機、打開降落傘飛出去啦！');
+      say('👨‍✈️ 爸爸：「哇啊啊啊——！小隊長你怎麼把爸爸踢下飛機啦！救命啊～！」');
+      document.getElementById('btnResetDadPlane').classList.remove('hidden');
+
+      setTimeout(function() {
+        boardAircraft('airliner', true);
+      }, 950);
+    }
+
+    function resetDadToPlane() {
+      if (flightMode === 'airliner') {
+        flightMode = null;
+        document.getElementById('flightControls').classList.add('hidden');
+      }
+      airliner.x = -80; airliner.y = 0; airliner.z = 6;
+      dad.state = 'on_plane';
+      dad.x = airliner.x; dad.y = 4.5; dad.z = airliner.z - 2;
+      notes([392, 523.25, 659.25], 'triangle', 0.08);
+      say('👨‍✈️ 爸爸又爬回飛機上面開飛機囉！小隊長隨時可以再踢他一次！');
+    }
+
+    function boardAircraft(type, fromKick) {
+      if (flightMode === type && !fromKick) {
+        flightMode = null;
+        player.y = 0;
+        player.x += 5;
+        document.getElementById('flightControls').classList.add('hidden');
+        say('🛬 已降落並離開' + (type === 'fighter' ? '戰鬥機' : '大飛機') + '！');
+        return;
+      }
+      if (type === 'airliner' && dad.state === 'on_plane') {
+        kickDadOffPlaneAction();
+        return;
+      }
+      flightMode = type;
+      var target = type === 'fighter' ? fighter : airliner;
+      if (target.y < 8) target.y = 10;
+      player.x = target.x;
+      player.z = target.z;
+      player.y = target.y;
+      document.getElementById('flightControls').classList.remove('hidden');
+      notes([440, 554.37, 659.25, 880], 'sawtooth', 0.08);
+      banner(type === 'fighter' ? '🛩️ 小隊長駕駛：超音速戰鬥機！' : '✈️ 小隊長駕駛：小樂洲洲大飛機！', '推搖桿或按 방향鍵/WASD 就能在空中高速飛行！');
+    }
+
+    function toggleMinecraftLight() {
+      MC.lightsOn = !MC.lightsOn;
+      document.getElementById('mcLightBtnText').textContent = MC.lightsOn ? 'Minecraft 開燈：亮（隨時可開）' : 'Minecraft 開燈：暗（點我開燈）';
+      document.getElementById('mcLightStateBadge').textContent = '💡 麥塊燈：' + (MC.lightsOn ? '開' : '關');
+      notes(MC.lightsOn ? [523.25, 783.99, 1046.5] : [523.25, 392], 'sine', 0.08);
+      say(MC.lightsOn ? '💡 啪嗒！Minecraft 四面牆屋頂大燈全開，金碧輝煌超亮！' : '🌙 Minecraft 屋頂燈已關閉，隨時按一下都能再打開！');
+    }
+
+    function toggleMinecraftDoor() {
+      MC.doorOpen = !MC.doorOpen;
+      notes(MC.doorOpen ? [330, 494] : [494, 330], 'square', 0.08);
+      say(MC.doorOpen ? '🚪 咔噠！Minecraft 像素方塊大門打開了，請進！' : '🚪 砰！Minecraft 像素方塊大門關起來了！');
+    }
+
+    function throwPokeBallAction() {
+      var nearest = null, bestD = 999;
+      for (var i = 0; i < pokemons.length; i++) {
+        var d = Math.hypot(pokemons[i].x - player.x, pokemons[i].z - player.z);
+        if (d < bestD) { bestD = d; nearest = pokemons[i]; }
+      }
+      notes([523.25, 659.25, 783.99, 1046.5], 'square', 0.08);
+      if (nearest && bestD < 32) {
+        caughtCount = Math.min(10, caughtCount + 1);
+        document.getElementById('pokemonCountBadge').textContent = '🔴 寶可夢：' + caughtCount + '/10';
+        banner('🎉 成功收服 ' + nearest.name + '！', '目前共收服 ' + caughtCount + ' / 10 隻寶可夢！');
+        say('🔴 丟出大師球！成功收服「' + nearest.name + '」！');
+      } else {
+        say('🔴 順著「🌈 寶可夢進去的路」走進第一或第二階段神獸島就能抓寶可夢喔！');
+      }
+    }
+
+    var snacks = ['🥤 七彩思樂冰', '🥚 黃金茶葉蛋', '🍙 鮭魚御飯糰', '🌭 大亨堡熱狗', '🍦 十勝牛奶霜淇淋'];
+    var snackCount = 0;
+    function buySevenSnackAction(storeId) {
+      playSevenChime();
+      var item = snacks[snackCount % snacks.length];
+      snackCount++;
+      boostTimer = 7.0;
+      var label = storeId ? ('第 ' + String(storeId).padStart(3, '0') + ' 號店') : '7-11 旗艦店';
+      banner('🏪 歡迎光臨 7-11（' + label + '）！', '叮咚～♪ 免費拿到「' + item + '」，跑步變超快！');
+      say('🏪 叮咚～！在 200 臺 7-11 中的「' + label + '」拿了 ' + item + '！');
+    }
+
+    function launchFireworksShow() {
+      notes([523.25, 659.25, 783.99, 1046.5], 'triangle', 0.09);
+      var cols = ['#facc15', '#ef4444', '#38bdf8', '#4ade80', '#f472b6', '#c084fc'];
+      for (var b = 0; b < 7; b++) {
+        var fx = player.x + (Math.random() - 0.5) * 50;
+        var fy = 16 + Math.random() * 14;
+        var fz = player.z + (Math.random() - 0.5) * 50;
+        for (var p = 0; p < 16; p++) {
+          var a = Math.random() * Math.PI * 2;
+          var e = (Math.random() - 0.3) * Math.PI;
+          var s = 8 + Math.random() * 12;
+          fireworks.push({
+            x: fx, y: fy, z: fz,
+            vx: Math.cos(a) * Math.cos(e) * s,
+            vy: Math.sin(e) * s,
+            vz: Math.sin(a) * Math.cos(e) * s,
+            color: cols[(b + p) % cols.length],
+            life: 1.5
+          });
+        }
+      }
+      banner('🎆 200 臺 7-11 ＆ 小樂洲洲大煙火秀！', '四位員工 Rudy、Kaz、Idn、Tidal 為小隊長放煙火歡呼！');
+    }
+
+    function placeBlockAction() {
+      var b = MC_BLOCKS[selectedBlockIdx];
+      var bx = Math.round((player.x - Math.sin(player.heading) * 4) / 2) * 2;
+      var bz = Math.round((player.z - Math.cos(player.heading) * 4) / 2) * 2;
+      var by = 0;
+      for (var i = 0; i < customBlocks.length; i++) {
+        if (customBlocks[i].x === bx && customBlocks[i].z === bz) by += 2;
+      }
+      customBlocks.push({ x: bx, y: by, z: bz, b: b });
+      notes([392, 523.25], 'triangle', 0.06);
+      say('🧱 放下了「' + b.name + '」！');
+    }
+
+    function breakBlockAction() {
+      if (customBlocks.length > 0) {
+        customBlocks.pop();
+        notes([261.63, 196], 'sawtooth', 0.06);
+        say('⛏️ 拆掉了一顆方塊！');
+      } else {
+        say('⛏️ 先按「➕ 放方塊」蓋東西，再來拆方塊喔！');
+      }
+    }
+
+    function teleportTo(dest) {
+      flightMode = null;
+      player.y = 0; player.vy = 0;
+      document.getElementById('flightControls').classList.add('hidden');
+      if (dest === 'airport') {
+        player.x = -64; player.z = 16;
+        banner('✈️ 小樂洲洲國際飛機場', '爸爸正在大飛機上面開飛機！按「🦵 小隊長把爸爸踢下飛機！」');
+      } else if (dest === 'fighter') {
+        player.x = -66; player.z = -24;
+        banner('🛩️ 雷霆戰鬥機停機坪', '按「🛩️ 開戰鬥機」立刻駕駛超帥戰鬥機起飛！');
+      } else if (dest === 'minecraft') {
+        player.x = 38; player.z = 12;
+        banner('🧱 棒球場旁超大 Minecraft 世界', '四面方塊高牆＋大屋頂＋Minecraft 前門，隨時可按「💡 開燈」！');
+      } else if (dest === 'poke_road') {
+        player.x = 0; player.z = -10;
+        banner('🌈 通往寶可夢世界的彩虹星光大道', '往前直走就能直接走進第一階段與第二階段神獸島！');
+      } else if (dest === 'poke_stage2') {
+        player.x = 0; player.z = -100;
+        banner('👑 寶可夢世界・第二階段（神獸進化島）', '路已經打通！靠近神獸按「🔴 丟球抓寶可夢」收服牠們！');
+      } else if (dest === 'seven_avenue') {
+        player.x = 0; player.z = 62;
+        playSevenChime();
+        banner('🏪 200 臺 7-11 超級旗艦大街', '整整 200 臺 7-11 (#001~#200)！走近聽叮咚聲、買思樂冰！');
+      } else if (dest === 'stadium') {
+        player.x = 0; player.z = 98;
+        banner('🏟️ 北海道棒球場 ESCON FIELD', '東側緊鄰 Minecraft 大城堡，南側連接 200 臺 7-11！');
+      }
+      notes([523.25, 659.25, 783.99], 'sine', 0.06);
+    }
+
+    // =========================================================================
+    // 4. 綁定按鈕與輸入事件
+    // =========================================================================
+    document.getElementById('btnKickDad').addEventListener('click', kickDadOffPlaneAction);
+    document.getElementById('btnResetDadPlane').addEventListener('click', resetDadToPlane);
+    document.getElementById('btnFlyAirliner').addEventListener('click', function() { boardAircraft('airliner'); });
+    document.getElementById('btnFlyFighter').addEventListener('click', function() { boardAircraft('fighter'); });
+    document.getElementById('btnToggleMcLight').addEventListener('click', toggleMinecraftLight);
+    document.getElementById('btnToggleMcDoor').addEventListener('click', toggleMinecraftDoor);
+    document.getElementById('btnThrowPokeBall').addEventListener('click', throwPokeBallAction);
+    document.getElementById('btnSevenSnack').addEventListener('click', function() { buySevenSnackAction(); });
+    document.getElementById('btnSwitchChar').addEventListener('click', function() {
+      roleIdx = (roleIdx + 1) % ROLES.length;
+      document.getElementById('charAvatarBadge').textContent = ROLES[roleIdx].icon;
+      document.getElementById('currentRoleLabel').textContent = ROLES[roleIdx].name;
+      say('✨ 切換角色為：' + ROLES[roleIdx].name);
+    });
+    document.getElementById('btnFireworks').addEventListener('click', launchFireworksShow);
+    document.getElementById('btnPlaceBlock').addEventListener('click', placeBlockAction);
+    document.getElementById('btnBreakBlock').addEventListener('click', breakBlockAction);
+
+    document.getElementById('btnJump').addEventListener('click', function() {
+      if (flightMode) {
+        var c = flightMode === 'fighter' ? fighter : airliner;
+        c.y = Math.min(45, c.y + 4);
+      } else if (player.y <= 0.1) {
+        player.vy = 10;
+        notes([392, 587.33], 'sine', 0.06);
+      }
+    });
+
+    document.getElementById('btnInteract').addEventListener('click', function() {
+      if (Math.hypot(player.x - airliner.x, player.z - airliner.z) < 15 && dad.state === 'on_plane') {
+        kickDadOffPlaneAction();
+      } else if (Math.hypot(player.x - fighter.x, player.z - fighter.z) < 12) {
+        boardAircraft('fighter');
+      } else if (player.x > 35) {
+        toggleMinecraftLight();
+      } else if (player.z < -15) {
+        throwPokeBallAction();
+      } else {
+        buySevenSnackAction();
+      }
+    });
+
+    document.getElementById('btnFlyUp').addEventListener('click', function() {
+      if (!flightMode) return;
+      var c = flightMode === 'fighter' ? fighter : airliner;
+      c.y = Math.min(48, c.y + 4);
+    });
+    document.getElementById('btnFlyDown').addEventListener('click', function() {
+      if (!flightMode) return;
+      var c = flightMode === 'fighter' ? fighter : airliner;
+      c.y = Math.max(2, c.y - 4);
+    });
+    document.getElementById('btnFlyBoost').addEventListener('click', function() {
+      boostTimer = 5.0;
+      notes([523.25, 783.99, 1046.5], 'sawtooth', 0.07);
+      say('🔥 超音速渦輪噴射推進！！');
+    });
+
+    var tpBtns = document.querySelectorAll('[data-tp]');
+    for (var i = 0; i < tpBtns.length; i++) {
+      tpBtns[i].addEventListener('click', function() {
+        teleportTo(this.getAttribute('data-tp'));
+      });
+    }
+
+    document.getElementById('btnMuteAudio').addEventListener('click', function() {
+      soundMuted = !soundMuted;
+      this.textContent = soundMuted ? '🔇 音效：關' : '🔊 音效：開';
+    });
+
+    var relayModal = document.getElementById('relayModal');
+    document.getElementById('btnToggleRelayModal').addEventListener('click', function() { relayModal.classList.toggle('hidden'); });
+    document.getElementById('btnCloseRelayModal').addEventListener('click', function() { relayModal.classList.add('hidden'); });
+    document.getElementById('btnRelayClose2').addEventListener('click', function() { relayModal.classList.add('hidden'); });
+    document.getElementById('btnRelayGoKick').addEventListener('click', function() {
+      relayModal.classList.add('hidden');
+      kickDadOffPlaneAction();
+    });
+
+    // 鍵盤與搖桿
+    var keys = {};
+    var joyVec = { x: 0, y: 0 };
+    window.addEventListener('keydown', function(e) {
+      var k = (e.key || '').toLowerCase();
+      keys[k] = true;
+      if (k === 'k') kickDadOffPlaneAction();
+      else if (k === 'l') toggleMinecraftLight();
+      else if (k === ' ') {
+        if (player.y <= 0.1 && !flightMode) player.vy = 10;
+      }
+    });
+    window.addEventListener('keyup', function(e) { keys[(e.key || '').toLowerCase()] = false; });
+
+    var joyZone = document.getElementById('joystickZone');
+    var joyKnob = document.getElementById('joystickKnob');
+    var joyPid = null;
+    function moveJoy(cx, cy) {
+      var r = joyZone.getBoundingClientRect();
+      var dx = cx - (r.left + r.width / 2);
+      var dy = cy - (r.top + r.height / 2);
+      var maxR = r.width / 2 - 14;
+      var d = Math.hypot(dx, dy);
+      if (d > maxR) { dx = dx / d * maxR; dy = dy / d * maxR; }
+      joyVec.x = dx / maxR;
+      joyVec.y = dy / maxR;
+      joyKnob.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+    }
+    joyZone.addEventListener('pointerdown', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      joyPid = e.pointerId;
+      joyZone.setPointerCapture(e.pointerId);
+      moveJoy(e.clientX, e.clientY);
+    });
+    joyZone.addEventListener('pointermove', function(e) { if (e.pointerId === joyPid) moveJoy(e.clientX, e.clientY); });
+    function endJoy(e) {
+      if (e.pointerId === joyPid) {
+        joyPid = null; joyVec.x = 0; joyVec.y = 0;
+        joyKnob.style.transform = 'translate(0px,0px)';
+      }
+    }
+    joyZone.addEventListener('pointerup', endJoy);
+    joyZone.addEventListener('pointercancel', endJoy);
+
+    // 畫布拖曳轉視角
+    var dragPid = null, lastX = 0, lastY = 0;
+    canvas.addEventListener('pointerdown', function(e) {
+      ensureAudio();
+      dragPid = e.pointerId; lastX = e.clientX; lastY = e.clientY;
+    });
+    window.addEventListener('pointermove', function(e) {
+      if (e.pointerId === dragPid) {
+        camYaw -= (e.clientX - lastX) * 0.007;
+        camPitch = Math.max(0.18, Math.min(0.95, camPitch + (e.clientY - lastY) * 0.005));
+        lastX = e.clientX; lastY = e.clientY;
+      }
+    });
+    window.addEventListener('pointerup', function(e) { if (e.pointerId === dragPid) dragPid = null; });
+
+    // =========================================================================
+    // 5. 內建即時 3D 透視投影繪圖引擎（零外部依賴、任何手機/網頁 100% 滿幀顯示！）
+    // =========================================================================
+    function project3D(wx, wy, wz, cam) {
+      var dx = wx - cam.x;
+      var dy = wy - cam.y;
+      var dz = wz - cam.z;
+
+      // 繞 Y 軸旋轉 (yaw)
+      var cosY = Math.cos(-cam.yaw), sinY = Math.sin(-cam.yaw);
+      var rx = dx * cosY - dz * sinY;
+      var rz = dx * sinY + dz * cosY;
+
+      // 繞 X 軸旋轉 (pitch)
+      var cosP = Math.cos(cam.pitch), sinP = Math.sin(cam.pitch);
+      var ry = dy * cosP - rz * sinP;
+      var depth = -dy * sinP - rz * cosP;
+
+      if (depth < 0.8) return null;
+      var fov = Math.min(canvas.width, canvas.height) * 0.95;
+      return {
+        x: canvas.width / 2 + (rx / depth) * fov,
+        y: canvas.height / 2 - (ry / depth) * fov,
+        scale: fov / depth,
+        depth: depth
+      };
+    }
+
+    function draw3DBox(renderQueue, cx, cy, cz, w, h, d, sideColor, topColor, labelText, borderCol) {
+      renderQueue.push({
+        type: 'box', cx: cx, cy: cy, cz: cz, w: w, h: h, d: d,
+        sideColor: sideColor, topColor: topColor || sideColor,
+        label: labelText || null, borderCol: borderCol || 'rgba(0,0,0,0.35)'
+      });
+    }
+
+    var lastFrame = performance.now();
+    function loop(now) {
+      requestAnimationFrame(loop);
+      var dt = Math.min(0.05, (now - lastFrame) / 1000);
+      lastFrame = now;
+      var t = now * 0.001;
+
+      if (boostTimer > 0) boostTimer = Math.max(0, boostTimer - dt);
+
+      // 1. 移動更新
+      var f = 0, r = 0;
+      if (keys['w'] || keys['arrowup']) f += 1;
+      if (keys['s'] || keys['arrowdown']) f -= 1;
+      if (keys['d'] || keys['arrowright']) r += 1;
+      if (keys['a'] || keys['arrowleft']) r -= 1;
+      if (Math.abs(joyVec.x) > 0.04 || Math.abs(joyVec.y) > 0.04) {
+        r += joyVec.x; f -= joyVec.y;
+      }
+      var mag = Math.hypot(f, r);
+      if (mag > 1) { f /= mag; r /= mag; }
+
+      var spd = flightMode === 'fighter' ? 42 : (flightMode === 'airliner' ? 30 : 16);
+      if (boostTimer > 0) spd *= 1.65;
+
+      if (mag > 0.04) {
+        var fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
+        var rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
+        var vx = (fx * f + rx * r) * spd;
+        var vz = (fz * f + rz * r) * spd;
+        player.x = Math.max(-155, Math.min(155, player.x + vx * dt));
+        player.z = Math.max(-165, Math.min(155, player.z + vz * dt));
+        player.heading = Math.atan2(-vx, -vz);
+      }
+
+      if (flightMode) {
+        var craft = flightMode === 'fighter' ? fighter : airliner;
+        craft.x = player.x; craft.z = player.z; craft.heading = player.heading;
+        player.y = craft.y + 1.5;
+      } else {
+        if (player.y > 0 || player.vy !== 0) {
+          player.y += player.vy * dt;
+          player.vy -= 25 * dt;
+          if (player.y <= 0) { player.y = 0; player.vy = 0; }
+        }
+      }
+
+      // 爸爸被踢飛動畫
+      if (dad.state === 'kicked_flying') {
+        dad.x += dad.vx * dt;
+        dad.y += dad.vy * dt;
+        dad.z += dad.vz * dt;
+        dad.vy = Math.max(-4.2, dad.vy - 16 * dt);
+        dad.vx *= 0.98;
+        if (dad.y <= 0) {
+          dad.y = 0;
+          dad.state = 'landed';
+          say('👨‍✈️ 爸爸坐在地上揉屁股：「哎喲～小隊長踢得好高！大飛機讓給你開啦！」');
+        }
+      } else if (dad.state === 'on_plane') {
+        dad.x = airliner.x; dad.y = airliner.y + 4.2; dad.z = airliner.z - 1.5;
+      }
+
+      // 靠近 7-11 自動叮咚
+      var nearStore = null;
+      for (var si = 0; si < sevenStores.length; si++) {
+        var st = sevenStores[si];
+        if (Math.hypot(player.x - st.x, player.z - st.z) < 6.5) {
+          nearStore = st; break;
+        }
+      }
+      if (nearStore && nearStore.id !== lastSevenChimeId) {
+        lastSevenChimeId = nearStore.id;
+        playSevenChime();
+        say('🏪 叮咚～♪ 歡迎光臨 7-11（第 ' + String(nearStore.id).padStart(3, '0') + ' 號店 / 共 200 臺）！');
+      } else if (!nearStore) {
+        lastSevenChimeId = -1;
+      }
+
+      // 2. 計算攝影機座標
+      var cam = {
+        x: player.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist,
+        y: player.y + 3.5 + Math.sin(camPitch) * camDist,
+        z: player.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist,
+        yaw: camYaw,
+        pitch: camPitch
+      };
+
+      // 3. 繪製天空與地面背景
+      var skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.65);
+      skyGrad.addColorStop(0, '#0284c7');
+      skyGrad.addColorStop(1, '#bae6fd');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      var groundGrad = ctx.createLinearGradient(0, canvas.height * 0.38, 0, canvas.height);
+      groundGrad.addColorStop(0, '#15803d');
+      groundGrad.addColorStop(1, '#166534');
+      ctx.fillStyle = groundGrad;
+      ctx.fillRect(0, canvas.height * 0.38, canvas.width, canvas.height * 0.62);
+
+      var rq = [];
+
+      // (A) 飛機場跑道與塔台
+      for (var rz = -90; rz <= 70; rz += 16) {
+        draw3DBox(rq, -80, 0.1, rz, 22, 0.2, 14, '#1e293b', '#334155', rz === 6 ? '✈️ 小樂洲洲飛機場跑道' : null);
+        draw3DBox(rq, -80, 0.2, rz, 1.2, 0.25, 6, '#f8fafc', '#ffffff');
+      }
+      draw3DBox(rq, -100, 7, -10, 6, 14, 6, '#cbd5e1', '#38bdf8', '🗼 飛機場雷達塔台');
+
+      // 大飛機 (客機)
+      draw3DBox(rq, airliner.x, airliner.y + 1.8, airliner.z, 3.6, 2.8, 13, '#e2e8f0', '#ffffff', '✈️ 小樂號大飛機');
+      draw3DBox(rq, airliner.x, airliner.y + 1.8, airliner.z, 16, 0.5, 3.2, '#0284c7', '#38bdf8');
+      draw3DBox(rq, airliner.x, airliner.y + 4.0, airliner.z + 5, 0.8, 3.2, 2.5, '#dc2626', '#ef4444');
+
+      // 戰鬥機
+      draw3DBox(rq, fighter.x, fighter.y + 1.5, fighter.z, 2.6, 2.0, 10.5, '#334155', '#475569', '🛩️ 雷霆戰鬥機');
+      draw3DBox(rq, fighter.x, fighter.y + 1.5, fighter.z, 12.5, 0.4, 3.5, '#1e293b', '#64748b');
+      draw3DBox(rq, fighter.x, fighter.y + 1.5, fighter.z - 6, 1.6, 1.4, 2.5, '#dc2626', '#ef4444');
+
+      // 爸爸模型（在飛機上或被踢飛開降落傘）
+      var dadLabel = dad.state === 'on_plane'
+        ? '👨‍✈️ 爸爸（在飛機上開飛機）'
+        : (dad.state === 'kicked_flying' ? '🪂 爸爸：「哇啊～被小隊長踢下來啦！」' : '👨‍✈️ 爸爸（被踢下飛機揉屁股）');
+      draw3DBox(rq, dad.x, dad.y + 1.2, dad.z, 1.5, 2.4, 1.5, '#1e3a8a', '#fde047', dadLabel);
+      if (dad.state === 'kicked_flying') {
+        draw3DBox(rq, dad.x, dad.y + 4.2, dad.z, 4.2, 1.4, 4.2, '#f97316', '#facc15', '🪂 7-11 降落傘');
+      }
+
+      // (B) 彩虹星光大道（通往寶可夢世界第一階段＆第二階段神獸島的進去的路！）
+      var rCols = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7'];
+      for (var pz = 10; pz >= -135; pz -= 10) {
+        var rc = rCols[Math.abs(Math.floor(pz / 10)) % rCols.length];
+        var lbl = (pz === -10) ? '🌈 寶可夢世界進去的路（直通第二階段）' : (pz === -90 ? '👑 寶可夢第二階段：神獸進化島入口' : null);
+        draw3DBox(rq, 0, 0.15, pz, 9, 0.3, 9.5, rc, rc, lbl);
+      }
+      for (var pi = 0; pi < pokemons.length; pi++) {
+        var pk = pokemons[pi];
+        if (Math.hypot(pk.x - player.x, pk.z - player.z) < 95) {
+          var bounce = Math.abs(Math.sin(t * 4 + pi)) * 0.8;
+          var sz = pk.stage === 2 ? 2.8 : 1.8;
+          draw3DBox(rq, pk.x, bounce + sz / 2, pk.z, sz, sz, sz, pk.color, '#ffffff', pk.name);
+        }
+      }
+
+      // (C) 棒球場旁超大土地 Minecraft 世界（四面牆＋大屋頂＋Minecraft 大門＋隨時可開燈）
+      // 超大像素方塊土地基底
+      draw3DBox(rq, MC.cx, 0.2, MC.cz, 56, 0.4, 56, '#3f6212', '#65a30d', '🧱 Minecraft 超大土地世界');
+      // 四面牆
+      var wallCol = MC.lightsOn ? '#b45309' : '#451a03';
+      var roofCol = MC.lightsOn ? '#facc15' : '#475569';
+      draw3DBox(rq, MC.cx, 4.5, MC.cz - 14, 28, 9, 2, '#9a3412', wallCol); // 北牆
+      draw3DBox(rq, MC.cx, 4.5, MC.cz + 14, 28, 9, 2, '#9a3412', wallCol); // 南牆
+      draw3DBox(rq, MC.cx + 14, 4.5, MC.cz, 2, 9, 28, '#9a3412', wallCol); // 東牆
+      draw3DBox(rq, MC.cx - 14, 4.5, MC.cz - 9, 2, 9, 10, '#9a3412', wallCol); // 西牆北段
+      draw3DBox(rq, MC.cx - 14, 4.5, MC.cz + 9, 2, 9, 10, '#9a3412', wallCol); // 西牆南段
+
+      // Minecraft 前門（可開關）
+      var doorOffset = MC.doorOpen ? 3.2 : 0;
+      draw3DBox(rq, MC.cx - 14, 3.0, MC.cz - doorOffset, 0.8, 6, 4.2, '#78350f', '#d97706',
+        MC.doorOpen ? '🚪 Minecraft 大門(已開)' : '🚪 Minecraft 大門(已關)');
+
+      // 上面蓋的大屋頂 ＋ 隨時可開的螢石大燈
+      draw3DBox(rq, MC.cx, 10.0, MC.cz, 30, 2.2, 30, '#57534e', roofCol,
+        MC.lightsOn ? '💡 Minecraft 大屋頂（燈全亮！）' : '🌙 Minecraft 大屋頂（燈已關）');
+      if (MC.lightsOn) {
+        draw3DBox(rq, MC.cx, 7.8, MC.cz, 10, 1.2, 10, '#fde047', '#fef08a', '✨ 屋頂螢石大吊燈（發光中）');
+      }
+
+      // 玩家自己放的 Minecraft 方塊
+      for (var bi = 0; bi < customBlocks.length; bi++) {
+        var cb = customBlocks[bi];
+        draw3DBox(rq, cb.x, cb.y + 1, cb.z, 2, 2, 2, cb.b.color, cb.b.top);
+      }
+
+      // (D) 200 臺 7-11 超級陣列（只繪製視野 95 公尺內的店鋪確保極速流暢，頂部統計永遠完整 200 臺！）
+      for (var sIdx = 0; sIdx < sevenStores.length; sIdx++) {
+        var stObj = sevenStores[sIdx];
+        var distS = Math.hypot(stObj.x - player.x, stObj.z - player.z);
+        if (distS < 85) {
+          var sLbl = distS < 24 ? ('🏪 7-11 #' + String(stObj.id).padStart(3, '0')) : null;
+          draw3DBox(rq, stObj.x, 2.2, stObj.z, 4.8, 4.4, 4.2, '#f8fafc', '#16a34a', sLbl, '#ea580c');
+        }
+      }
+
+      // (E) 北海道棒球場
+      if (Math.hypot(0 - player.x, 108 - player.z) < 110) {
+        draw3DBox(rq, 0, 0.3, 108, 42, 0.6, 42, '#15803d', '#22c55e', '⚾ 北海道棒球場 ESCON FIELD');
+        draw3DBox(rq, 0, 7.5, 130, 18, 7, 1.5, '#0f172a', '#38bdf8', '📺 球場大螢幕：全壘打王小隊長');
+      }
+
+      // (F) 主角（小隊長）與跟隨的皮皮鼠夥伴
+      var role = ROLES[roleIdx];
+      draw3DBox(rq, player.x, player.y + 1.3, player.z, 1.4, 2.6, 1.4, role.shirt, '#fde047', role.icon + ' ' + role.name);
+      draw3DBox(rq, player.x + 2.0, player.y + 0.8 + Math.abs(Math.sin(t * 6)) * 0.5, player.z + 1.5, 1.1, 1.1, 1.1, '#facc15', '#fef08a', '⚡ 皮皮鼠夥伴');
+
+      // 依深度由遠到近排序繪製 (Painter's Algorithm)
+      var projectedList = [];
+      for (var qi = 0; qi < rq.length; qi++) {
+        var item = rq[qi];
+        var pCenter = project3D(item.cx, item.cy, item.cz, cam);
+        if (pCenter) {
+          item.proj = pCenter;
+          projectedList.push(item);
+        }
+      }
+      projectedList.sort(function(a, b) { return b.proj.depth - a.proj.depth; });
+
+      for (var pi2 = 0; pi2 < projectedList.length; pi2++) {
+        var obj = projectedList[pi2];
+        var p = obj.proj;
+        var bw = Math.max(4, obj.w * p.scale);
+        var bh = Math.max(4, obj.h * p.scale);
+        var topH = Math.max(3, obj.d * p.scale * 0.32);
+
+        var x0 = p.x - bw / 2;
+        var y0 = p.y - bh / 2;
+
+        // 屋頂/頂面立體斜角
+        ctx.fillStyle = obj.topColor;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x0 + bw * 0.15, y0 - topH);
+        ctx.lineTo(x0 + bw * 1.15, y0 - topH);
+        ctx.lineTo(x0 + bw, y0);
+        ctx.closePath();
+        ctx.fill();
+
+        // 正面
+        ctx.fillStyle = obj.sideColor;
+        ctx.fillRect(x0, y0, bw, bh);
+        ctx.strokeStyle = obj.borderCol;
+        ctx.lineWidth = Math.max(1, p.scale * 0.08);
+        ctx.strokeRect(x0, y0, bw, bh);
+
+        // 頭頂標籤
+        if (obj.label && p.depth < 75) {
+          ctx.font = '900 ' + Math.max(11, Math.min(16, Math.round(p.scale * 0.45))) + 'px "Noto Sans TC", sans-serif';
+          var tw = ctx.measureText(obj.label).width + 12;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.fillRect(p.x - tw / 2, y0 - topH - 24, tw, 20);
+          ctx.strokeStyle = '#facc15';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(p.x - tw / 2, y0 - topH - 24, tw, 20);
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(obj.label, p.x, y0 - topH - 14);
+        }
+      }
+
+      // 煙火粒子繪製
+      for (var fi = fireworks.length - 1; fi >= 0; fi--) {
+        var fw = fireworks[fi];
+        fw.life -= dt;
+        fw.x += fw.vx * dt; fw.y += fw.vy * dt; fw.z += fw.vz * dt;
+        fw.vy -= 9.5 * dt;
+        var fp = project3D(fw.x, fw.y, fw.z, cam);
+        if (fp) {
+          ctx.fillStyle = fw.color;
+          ctx.beginPath();
+          ctx.arc(fp.x, fp.y, Math.max(3, fp.scale * 0.35), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (fw.life <= 0) fireworks.splice(fi, 1);
+      }
+
+      // 更新區域徽章
+      var zBadge = document.getElementById('currentZoneBadge');
+      if (zBadge) {
+        if (flightMode === 'fighter') zBadge.textContent = '🛩️ 戰鬥機高空飛行中';
+        else if (flightMode === 'airliner') zBadge.textContent = '✈️ 大飛機高空飛行中';
+        else if (player.z < -80) zBadge.textContent = '👑 寶可夢第二階段(神獸島)';
+        else if (player.z < -10) zBadge.textContent = '🌈 寶可夢進去的路';
+        else if (player.x > 30) zBadge.textContent = '🧱 棒球場 Minecraft 大城堡';
+        else if (player.x < -45) zBadge.textContent = '✈️ 小樂洲洲國際飛機場';
+        else if (nearStore) zBadge.textContent = '🏪 7-11 第 ' + String(nearStore.id).padStart(3, '0') + ' 號店';
+        else zBadge.textContent = '🏪 200 臺 7-11 超級大街';
+      }
+    }
+
+    requestAnimationFrame(loop);
+  })();
+  </script>
+</body>
+</html>
