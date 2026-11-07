@@ -12,7 +12,7 @@
 - `tools/`：自動測試工具（Playwright）、`tools/integrate.js`（插入區塊）、`tools/gemini/`（派工給 Gemini）。
 - `tasks/`：給 Gemini 的任務單。
 - `SETUP.md`：使用者在電腦上的第一次設定步驟。
-- `smooth/index.html`：流暢版，改完 `index.html` 後跑 `node tools/make_smooth.js` 重新產生。`v148/`、`v150-mega/` 這類版本資料夾是存檔，不要改。
+- `smooth/index.html`：流暢版，改完 `index.html` 後跑 `node tools/make_smooth.js` 重新產生；JIO 辦公室體驗版 `office/index.html` 用 `node tools/make_office.js` 重新產生。`v148/`、`v150-mega/` 這類版本資料夾是存檔，不要改。
 - 線上版（claude.ai Artifact）：https://claude.ai/artifact/1cdN75GmP7uxTT7rEbCAvu
   - 線上同房（room）與使用者名稱（user）功能只在 Artifact 版有效；GitHub 自架版沒有。
   - Claude Code 無法直接發布到 Artifact。要更新線上版，請把改好的 `index.html` 交給 Claude（Cowork／聊天）發布，或由使用者自行處理。

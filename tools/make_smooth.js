@@ -22,7 +22,7 @@ r.render=function(sc,cam){var now=performance.now();
   var c=lights.filter(function(l){return l.__on}).map(function(l){l.getWorldPosition(v);return [l,v.distanceToSquared(cp)]}).sort(function(a,b){return a[1]-b[1]});
   for(var i=0;i<c.length;i++){c[i][0].visible=i<${MAXL};c[i][0].castShadow=false}
  }
- if(sc&&sc.isScene)freeze(sc,cam,now);
+ if(sc&&sc.isScene){window.__smoothScene=sc;freeze(sc,cam,now)}
  return rd(sc,cam)};
 var all=[],idx=0,built=0;
 function snap(o){var p=o.position,q=o.quaternion,s=o.scale;return [p.x,p.y,p.z,q.x,q.y,q.z,q.w,s.x,s.y,s.z]}
@@ -40,6 +40,8 @@ function freeze(sc,cam,now){
 return r};
 THREE.WebGLRenderer.prototype=R.prototype;})();
 </script>`;
+module.exports = { patch, threeTag: m[0], source: s };
+if (require.main !== module) return;
 let out = s.replace(m[0], () => m[0] + '\n' + patch);
 out = out.replace(/<title>([^<]*)<\/title>/, (t, x) => '<title>' + x + '（流暢版）</title>');
 fs.mkdirSync(path.join(root, 'smooth'), { recursive: true });
