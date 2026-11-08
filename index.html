@@ -95457,49 +95457,19 @@ try{
     // 1. 印度現場廣播電台候選清單（含 Prasar Bharati AIR HLS 與主流公開電台）
     //    標記 isHls: true 的電台僅在瀏覽器原生支援 HLS (canPlayType) 時啟用，不載入外部庫
     // ---------------------------------------------------------
+    // 148.2（Claude，2026-11-08）：原本 6 台有 3 台失效（Vividh Bharati 404、Radio City 404、Mirchi 拒絕連線），
+    // 「Fever 104」實際是 Lofi 台。換成實測連得上的 9 台；名稱照電台串流自報的 icy-name 與 radio-browser.info 目錄。
+    // MP3 台放前面（所有瀏覽器都能播），AIR 國家廣播是 HLS，只有支援的瀏覽器（Safari、手機）才會出現。
     var RAW_STATIONS = [
-      {
-        id: 'air_vividh_bharati',
-        name: 'AIR Vividh Bharati (印度國家廣播經典台)',
-        freq: '102.6 MHz',
-        url: 'https://airhlspush.pc.cdn.bitgravity.com/httppush/hlspbaudio001/hlspbaudio00164kbps.m3u8',
-        isHls: true
-      },
-      {
-        id: 'air_fm_gold',
-        name: 'AIR FM Gold (新德里金曲廣播)',
-        freq: '100.1 MHz',
-        url: 'https://airhlspush.pc.cdn.bitgravity.com/httppush/hlspbaudio005/hlspbaudio00564kbps.m3u8',
-        isHls: true
-      },
-      {
-        id: 'radio_city_hindi',
-        name: 'Radio City Hindi (孟買流行音樂台)',
-        freq: '91.1 MHz',
-        url: 'https://prclive1.listenon.in/Hindi',
-        isHls: false
-      },
-      {
-        id: 'radio_mirchi',
-        name: 'Radio Mirchi 98.3 (寶萊塢熱播金曲)',
-        freq: '98.3 MHz',
-        url: 'https://peridot.streamguys1.com:7155/Mirchi',
-        isHls: false
-      },
-      {
-        id: 'red_fm_india',
-        name: 'Red FM 93.5 (印度熱門節奏台)',
-        freq: '93.5 MHz',
-        url: 'https://stream.zeno.fm/9phrkb1e3v8uv',
-        isHls: false
-      },
-      {
-        id: 'fever_fm_hindi',
-        name: 'Fever 104 FM (經典印地語電台)',
-        freq: '104.0 MHz',
-        url: 'https://stream.zeno.fm/f3wvbbqmdg8uv',
-        isHls: false
-      }
+      { id: 'mirchi_top20', name: 'Mirchi Top 20（寶萊塢熱門排行）', freq: 'MIRCHI ONLINE', url: 'https://drive.uber.radio/uber/bollywoodnow/icecast.audio', isHls: false },
+      { id: 'red_fm', name: 'Red FM（印度熱門歌曲）', freq: '93.5 FM', url: 'https://stream.zeno.fm/9phrkb1e3v8uv', isHls: false },
+      { id: 'mirchi_love', name: 'Mirchi Love（寶萊塢情歌）', freq: 'MIRCHI ONLINE', url: 'https://drive.uber.radio/uber/bollywoodlove/icecast.audio', isHls: false },
+      { id: 'gaane_purane', name: 'Bollywood Gaane Purane（寶萊塢經典老歌）', freq: 'ONLINE', url: 'https://stream.zeno.fm/6n6ewddtad0uv', isHls: false },
+      { id: 'bollywood_90s', name: 'Radio Bollywood 90s（90 年代寶萊塢）', freq: 'ONLINE', url: 'https://stream.zeno.fm/rm4i9pdex3cuv', isHls: false },
+      { id: 'hindi_gold', name: 'Hindi Gold Radio（印地語金曲）', freq: 'ONLINE', url: 'https://azuracast.vibesounds.in:8010/radio.mp3', isHls: false },
+      { id: 'bombay_beats', name: '1.FM Bombay Beats（孟買節奏）', freq: '1.FM', url: 'https://strmreg.1.fm/bombaybeats_mobile_mp3', isHls: false },
+      { id: 'air_fm_gold', name: 'AIR FM Gold（印度國家廣播・新德里金曲）', freq: '106.4 FM', url: 'https://airhlspush.pc.cdn.bitgravity.com/httppush/hlspbaudio005/hlspbaudio00564kbps.m3u8', isHls: true },
+      { id: 'air_raagam', name: 'AIR Raagam（印度國家廣播・古典音樂）', freq: 'AIR 24×7', url: 'https://airhlspush.pc.cdn.bitgravity.com/httppush/hlspbaudioragam/hlspbaudioragam_Auto.m3u8', isHls: true }
     ];
 
     function checkNativeHlsSupport() {
@@ -95526,7 +95496,7 @@ try{
       }
     }
     if (PLAYABLE_STATIONS.length === 0) {
-      PLAYABLE_STATIONS = RAW_STATIONS.slice(2);
+      PLAYABLE_STATIONS = RAW_STATIONS.filter(function (s) { return !s.isHls; });
     }
 
     // ---------------------------------------------------------
@@ -95623,6 +95593,8 @@ try{
         if (ratio > 1) ratio = 1;
         // 平方曲線讓空間距離衰減更自然柔和
         var vol = radioState.maxBaseVolume * ratio * ratio;
+        // 148.2：人在 JIO 辦公室裡（面板顯示「有聲音」）時至少保留 0.35，不會走到另一間就聽不到
+        if (window.__jioRadioInOffice && vol < 0.35) vol = 0.35;
         return Number(vol.toFixed(3));
       } catch (e) {
         return 0.35;
@@ -95862,7 +95834,7 @@ try{
         if (typeof document === 'undefined' || !document.createElement) return null;
         var audio = (typeof Audio === 'function') ? new Audio() : document.createElement('audio');
         audio.preload = 'none';
-        audio.crossOrigin = 'anonymous';
+        // 148.2：不設 crossOrigin，電台沒給 CORS 標頭也能播（只播放，不做音訊分析）
 
         function onStreamProblem(reasonText) {
           if (!radioState.on || radioState.mode !== 'stream') return;
@@ -96304,6 +96276,7 @@ try{
         x: spot.x,
         z: spot.z,
         r: 1.65,
+        sync: false, // 148.2：收音機是各自的，別人按不會切到你的電台
         label: computeStablePromptLabel,
         go: function () {
           cycleNextStation();
@@ -96352,8 +96325,20 @@ try{
           volume: radioState.currentVolume,
           fallbackActive: radioState.mode === 'ambient',
           timerActive: Boolean(radioState.volumeTimer !== null || radioState.tablaTimer !== null),
+          playing: radioState.mode === 'ambient' ? true : Boolean(radioState.audioEl && !radioState.audioEl.paused && radioState.audioEl.currentTime > 0),
           lastError: radioState.lastError
         };
+      },
+      // 148.2：給辦公室電台面板用
+      play: function (i) {
+        radioState.userGestureUnlocked = true;
+        var n = PLAYABLE_STATIONS.length;
+        playStationAtIndex(((i % n) + n) % n, true);
+        return apiObject.state();
+      },
+      stop: function () {
+        turnRadioOff(false);
+        return apiObject.state();
       },
       next: function () {
         cycleNextStation();
@@ -113371,6 +113356,142 @@ try {
   }
 } catch (e148) {
   console.warn('[v148]', e148);
+}
+
+// ===== 第 148.2 版（Claude）：JIO 辦公室電台面板 =====
+// 走進 JIO 辦公室就自動開第 114 版的印度收音機（預設開），畫面上方顯示「電台開啟中・有聲音」、電台名稱、
+// 上一台／下一台、開關聲音按鈕；走出辦公室自動停。按過「關聲音」會記在 localStorage（jio-radio-pref），下次進來維持關。
+// 按鈕都加 data-v67-moved="1"：第 67 版工具箱會把畫面上有 🔊／🔇 的按鈕收進工具箱，加了就不會被搬走。
+// 瀏覽器規定網頁要先被點過才能出聲：還沒點過時面板顯示「點一下畫面開始播放」，點一下就播。
+try {
+  (function () {
+    var R148r = window.__JIO_RADIO;
+    if (!R148r || typeof R148r.play !== 'function' || window.__jioRadioPanel148) return;
+    window.__jioRadioPanel148 = 1;
+    var KEY = 'jio-radio-pref';
+    var pref = {};
+    try { pref = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+    var muted = !!pref.muted;
+    var idx = typeof pref.idx === 'number' ? pref.idx : 0;
+    var inOffice = false, started = false, armed = false, lastHtml = '';
+    function savePref() { try { localStorage.setItem(KEY, JSON.stringify({ muted: muted, idx: idx })); } catch (e) {} }
+    function activated() { try { return !navigator.userActivation || navigator.userActivation.hasBeenActive; } catch (e) { return true; } }
+
+    var css = document.createElement('style');
+    css.textContent =
+      '#jio-radio148{position:fixed;left:50%;top:44px;transform:translateX(-50%);z-index:99998;background:rgba(43,26,16,.92);color:#ffe7b0;' +
+      'font:600 13px/1.35 system-ui,sans-serif;padding:8px 12px;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.35);border:2px solid #d4af37;' +
+      'text-align:center;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;touch-action:manipulation}' +
+      '#jio-radio148 button{white-space:nowrap}' +
+      '#jio-radio148[hidden]{display:none}' +
+      '#jio-radio148 .st{font-size:14px}#jio-radio148.on .st{color:#9cff6b}#jio-radio148.off .st{color:#ffb4a0}' +
+      '#jio-radio148 .nm{font-size:12px;opacity:.95;margin:2px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '#jio-radio148 button{font:700 13px system-ui,sans-serif;border:0;border-radius:999px;padding:6px 10px;margin:0 2px;cursor:pointer;background:#d4af37;color:#2b1a10}' +
+      '#jio-radio148 button.mute{background:#ff8a65;color:#2b0f05}#jio-radio148 button.unmute{background:#76ff03;color:#13240a}' +
+      '#jio-radio148.wait{animation:jioRadioPulse148 1.2s ease-in-out infinite}' +
+      '@keyframes jioRadioPulse148{50%{box-shadow:0 0 0 6px rgba(212,175,55,.45)}}' +
+      '@media (max-width:560px){#jio-radio148{top:40px;font-size:12px;padding:6px 8px}#jio-radio148 button{padding:6px 8px;font-size:12px}}';
+    document.head.appendChild(css);
+    var box = document.createElement('div');
+    box.id = 'jio-radio148';
+    box.hidden = true;
+    document.body.appendChild(box);
+
+    function stationName(st) {
+      if (st && st.stationName) return st.stationName;
+      var list = R148r.stations || [];
+      return list[idx] ? list[idx].name : '';
+    }
+    function playNow() { started = true; R148r.play(idx); render(); }
+    function render() {
+      var st = R148r.state();
+      var cls, html;
+      if (muted) {
+        cls = 'off';
+        html = '<div class="st">📻 辦公室電台已關（沒有聲音）</div>' +
+          '<div class="nm">按下面按鈕可以打開印度電台</div>' +
+          '<button data-v67-moved="1" data-r="on" class="unmute">🔊 開電台</button>';
+      } else if (!st.on) {
+        cls = 'wait';
+        html = '<div class="st">📻 點一下畫面開始播放印度電台</div>' +
+          '<div class="nm">' + stationName(null) + '</div>' +
+          '<button data-v67-moved="1" data-r="on" class="unmute">▶ 播放</button> <button data-v67-moved="1" data-r="mute" class="mute">🔇 不要聲音</button>';
+      } else {
+        cls = 'on';
+        html = '<div class="st">📻 電台開啟中・有聲音 🔊' + (st.playing ? '' : '（連線中…）') + '</div>' +
+          '<div class="nm">' + stationName(st) + '</div>' +
+          '<button data-v67-moved="1" data-r="prev">◀ 上一台</button><button data-v67-moved="1" data-r="mute" class="mute">🔇 關聲音</button><button data-v67-moved="1" data-r="next">下一台 ▶</button>';
+      }
+      if (box.className !== cls) box.className = cls;
+      if (html !== lastHtml) { lastHtml = html; box.innerHTML = html; }
+    }
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button') : null;
+      e.stopPropagation();
+      if (!b) return;
+      var k = b.getAttribute('data-r');
+      var n = (R148r.stations || []).length || 1;
+      if (k === 'on') { muted = false; savePref(); playNow(); }
+      else if (k === 'mute') { muted = true; savePref(); R148r.stop(); render(); }
+      else if (k === 'next' || k === 'prev') { idx = (idx + (k === 'next' ? 1 : -1) + n) % n; savePref(); playNow(); }
+      try { if (typeof canvas !== 'undefined' && canvas.focus) canvas.focus(); } catch (e2) {}
+    });
+    ['pointerdown', 'pointerup', 'touchstart', 'mousedown'].forEach(function (ev) {
+      box.addEventListener(ev, function (e) { e.stopPropagation(); });
+    });
+    // 還沒點過網頁：等第一次點畫面或按鍵再開始播
+    function onFirstGesture() {
+      if (!armed) return;
+      armed = false;
+      setTimeout(function () { if (inOffice && !muted && !R148r.state().on) playNow(); }, 0);
+    }
+    addEventListener('pointerdown', onFirstGesture, true);
+    addEventListener('keydown', onFirstGesture, true);
+
+    function playerXZ() {
+      try { if (typeof pos !== 'undefined' && pos && typeof pos.x === 'number') return [pos.x, pos.z]; } catch (e) {}
+      try { if (window.__dbg && window.__dbg.pos) return window.__dbg.pos(); } catch (e2) {}
+      return null;
+    }
+    function insideOffice(p) {
+      var J = window.__JIO;
+      if (!p || !J || !J.rooms) return false;
+      for (var k in J.rooms) {
+        var m = (J.rooms[k] && J.rooms[k].m) || [];
+        for (var i = 0; i < m.length; i++) {
+          var r = m[i];
+          if (p[0] >= r[0] - 0.3 && p[0] <= r[2] + 0.3 && p[1] >= r[1] - 0.3 && p[1] <= r[3] + 0.3) return true;
+        }
+      }
+      return false;
+    }
+    setInterval(function () {
+      try {
+        var now = insideOffice(playerXZ());
+        if (now !== inOffice) {
+          inOffice = now;
+          window.__jioRadioInOffice = now;
+          box.hidden = !now;
+          if (now) {
+            if (!muted) { if (activated()) playNow(); else armed = true; }
+          } else {
+            armed = false;
+            if (R148r.state().on) R148r.stop();
+            started = false;
+          }
+        }
+        if (!inOffice) return;
+        var st = R148r.state();
+        // 在 3D 收音機上按 E 也會換台／關掉：跟著同步
+        if (st.on && typeof st.stationIndex === 'number' && st.stationIndex >= 0 && st.stationIndex !== idx) { idx = st.stationIndex; savePref(); }
+        if (started && !st.on && !muted) { muted = true; started = false; savePref(); }
+        if (st.on && muted) { muted = false; started = true; savePref(); }
+        render();
+      } catch (e) {}
+    }, 400);
+  })();
+} catch (e1482) {
+  console.warn('[v148.2]', e1482);
 }
 })();
 </script>
