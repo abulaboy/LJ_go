@@ -99,7 +99,7 @@ r.render=function(sc,cam){var now=performance.now();
   var c=lights.filter(function(l){return l.__on}).map(function(l){l.getWorldPosition(v);return [l,v.distanceToSquared(cp)]}).sort(function(a,b){return a[1]-b[1]});
   for(var i=0;i<c.length;i++){c[i][0].visible=i<8;c[i][0].castShadow=false}
  }
- if(sc&&sc.isScene){window.__smoothScene=sc;freeze(sc,cam,now)}
+ if(sc&&sc.isScene){window.__smoothScene=sc;window.__smoothR=r;freeze(sc,cam,now)}
  return rd(sc,cam)};
 var all=[],idx=0,built=0;
 function snap(o){var p=o.position,q=o.quaternion,s=o.scale;return [p.x,p.y,p.z,q.x,q.y,q.z,q.w,s.x,s.y,s.z]}
@@ -4379,7 +4379,7 @@ function sigChar(t){const l=t.label()||'';let h=0;for(let i=0;i<l.length;i++)h=(
 function stateSig(){let s='';for(let i=0;i<things.length;i++){const t=things[i];if(t.sync===false){s+='-';continue;}const l=t.label();s+=(l&&!NOSHARE.test(l))?sigChar(t):'-';}return s;}
 // 別人做的動作在自己這邊重播，但不讓自己的角色被搬走
 let netQuiet=false;
-function runRemote(i,who){const t=things[i];if(!t)return;const l=t.label();if(!l||NOSHARE.test(l))return;
+function runRemote(i,who){const t=things[i];if(!t||t.sync===false)return;const l=t.label();if(!l||NOSHARE.test(l))return;
   const keep={x:A.pos.x,z:A.pos.z,h:A.heading,s:sitting,sa:seatAnim,as:A.seat};netQuiet=true;try{t.go();}catch(e){}netQuiet=false;
   A.pos.x=keep.x;A.pos.z=keep.z;A.heading=keep.h;sitting=keep.s;seatAnim=keep.sa;A.seat=keep.as;if(who)say(who+'：'+l);}
 function netInteract(t){const i=things.indexOf(t);if(NET.on&&i>=0&&shareable(t)){NET.seq++;NET.act={n:NET.seq,i};}}
@@ -4544,7 +4544,7 @@ async function netStartSelf(){
   const fail=()=>{if(NET.on)return;netStatus('線上：無法連線');NET.why='連不上同步伺服器。可能是網路（公司或學校網路常會擋）的關係，換手機網路或重新整理再試一次。';};
   room.onPeers(ch=>{NET.peers=ch.peers;if(room.connected())netGoOnline();if(ch.joined.length)NET.stT=0;});
   room.onConnection(c=>{if(c)netGoOnline();else if(!NET.on)netStatus('線上：連線中…');},fail);}
-async function netStart(){
+async function netStart(){netStatus('線上：體驗版不連線');return;
   if(!window.claude||!window.claude.use){netStartSelf();return;}
   netStatus('線上：連線中…');
   try{const pm=await claude.use('permissions');if(pm&&pm.request)await pm.request(['room','user']).catch(()=>{});}catch(e){}
@@ -67473,7 +67473,7 @@ try{
 
       // 新增一個「🏆 榮譽進度與結算看板」互動點（位於辦公區白板旁 `-5.2, 7.6`，不擋走道），隨時可查看好感度與結算卡
       things.push({
-        _jioV98: 'honorBoard',
+        _jioV98: 'honorBoard', sync: false, // 148.1：只是查看看板，不同步給其他玩家（不然會在別人畫面彈出結算卡）
         x: -5.2,
         z: 7.6,
         r: rWide,
@@ -112628,10 +112628,10 @@ try {
 
     // 4. 每幀確保球場入口至大廳角色可見性、高度正確不沉入地下/不累加飛走，並接住 teleportToFloor 直接寫入的 A.pos.y（對應 v146 第 4279、17171 行）
     var lastPosY147 = (typeof A !== 'undefined' && A && A.pos && typeof A.pos.y === 'number') ? A.pos.y : 0;
-    var prevMoreTick147 = window.__moreTick2;
+    var prevMoreTick147Rudy = window.__moreTick2;
     window.__moreTick2 = function (dt, t) {
-      if (typeof prevMoreTick147 === 'function') {
-        try { prevMoreTick147.apply(this, arguments); } catch (e) {}
+      if (typeof prevMoreTick147Rudy === 'function') {
+        try { prevMoreTick147Rudy.apply(this, arguments); } catch (e) {}
       }
       try {
         if (typeof A === 'undefined' || !A) return;
@@ -112885,20 +112885,21 @@ try {
       }, retryTimes147[rIdx]);
     }
 
-    var prevMoreTick147 = window.__moreTick2;
+    var prevMoreTick147Idn = window.__moreTick2;
     var tickCount147 = 0;
     window.__moreTick2 = function (dt, t) {
-      if (typeof prevMoreTick147 === 'function') {
-        try { prevMoreTick147.apply(this, arguments); } catch (err) {}
+      if (typeof prevMoreTick147Idn === 'function') {
+        try { prevMoreTick147Idn.apply(this, arguments); } catch (err) {}
       }
       try {
         if (typeof dFront !== 'undefined' && dFront && dFront.c) {
           dFront.c.on = !dFront.open;
         }
-        // 每 30 幀輕量巡檢一次，確保 146 的延遲計時器不會再次把漂浮招牌打開或把家門兩側牆 collider 關掉
+        // 每 30 幀巡檢一次。效能修正（148.1）：整個場景的 traverse＋getWorldPosition 一次要掃一萬多個物件，
+        // 每 30 幀跑會讓遊戲嚴重卡頓；開場的 setTimeout 重試已經跑過完整修正，這裡只保留便宜的家門與碰撞盒檢查。
         tickCount147 = (tickCount147 + 1) % 30;
         if (tickCount147 === 0) {
-          runAllFixes147();
+          fixHomeDoorAndWalls147();
         }
       } catch (err) {}
     };
@@ -112972,11 +112973,11 @@ try {
 
   if (typeof window !== 'undefined' && !window.__v147KazTickWrapped) {
     window.__v147KazTickWrapped = true;
-    var prevMoreTick147 = window.__moreTick2;
+    var prevMoreTick147Kaz = window.__moreTick2;
     window.__moreTick2 = function (dt, t) {
       var ret;
-      if (typeof prevMoreTick147 === 'function') {
-        try { ret = prevMoreTick147.apply(this, arguments); } catch (err) {}
+      if (typeof prevMoreTick147Kaz === 'function') {
+        try { ret = prevMoreTick147Kaz.apply(this, arguments); } catch (err) {}
       }
       try { enforceJioWaypoints147(); } catch (err) {}
       return ret;
@@ -113419,8 +113420,9 @@ function bbox(){var x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;ROOMS.forEach(function(r){x0=M
 function hideOutside(){var sc=window.__smoothScene;if(!sc||!window.THREE)return;var bb=new THREE.Box3(),keep=new Set();
  var J=window.__JIO;
  (J&&J.npcs||[]).forEach(function(n){var g=n&&(n.group||n.g||n.mesh||n.obj);if(g&&g.traverse)g.traverse(function(o){keep.add(o)})});
- hidden=[];sc.updateMatrixWorld();
- sc.traverse(function(o){if(!(o.isMesh||o.isLine||o.isPoints||o.isSprite)||keep.has(o)||!o.visible||!o.geometry)return;
+ // 每個物件只判斷一次（記在 o.__offChk），之後的重掃只看新出現的物件，避免每 15 秒卡一下
+ sc.updateMatrixWorld();
+ sc.traverse(function(o){if(o.__offChk)return;if(!(o.isMesh||o.isLine||o.isPoints||o.isSprite)||keep.has(o)||!o.visible||!o.geometry)return;o.__offChk=1;
   if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();bb.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
   var span=Math.max(bb.max.x-bb.min.x,bb.max.z-bb.min.z);if(span>30)return;
   var cx=(bb.min.x+bb.max.x)/2,cz=(bb.min.z+bb.max.z)/2,inRoom=false;

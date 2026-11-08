@@ -37,8 +37,9 @@ function bbox(){var x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;ROOMS.forEach(function(r){x0=M
 function hideOutside(){var sc=window.__smoothScene;if(!sc||!window.THREE)return;var bb=new THREE.Box3(),keep=new Set();
  var J=window.__JIO;
  (J&&J.npcs||[]).forEach(function(n){var g=n&&(n.group||n.g||n.mesh||n.obj);if(g&&g.traverse)g.traverse(function(o){keep.add(o)})});
- hidden=[];sc.updateMatrixWorld();
- sc.traverse(function(o){if(!(o.isMesh||o.isLine||o.isPoints||o.isSprite)||keep.has(o)||!o.visible||!o.geometry)return;
+ // 每個物件只判斷一次（記在 o.__offChk），之後的重掃只看新出現的物件，避免每 15 秒卡一下
+ sc.updateMatrixWorld();
+ sc.traverse(function(o){if(o.__offChk)return;if(!(o.isMesh||o.isLine||o.isPoints||o.isSprite)||keep.has(o)||!o.visible||!o.geometry)return;o.__offChk=1;
   if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();bb.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
   var span=Math.max(bb.max.x-bb.min.x,bb.max.z-bb.min.z);if(span>30)return;
   var cx=(bb.min.x+bb.max.x)/2,cz=(bb.min.z+bb.max.z)/2,inRoom=false;
@@ -65,6 +66,10 @@ setInterval(function(){
 
 let out = source.replace(threeTag, () => threeTag + '\n' + patch);
 out = out.replace(DBG, 'true');
+// 體驗版不連線上同房：網站訪客都會進同一個房間，別人的互動（例如榮譽看板）會在你的畫面重播、跳出視窗
+const NETSTART = 'async function netStart(){';
+if (out.split(NETSTART).length !== 2) throw new Error('找不到 netStart，主線可能改過寫法');
+out = out.replace(NETSTART, () => NETSTART + "netStatus('線上：體驗版不連線');return;");
 if (!/<\/head>/i.test(out) || !/<body[^>]*>/i.test(out)) throw new Error('找不到 </head> 或 <body>');
 out = out.replace(/<\/head>/i, (h) => head + h);
 out = out.replace(/<body[^>]*>/i, (b) => b + coverHtml);
