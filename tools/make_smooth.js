@@ -22,7 +22,7 @@ r.render=function(sc,cam){var now=performance.now();
   var c=lights.filter(function(l){return l.__on}).map(function(l){l.getWorldPosition(v);return [l,v.distanceToSquared(cp)]}).sort(function(a,b){return a[1]-b[1]});
   for(var i=0;i<c.length;i++){c[i][0].visible=i<${MAXL};c[i][0].castShadow=false}
  }
- if(sc&&sc.isScene){window.__smoothScene=sc;freeze(sc,cam,now)}
+ if(sc&&sc.isScene){window.__smoothScene=sc;window.__smoothR=r;freeze(sc,cam,now)}
  return rd(sc,cam)};
 var all=[],idx=0,built=0;
 function snap(o){var p=o.position,q=o.quaternion,s=o.scale;return [p.x,p.y,p.z,q.x,q.y,q.z,q.w,s.x,s.y,s.z]}
