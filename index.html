@@ -2354,13 +2354,13 @@ const R=0.16;
 const toastEl=document.getElementById('toast'),promptEl=document.getElementById('prompt'),actBtn=document.getElementById('act');
 let toastT=0;function say(t){toastEl.textContent=t;toastEl.hidden=false;toastT=3.4;}
 let actx=null;
-function audio(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();return actx;}catch(e){return null;}}
+function audio(){try{actx=actx||window.__audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(!window.__audioCtx)window.__audioCtx=actx;if(actx.state==='suspended'){var rp=actx.resume();if(rp&&rp.catch)rp.catch(function(){});}return actx;}catch(e){return null;}}
 function notes(seq,type,step){const a=audio();if(!a)return;let t=a.currentTime+0.05;seq.forEach(f=>{if(f){const o=a.createOscillator(),gn=a.createGain();o.type=type||'triangle';o.frequency.value=f;
-  gn.gain.setValueAtTime(0.0001,t);gn.gain.exponentialRampToValueAtTime(0.2,t+0.02);gn.gain.exponentialRampToValueAtTime(0.0001,t+0.45);o.connect(gn);gn.connect(a.destination);o.start(t);o.stop(t+0.5);}t+=step||0.32;});}
+  gn.gain.setValueAtTime(0.0001,t);gn.gain.exponentialRampToValueAtTime(0.2,t+0.02);gn.gain.exponentialRampToValueAtTime(0.0001,t+0.45);o.connect(gn);gn.connect(a.destination);o.start(t);o.stop(t+0.5);o.onended=function(){try{o.disconnect();gn.disconnect();}catch(eN){}};}t+=step||0.32;});}
 const tune=()=>notes([261.6,261.6,392,392,440,440,392,0,349.2,349.2,329.6,329.6,293.7,293.7,261.6]);
 const knock=()=>notes([160,0,160],'square',0.14);
 let seatAnim=null;
-function sit(s){sitting=s;pos.x=s.x;pos.z=s.z;A.heading=s.ry;seatAnim=s.anim||null;}
+function sit(s){if(window.__JIO_TRAVEL_UNSIT_UNTIL&&performance.now()<window.__JIO_TRAVEL_UNSIT_UNTIL)return;sitting=s;pos.x=s.x;pos.z=s.z;A.heading=s.ry;seatAnim=s.anim||null;}
 function sitS(lx,lz,lry,h,anim){const p=ST(lx,lz);sit({x:p.x,z:p.z,ry:lry+Math.PI/2,h,anim});}
 function T_(lx,lz,r,label,go){const p=ST(lx,lz);return {x:p.x,z:p.z,r,label,go};}
 const X1M=P(1070);const dropThing={x:0,z:0,r:9,label:()=>holding?'放下'+holding.name:'',go(){const h=holding;h.held=false;holding=null;h.x=A.pos.x+Math.sin(A.heading)*0.35;h.z=A.pos.z+Math.cos(A.heading)*0.35;h.y=supportAt(h.x,h.z,5);h.g.position.set(h.x,h.y,h.z);h.g.rotation.y=A.heading+Math.PI;say('放下'+h.name+'。');}};function allLights(){return Object.values(roomLights).some(r=>r.on);}
@@ -2975,14 +2975,14 @@ const VT={};
     const k=ss.light?1:0;pend.intensity=pend.userData.base*k*sN;barL.intensity=barL.userData.base*k*sN;gen.intensity=gen.userData.base*k*sN;pendantMat.emissiveIntensity=k*(sDay?1.25:2.2);bulbMat.emissiveIntensity=k*(sDay?2.6:3.4);shadeM.emissiveIntensity=k*(sDay?0.25:1.0);};
   let sDay=true,sN=1;VT.studioDay=(day)=>{sDay=day;sN=day?1:1.5;oceanM.color.set(day?'#ffffff':'#1c2a44');clouds.forEach(c=>c.material.opacity=day?0.92:0.15);[win1,win2].forEach(l=>l.intensity=day?l.userData.base:0.1);};
 })();
-function tpTo(x,z,h){sitting=null;seatAnim=null;A.seat=null;A.pos.x=x;A.pos.z=z;A.heading=h;A.jh=0;A.jv=0;
+function tpTo(x,z,h){sitting=null;seatAnim=null;A.seat=null;try{window.__JIO_TRAVEL_UNSIT_UNTIL=performance.now()+2800;}catch(eU){}A.pos.x=x;A.pos.z=z;A.heading=h;A.jh=0;A.jv=0;
   if(followOn&&F){F.seat=null;F.pos.x=x-Math.sin(h)*0.7;F.pos.z=z-Math.cos(h)*0.7;F.heading=h;F.jh=0;F.jv=0;}trail.length=0;}
 function autoOpen(list){[A,followOn?F:null].concat(kids.filter(k=>k.remote)).forEach(k=>{if(!k||(k===A?sitting:k.seat))return;const px=k.pos.x,pz=k.pos.z;
   list.forEach(d=>{if(d.open)return;const c=d.c;if(Math.hypot(Math.max(c.x0-px,0,px-c.x1),Math.max(c.z0-pz,0,pz-c.z1))<0.72){d.open=true;c.on=false;}});});}
-const HOME_AT={x:7.15,z:12.95,h:-Math.PI/2};
+const HOME_AT={x:8.4,z:8.8,h:Math.PI};
 function placeNow(){const r=roomAt(pos.x,pos.z);return r&&r.venue?r.venue:'home';}
-function travel(dest){if(liftBusy||placeNow()===dest&&dest!=='home')return;liftBusy=true;fadeEl.style.opacity=1;
-  setTimeout(()=>{if(dest==='home'){tpTo(HOME_AT.x,HOME_AT.z,HOME_AT.h);say('回到家裡的走廊。');}else{const V=VEN[dest];tpTo(V.ax,V.az,V.ah);say(V.msg);}fadeEl.style.opacity=0;liftBusy=false;},850);}
+function travel(dest){if(!dest)return;if(liftBusy){window.__pendingTravelDest=dest;return;}if(placeNow()===dest&&dest!=='home')return;liftBusy=true;fadeEl.style.opacity=1;
+  setTimeout(()=>{try{if(dest==='home'){tpTo(HOME_AT.x,HOME_AT.z,HOME_AT.h);say('回到家裡客廳。');}else{const V=VEN[dest];if(V){tpTo(V.ax,V.az,V.ah);if(V.msg)say(V.msg);}}try{if(typeof roomAt==='function'){const rr=roomAt(pos.x,pos.z);if(rr&&rr.name){if(typeof roomEl!=='undefined'&&roomEl)roomEl.textContent=rr.name;if(typeof curRoom!=='undefined')curRoom=rr.name;}}}catch(e2){}}catch(e){}fadeEl.style.opacity=0;liftBusy=false;const nx=window.__pendingTravelDest;window.__pendingTravelDest=null;if(nx&&nx!==dest)travel(nx);},850);}
 function rideTo(L,dest){if(liftBusy)return;liftBusy=true;L.open=false;const V=VEN[dest];say('電梯門關上，前往'+V.name+'……');
   setTimeout(()=>{fadeEl.style.opacity=1;},900);
   setTimeout(()=>{tpTo(V.ax,V.az,V.ah);fadeEl.style.opacity=0;liftBusy=false;say(V.msg);},2300);}
@@ -3069,7 +3069,7 @@ function stripeTex(a,b,n,vert){return cTex(256,256,(g,w,h)=>{for(let i=0;i<n;i++
 function noiseBurst(dur,f,vol,type){const a=audio();if(!a)return;try{const n=Math.floor(a.sampleRate*dur),buf=a.createBuffer(1,n,a.sampleRate),d=buf.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
   const s=a.createBufferSource();s.buffer=buf;const fl=a.createBiquadFilter();fl.type=type||'lowpass';fl.frequency.value=f||1200;const gn=a.createGain();gn.gain.value=vol||0.3;s.connect(fl);fl.connect(gn);gn.connect(a.destination);s.start();}catch(e){}}
 function glide(f0,f1,f2,dur,type,vol){const a=audio();if(!a)return;try{const o=a.createOscillator(),gn=a.createGain(),t=a.currentTime+0.02;o.type=type||'sine';o.frequency.setValueAtTime(f0,t);o.frequency.linearRampToValueAtTime(f1,t+dur*0.4);o.frequency.linearRampToValueAtTime(f2,t+dur);
-  gn.gain.setValueAtTime(0.0001,t);gn.gain.exponentialRampToValueAtTime(vol||0.15,t+0.04);gn.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(gn);gn.connect(a.destination);o.start(t);o.stop(t+dur+0.05);}catch(e){}}
+  gn.gain.setValueAtTime(0.0001,t);gn.gain.exponentialRampToValueAtTime(vol||0.15,t+0.04);gn.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(gn);gn.connect(a.destination);o.start(t);o.stop(t+dur+0.05);o.onended=function(){try{o.disconnect();gn.disconnect();}catch(eG){}};}catch(e){}}
 const meow=()=>glide(620,980,560,0.6,'triangle',0.12),boing=()=>glide(180,520,300,0.35,'sine',0.18),pop=()=>noiseBurst(0.12,3000,0.35,'highpass'),cheer=()=>notes([523,659,784,1046],'triangle',0.1);
 // 手上拿的食物、獎品：吃的會慢慢變小，吃完就不見
 const HELD=[];
@@ -3862,14 +3862,14 @@ function rideTick(dt){if(!ride)return;if(A!==ride.kid){ride=null;return;}if(sitt
   let ambOn=true,amb=null,ambPlace=null,birdT=2,cricT=1;
   function noiseLoop(a,type,f,q){const n=a.sampleRate*3,buf=a.createBuffer(1,n,a.sampleRate),d=buf.getChannelData(0);let last=0;for(let i=0;i<n;i++){const w=Math.random()*2-1;last=(last+0.02*w)/1.02;d[i]=type==='brown'?last*3.5:w;}
     const s=a.createBufferSource();s.buffer=buf;s.loop=true;const fl=a.createBiquadFilter();fl.type='lowpass';fl.frequency.value=f;fl.Q.value=q||0.7;const g=a.createGain();g.gain.value=0;s.connect(fl);fl.connect(g);g.connect(a.destination);s.start();return {s,g,fl};}
-  function stopAmb(){if(amb){try{amb.forEach(x=>{x.g.gain.value=0;x.s.stop();});}catch(e){}amb=null;}}
+  function stopAmb(){if(amb){try{amb.forEach(x=>{try{x.g.gain.value=0;}catch(e1){}try{x.s.stop();}catch(e2){}try{x.s.disconnect();}catch(e3){}try{x.g.disconnect();}catch(e4){}try{if(x.fl)x.fl.disconnect();}catch(e5){}});}catch(e){}amb=null;}}
   window.__ambToggle=()=>{ambOn=!ambOn;if(!ambOn)stopAmb();ambPlace=null;return ambOn;};
   window.__ambTick=(dt,t)=>{if(!ambOn||!actx||actx.state!=='running')return;const r=roomAt(pos.x,pos.z),pl=r&&r.venue?r.venue:'home',cfg=AMB[pl];
     if(pl!==ambPlace){stopAmb();ambPlace=pl;if(cfg){const a=actx;amb=[];if(cfg.waves)amb.push(Object.assign(noiseLoop(a,'brown',600),{kind:'waves',v:cfg.waves}));if(cfg.hum)amb.push(Object.assign(noiseLoop(a,'white',700,0.5),{kind:'hum',v:cfg.hum}));
       if(cfg.wind)amb.push(Object.assign(noiseLoop(a,'brown',350),{kind:'wind',v:cfg.wind}));if(cfg.bubble)amb.push(Object.assign(noiseLoop(a,'brown',260,4),{kind:'bub',v:cfg.bubble}));}}
     if(amb)amb.forEach(x=>{const v=x.kind==='waves'?(0.05+0.035*Math.sin(t*0.6))*x.v:x.kind==='hum'?x.v:x.kind==='wind'?(0.03+0.02*Math.sin(t*0.3))*x.v:(0.035+0.02*Math.sin(t*1.7))*x.v;x.g.gain.value+=(v-x.g.gain.value)*Math.min(1,dt*2);});
     if(cfg&&cfg.birds&&isDay&&!(typeof rainOn!=='undefined'&&rainOn)){birdT-=dt;if(birdT<=0){birdT=2+Math.random()*5/cfg.birds;const f=2400+Math.random()*1400;glide(f,f*1.3,f*0.9,0.18,'sine',0.03);setTimeout(()=>glide(f*1.1,f*1.4,f,0.15,'sine',0.025),200);}}
-    if(cfg&&!isDay&&(pl==='park'||pl==='roof'||pl==='wet'||pl==='oldst'||pl==='chapel')){cricT-=dt;if(cricT<=0){cricT=0.6+Math.random()*1.4;const a=actx;try{for(let k=0;k<3;k++){const o=a.createOscillator(),g=a.createGain(),tt=a.currentTime+k*0.07;o.type='square';o.frequency.value=4300;g.gain.setValueAtTime(0.0001,tt);g.gain.exponentialRampToValueAtTime(0.012,tt+0.01);g.gain.exponentialRampToValueAtTime(0.0001,tt+0.05);o.connect(g);g.connect(a.destination);o.start(tt);o.stop(tt+0.06);}}catch(e){}}}};
+    if(cfg&&!isDay&&(pl==='park'||pl==='roof'||pl==='wet'||pl==='oldst'||pl==='chapel')){cricT-=dt;if(cricT<=0){cricT=0.6+Math.random()*1.4;const a=actx;try{for(let k=0;k<3;k++){const o=a.createOscillator(),g=a.createGain(),tt=a.currentTime+k*0.07;o.type='square';o.frequency.value=4300;g.gain.setValueAtTime(0.0001,tt);g.gain.exponentialRampToValueAtTime(0.012,tt+0.01);g.gain.exponentialRampToValueAtTime(0.0001,tt+0.05);o.connect(g);g.connect(a.destination);o.start(tt);o.stop(tt+0.06);o.onended=function(){try{o.disconnect();g.disconnect();}catch(eC){}};}}catch(e){}}}};
 })();
 
 // ===== 第 37 版玩法：探險手冊（集章、星星、徽章、相簿）、表情動作、拍照、下雨、地名標題卡 =====
@@ -3977,7 +3977,7 @@ lifts.forEach(L=>{const lbl=t=>cTex(128,64,(g,w,h)=>{g.fillStyle='#1a1a1c';g.fil
     const go=()=>rideTo(L,q[1]);things.push({x,z:side+0.3,r:0.07,label:()=>liftBusy?'':'搭電梯'+q[3],go});clickables.push({mesh:b,go});});});
 // 「去哪裡」選單：一鍵到任何地方（G）
 (function(){const b=document.getElementById('goB'),pnl=document.getElementById('goPanel'),list=document.getElementById('goList');if(!b||!pnl)return;
-  const PL=[['home','🏠 家（16 樓走廊）'],['hotel','🌊 四人海景客房'],['studio','🎨 海景畫室'],['roof','🌙 頂樓空中花園'],['park','🎡 彩虹遊樂園'],['oldst','🏮 百年老街'],['wet','🌅 高美濕地'],['aqua','🐠 海洋水族館'],['chapel','⛪ 東海教堂'],['plaza','🏛️ 台中市議會廣場']];
+  const PL=[['home','🏠 家（客廳）'],['hotel','🌊 四人海景客房'],['studio','🎨 海景畫室'],['roof','🌙 頂樓空中花園'],['park','🎡 彩虹遊樂園'],['oldst','🏮 百年老街'],['wet','🌅 高美濕地'],['aqua','🐠 海洋水族館'],['chapel','⛪ 東海教堂'],['plaza','🏛️ 台中市議會廣場']];
   PL.forEach(([d,n])=>{const x=document.createElement('button');x.type='button';x.className='tbtn pickb';x.textContent=n;
     x.addEventListener('click',()=>{pnl.hidden=true;if(FLY.on)toggleFly();if(sitting){sitting=null;seatAnim=null;}travel(d);canvas.focus();});list.appendChild(x);});
   const tog=()=>{pnl.hidden=!pnl.hidden;if(pnl.hidden)canvas.focus();};b.addEventListener('click',tog);
@@ -4218,7 +4218,7 @@ document.getElementById('runB').addEventListener('click',()=>{runOn=!runOn;docum
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
 let yaw=0.35,pitch=0.9,dist=5,dragId=null,lx=0,ly=0;
-canvas.addEventListener('pointerdown',e=>{dragId=e.pointerId;lx=e.clientX;ly=e.clientY;canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener('pointerdown',e=>{dragId=e.pointerId;lx=e.clientX;ly=e.clientY;try{canvas.setPointerCapture(e.pointerId);}catch(_e){}});
 canvas.addEventListener('pointermove',e=>{if(e.pointerId!==dragId)return;yaw-=(e.clientX-lx)*0.006;pitch=Math.max(0.15,Math.min(1.45,pitch+(e.clientY-ly)*0.005));lx=e.clientX;ly=e.clientY;});
 const endDrag=e=>{if(e.pointerId===dragId)dragId=null;};canvas.addEventListener('pointerup',endDrag);canvas.addEventListener('pointercancel',endDrag);
 canvas.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(FLY.on?0.5:1.3,Math.min(14,dist+e.deltaY*0.005));},{passive:false});
@@ -4226,7 +4226,7 @@ canvas.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(FLY.on?0.5:
 const stick=document.getElementById('stick'),knob=document.getElementById('knob');let sx=0,sy=0,stId=null;
 function stMove(e){const r=stick.getBoundingClientRect();let dx=(e.clientX-r.left-r.width/2)/(r.width/2),dy=(e.clientY-r.top-r.height/2)/(r.height/2);
   const m=Math.hypot(dx,dy);if(m>1){dx/=m;dy/=m;}sx=dx;sy=-dy;knob.style.transform='translate('+dx*33+'px,'+dy*33+'px)';}
-stick.addEventListener('pointerdown',e=>{stId=e.pointerId;stick.setPointerCapture(e.pointerId);stMove(e);});
+stick.addEventListener('pointerdown',e=>{stId=e.pointerId;try{stick.setPointerCapture(e.pointerId);}catch(_e){}stMove(e);});
 stick.addEventListener('pointermove',e=>{if(e.pointerId===stId)stMove(e);});
 const stEnd=e=>{if(e.pointerId===stId){stId=null;sx=sy=0;knob.style.transform='';}};stick.addEventListener('pointerup',stEnd);stick.addEventListener('pointercancel',stEnd);
 
@@ -4311,8 +4311,9 @@ function frame(now){
   ray.intersectObjects(wallMeshes,false).forEach(h=>h.object.userData.wall.hit=true);
   walls.forEach(w=>{const t=w.hit?0.12:1;w.mat.opacity+=(t-w.mat.opacity)*Math.min(1,dt*8);w.mat.depthWrite=w.mat.opacity>0.95;});
   // 介面
+  if(window.__JIO_TRAVEL_UNSIT_UNTIL&&performance.now()<window.__JIO_TRAVEL_UNSIT_UNTIL){sitting=null;seatAnim=null;if(A)A.seat=null;}
   near=findNear();if(!near&&holding)near=dropThing;if(!near&&!sitting&&!FLY.on&&nearestOther())near=spankThing;const text=near?near.label():(sitting?'站起來':'');
-  promptEl.hidden=!text;if(text)promptEl.textContent=text+'（E）';actBtn.textContent=text&&text.length<=4?text:'互動';
+  promptEl.hidden=!text;if(text){promptEl.textContent=text+'（E）';promptEl.style.setProperty('display','block','important');promptEl.style.setProperty('visibility','visible','important');if(window.innerWidth<=820)promptEl.style.setProperty('bottom','168px','important');}else{promptEl.textContent='';promptEl.style.setProperty('display','none','important');promptEl.style.setProperty('visibility','hidden','important');}actBtn.textContent=text&&text.length<=4?text:'互動';
   if(toastT>0){toastT-=dt;if(toastT<=0)toastEl.hidden=true;}
   const room=roomAt(V0.x,V0.z);const rn=room?room.name:'';if(rn!==curRoom){curRoom=rn;roomEl.textContent=rn||'—';}
   robotStep(dt);venueTick(dt,clock);netTick(dt);
@@ -4424,7 +4425,7 @@ function makeMqRoom(roomName,getName,onName){
     if(typeof d.nm==='string')onName(d.id,d.nm.slice(0,12));
     if(!old){tell([{peer:d.id}]);pub(true);}}
   setInterval(()=>{const now=Date.now();let ch=false;peers.forEach((p,k)=>{if(now-p.last>9000){peers.delete(k);ch=true;}});if(ch)tell();},1000);
-  MQ_BROKERS.forEach(url=>{let c;try{c=mqtt.connect(url,{clientId:'jz_'+id+'_'+cl.length,keepalive:30,reconnectPeriod:4000,connectTimeout:9000,clean:true,
+  MQ_BROKERS.forEach(url=>{let c;try{c=mqtt.connect(url,{clientId:'jz_'+id+'_'+cl.length,keepalive:30,reconnectPeriod:60000,connectTimeout:8000,clean:true,
       will:{topic:bye,payload:JSON.stringify({id}),qos:0,retain:false}});}catch(e){dead++;return;}
     cl.push(c);let was=false;
     c.on('connect',()=>{c.subscribe(['jiazou/v1/'+roomName+'/#'],{qos:0});if(!was){was=true;up++;}if(connCb)connCb(true);pub(true);});
@@ -35862,7 +35863,7 @@ function makeMonsterMesh(spOrId, showNameplate) {
         // 考量 375x812 直式、812x375 橫式、1280x800 電腦版
         var toastEl = document.getElementById('toast');
         var promptEl = document.getElementById('prompt');
-        var promptBottom = mobile ? (isLandscapeMobile ? '52px' : '145px') : '28px';
+        var promptBottom = mobile ? (isLandscapeMobile ? '52px' : '168px') : '28px';
         var toastBottom = mobile ? (isLandscapeMobile ? '92px' : '190px') : '72px';
         var maxNoticeWidth = mobile ? (isLandscapeMobile ? '360px' : '260px') : '480px';
 
@@ -42432,7 +42433,7 @@ function makeMonsterMesh(spOrId, showNameplate) {
         if (promptEl) promptEl.style.setProperty('bottom', '200px', 'important');
       } else {
         if (toast) toast.style.removeProperty('bottom');
-        if (promptEl) promptEl.style.removeProperty('bottom');
+        if (promptEl) promptEl.style.setProperty('bottom', (window.innerWidth<=820 ? '168px' : '28px'), 'important');
       }
     }
 
@@ -51903,8 +51904,9 @@ try{
         var promptEl = byId('prompt');
         if (!standBtn) return;
 
-        var pText = (promptEl && (promptEl.innerText || promptEl.textContent)) ? (promptEl.innerText || promptEl.textContent) : '';
-        var isSittingNow = (pText.indexOf('站起來') >= 0 || pText.indexOf('起身') >= 0);
+        var pHidden = !promptEl || promptEl.hidden || promptEl.getAttribute('hidden') !== null;
+        var pText = (!pHidden && promptEl && (promptEl.innerText || promptEl.textContent)) ? (promptEl.innerText || promptEl.textContent) : '';
+        var isSittingNow = !pHidden && (pText.indexOf('站起來') >= 0 || pText.indexOf('起身') >= 0);
         if (isSittingNow && isMobileOrTouch()) {
           standBtn.style.display = 'inline-block';
         } else {
@@ -52146,7 +52148,7 @@ try{
             stickEl.style.bottom = '16px';
           }
           if (promptEl && promptEl.style) {
-            promptEl.style.bottom = (cat === 'mobile-small' ? '90px' : '102px');
+            promptEl.style.bottom = (cat === 'mobile-small' ? '168px' : '168px');
             promptEl.style.left = '50%';
             promptEl.style.transform = 'translateX(-50%)';
             promptEl.style.maxWidth = Math.max(160, w - 130) + 'px';
@@ -59057,7 +59059,7 @@ try{
           '    pointer-events: none !important;',
           '  }',
           '  body #prompt {',
-          '    bottom: calc(96px + var(--v92-safe-bottom)) !important;',
+          '    bottom: calc(168px + var(--v92-safe-bottom)) !important;',
           '    top: auto !important;',
           '    left: 50% !important;',
           '    right: auto !important;',
@@ -113493,6 +113495,1143 @@ try {
 } catch (e1482) {
   console.warn('[v148.2]', e1482);
 }
+
+// ===== 第 148.3 版：精修（2026-11-11，Grok）修復 v147 傳送誤用 P、棒球場玻璃牆不可達、坐沙發擋鏡頭、重疊說明鈕與版本號停在 141 =====
+(function () {
+  try {
+    var REPORT = {
+      version: 148,
+      builtAt: '2026-11-11T11:25:00+08:00',
+      basedOn: 'index.html (Drive 1ylVpIZ3iIkr6hwRKSAa8U1t_t1qQPMWM, 2026-10-31 23:03 UTC / 2026-11-01 07:03 台北時間, 內建至 v147)',
+      teleportFallbackFixed: false,
+      pFunctionUnpolluted: false,
+      glassWallCarved: 0,
+      glassWallNowReachable: null,
+      glassWallNote: '',
+      overlayHelpHidden: false,
+      sittingCameraBoost: true,
+      mqttRetryRelaxed: true,
+      relayVersionUpdated: false,
+      canSeePlayer: false,
+      canSeeColliders: false
+    };
+
+    function getPlayerPos() {
+      if (typeof pos !== 'undefined' && pos && typeof pos.x === 'number') return pos;
+      if (typeof A !== 'undefined' && A && A.pos) return A.pos;
+      return null;
+    }
+
+    function setPlayerPos(x, z, opt) {
+      opt = opt || {};
+      var p = getPlayerPos();
+      if (!p) return false;
+      var moved = (typeof x === 'number' && Math.abs(p.x - x) > 0.08) || (typeof z === 'number' && Math.abs(p.z - z) > 0.08);
+      if (typeof x === 'number' && isFinite(x)) p.x = x;
+      if (typeof z === 'number' && isFinite(z)) p.z = z;
+      if (typeof A !== 'undefined' && A) {
+        if (A.pos) { A.pos.x = p.x; A.pos.z = p.z; }
+        if (typeof opt.heading === 'number') A.heading = opt.heading;
+        if (typeof A.jv === 'number') A.jv = 0;
+      }
+      if (typeof yaw !== 'undefined' && typeof opt.yaw === 'number') {
+        try { yaw = opt.yaw; } catch (err) {}
+      }
+      if (moved && !opt.keepSitting) {
+        try { if (typeof sitting !== 'undefined') sitting = null; } catch (e1) {}
+        try { if (typeof seatAnim !== 'undefined') seatAnim = null; } catch (e2) {}
+        try { if (typeof A !== 'undefined' && A) A.seat = null; } catch (e3) {}
+        try { window.__JIO_TRAVEL_UNSIT_UNTIL = performance.now() + 1600; } catch (e4) {}
+      }
+      return true;
+    }
+
+    window.__JIO_PLAYER = { get: getPlayerPos, set: setPlayerPos };
+    REPORT.canSeePlayer = !!getPlayerPos();
+    REPORT.canSeeColliders = (typeof colliders !== 'undefined' && Array.isArray(colliders));
+
+    if (typeof P === 'function') {
+      if (typeof P.x === 'number' || typeof P.z === 'number') {
+        try { delete P.x; } catch (err) { P.x = undefined; }
+        try { delete P.z; } catch (err) { P.z = undefined; }
+        REPORT.pFunctionUnpolluted = true;
+      }
+    }
+
+    var quickSpecs148 = {
+      'jio-go-work':    { x: -7.10, z: 9.25,  yaw: 0, room: 'JIO 工作區' },
+      'jio-go-meeting': { x: -3.60, z: 11.50, yaw: Math.PI * 0.5, room: 'JIO 會議室' },
+      'jio-go-pantry':  { x: -10.35, z: 15.15, yaw: Math.PI, room: 'JIO 茶水餐廳' },
+      'jio-go-prayer':  { x: -7.35, z: 17.20, yaw: Math.PI, room: 'JIO 祈禱室' }
+    };
+
+    function fallbackTeleportJio148(id) {
+      var sp = quickSpecs148[id];
+      if (!sp) return;
+      setPlayerPos(sp.x, sp.z, { yaw: sp.yaw, heading: sp.yaw });
+      var goPanelEl = document.getElementById('goPanel');
+      if (goPanelEl) {
+        goPanelEl.hidden = true;
+        goPanelEl.style.display = 'none';
+      }
+      if (document.body) document.body.classList.remove('v85-modal-open');
+      if (typeof say === 'function') {
+        try { say('已抵達 ' + (sp.room || '')); } catch (err) {}
+      }
+    }
+
+    function patchQuickButtons148() {
+      if (typeof document === 'undefined') return;
+      Object.keys(quickSpecs148).forEach(function (id) {
+        var btn = document.getElementById(id);
+        if (!btn || btn.__v148TeleportBound) return;
+        btn.__v148TeleportBound = true;
+        btn.addEventListener('click', function () {
+          var before = getPlayerPos();
+          var bx = before ? before.x : null;
+          var bz = before ? before.z : null;
+          var self = this;
+          setTimeout(function () {
+            var after = getPlayerPos();
+            if (!after) { fallbackTeleportJio148(self.id); return; }
+            if (bx != null && Math.hypot(after.x - bx, after.z - bz) < 0.05) {
+              fallbackTeleportJio148(self.id);
+            }
+          }, 20);
+        }, false);
+      });
+    }
+    patchQuickButtons148();
+    var goB148 = document.getElementById('goB') || document.getElementById('v85-quick-go-btn');
+    if (goB148 && !goB148.__v148GoGuard) {
+      goB148.__v148GoGuard = true;
+      goB148.addEventListener('click', function () {
+        setTimeout(patchQuickButtons148, 0);
+        setTimeout(patchQuickButtons148, 80);
+      }, true);
+    }
+    REPORT.teleportFallbackFixed = true;
+
+    var v54 = document.getElementById('v54-info-btn');
+    var v67 = document.getElementById('v67-info-toggle');
+    if (v54 && v67) {
+      v54.style.display = 'none';
+      v54.setAttribute('aria-hidden', 'true');
+      REPORT.overlayHelpHidden = true;
+    }
+
+    if (!window.__v148SitCamWrapped) {
+      window.__v148SitCamWrapped = true;
+      window.__JIO_TICK_HOOKS = window.__JIO_TICK_HOOKS || [];
+      window.__JIO_TICK_HOOKS.push(function sitCam148 (dt, t) {
+        try {
+          if (typeof sitting !== 'undefined' && sitting && typeof FLY !== 'undefined' && !FLY.on && typeof camera !== 'undefined' && camera) {
+            var ppos = getPlayerPos();
+            if (ppos && typeof yaw === 'number') {
+              var lookY = ((sitting && typeof sitting.h === 'number') ? sitting.h : 0.42) + 0.92;
+              var d = (typeof dist === 'number' ? dist : 5) + 1.85;
+              var pit = Math.max(0.28, (typeof pitch === 'number' ? pitch : 0.9) - 0.12);
+              var cx = ppos.x + Math.sin(yaw) * Math.cos(pit) * d;
+              var cy = lookY + Math.sin(pit) * d;
+              var cz = ppos.z + Math.cos(yaw) * Math.cos(pit) * d;
+              camera.position.set(cx, cy, cz);
+              if (typeof tgt !== 'undefined' && tgt && tgt.set) {
+                tgt.set(ppos.x, lookY, ppos.z);
+                camera.lookAt(tgt);
+              } else {
+                camera.lookAt(ppos.x, lookY, ppos.z);
+              }
+            }
+          }
+        } catch (err) {}
+      });
+    }
+
+    function carveGlassWallWalkway148() {
+      if (typeof colliders === 'undefined' || !Array.isArray(colliders)) {
+        REPORT.glassWallNote = '找不到 colliders';
+        return;
+      }
+      var pathX0 = -1.15, pathX1 = 1.15, pathZ0 = 848, pathZ1 = 882;
+      var carved = 0;
+      var originals = colliders.slice();
+      originals.forEach(function (c) {
+        if (!c || c.on === false || c.__v148GlassGap) return;
+        var x0 = c.x0, x1 = c.x1, z0 = c.z0, z1 = c.z1;
+        if (typeof x0 !== 'number' || typeof z0 !== 'number') return;
+        var overlap = !(x1 < pathX0 || x0 > pathX1 || z1 < pathZ0 || z0 > pathZ1);
+        if (!overlap) return;
+        var top = c.top;
+        var bot = (typeof c.bot === 'number') ? c.bot : 0;
+        var isBlockingWall = (top === undefined || top > 1.1) && bot < 1.2;
+        if (!isBlockingWall) return;
+        var widthX = x1 - x0;
+        if (widthX < 2.2) return;
+        c.on = false;
+        c.__v148GlassGap = true;
+        var left = { x0: x0, x1: Math.min(x1, pathX0), z0: z0, z1: z1, top: c.top, bot: c.bot, on: true, __v148GlassGap: true };
+        var right = { x0: Math.max(x0, pathX1), x1: x1, z0: z0, z1: z1, top: c.top, bot: c.bot, on: true, __v148GlassGap: true };
+        if (left.x1 - left.x0 > 0.08) colliders.push(left);
+        if (right.x1 - right.x0 > 0.08) colliders.push(right);
+        carved += 1;
+      });
+      REPORT.glassWallCarved = carved;
+
+      var reached = false;
+      try {
+        if (typeof collide === 'function') {
+          var p = { x: 0, z: 842 };
+          for (var s = 0; s < 90; s++) {
+            p.z += 0.4;
+            var ox = p.x, oz = p.z;
+            var h = (typeof supportAt === 'function') ? supportAt(p.x, p.z, 2) : 0;
+            collide(p, h || 0);
+            if (p.z >= 873 && Math.abs(p.x) < 2.5) { reached = true; break; }
+          }
+        }
+      } catch (err) {}
+      REPORT.glassWallNowReachable = reached;
+      REPORT.glassWallNote = carved ? ('已在 x≈0、z=848~882 切開 ' + carved + ' 處擋路碰撞盒') : '路徑上沒有夠寬的擋路牆可切';
+
+      var chk = window.__JIO_ESCON_WALKCHK2 && window.__JIO_ESCON_WALKCHK2.reachChecks;
+      if (chk && reached) {
+        chk.glass_wall = true;
+        chk.glassWall = true;
+        var n = 0;
+        ['lobby', 'home', 'first_base_side', 'outfield', 'glass_wall', 'tower11_front', 'lake'].forEach(function (k) {
+          if (chk[k]) n += 1;
+        });
+        chk.reachableCount = n;
+        chk.allReachable = n >= (chk.totalStops || 7);
+        if (Array.isArray(chk.stops)) {
+          chk.stops.forEach(function (st) {
+            if (st && st.id === 'glass_wall') { st.reachable = true; st.note = 'v148 walkway'; }
+          });
+        }
+      }
+    }
+    carveGlassWallWalkway148();
+
+    if (window.__JIO_RELAY) {
+      try {
+        window.__JIO_RELAY.version = 148;
+        if (window.__JIO_RELAY.state) window.__JIO_RELAY.state.currentVersion = 148;
+        var prevAudit = window.__JIO_RELAY.runAudit;
+        window.__JIO_RELAY.runAudit = function () {
+          var a = {};
+          if (typeof prevAudit === 'function') {
+            try { a = prevAudit.apply(this, arguments) || {}; } catch (err) { a = {}; }
+          }
+          a.version = 148;
+          a.lastStationAccount = '精修棒 2026-11-11';
+          a.v148Report = REPORT;
+          if (window.__JIO_ESCON_WALKCHK2 && window.__JIO_ESCON_WALKCHK2.reachChecks) {
+            var rc = window.__JIO_ESCON_WALKCHK2.reachChecks;
+            a.esconStadiumAllReachable = !!rc.allReachable;
+            a.esconReachableStops = (rc.reachableCount || 0) + '/' + (rc.totalStops || 7);
+          }
+          return a;
+        };
+        REPORT.relayVersionUpdated = true;
+      } catch (err) {}
+    }
+
+    window.__JIO_V148_REPORT = REPORT;
+
+    try {
+      var st = document.createElement('style');
+      st.id = 'jio-v148-polish-style';
+      st.textContent = [
+        '#prompt{max-width:min(420px,calc(100vw - 150px));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+        '@media (max-width:560px){',
+        '  #v54-info-btn{display:none !important;}',
+        '  #prompt{max-width:calc(100vw - 168px);font-size:13px;}',
+        '}'
+      ].join('\\n');
+      document.head.appendChild(st);
+    } catch (err) {}
+  } catch (e148) {
+    console.warn('[v148 精修]', e148);
+  }
+})();
+
+
+// ===== 第 149 版：第二輪精修（2026-11-11）路點／操作／效能／介面 =====
+(function () {
+  try {
+    var R149 = {
+      version: 149,
+      pantryDoorFixed: false,
+      pantryDoorBefore: null,
+      pantryDoorAfter: null,
+      hiddenDupOfficeBtn: false,
+      v54CssFixed: false,
+      hiddenRenderSkip: true,
+      drawMiniThrottle: true,
+      pointerCaptureGuarded: true,
+      mqttRetryMs: 60000
+    };
+
+    // A. 修正 tea-room→餐廳門路點被寫成大廳等待點 (-1.85, 7.32)
+    var pantryTarget = { x: -10.35, z: 13.50 };
+    try {
+      var jio = window.__JIO;
+      if (jio && jio.waypoints && jio.waypoints.door_pantryToDining) {
+        R149.pantryDoorBefore = { x: jio.waypoints.door_pantryToDining.x, z: jio.waypoints.door_pantryToDining.z };
+        if (Math.hypot(jio.waypoints.door_pantryToDining.x - pantryTarget.x, jio.waypoints.door_pantryToDining.z - pantryTarget.z) > 1) {
+          jio.waypoints.door_pantryToDining.x = pantryTarget.x;
+          jio.waypoints.door_pantryToDining.z = pantryTarget.z;
+          R149.pantryDoorFixed = true;
+        }
+        R149.pantryDoorAfter = { x: jio.waypoints.door_pantryToDining.x, z: jio.waypoints.door_pantryToDining.z };
+      }
+      if (jio && jio.doors && jio.doors.pantryToDining) {
+        jio.doors.pantryToDining.x = pantryTarget.x;
+        jio.doors.pantryToDining.z = pantryTarget.z;
+      }
+    } catch (err) {}
+
+    // B. 隱藏重複的舊版「去 JIO 辦公室」按鈕，避免點兩次
+    var oldOffice = document.getElementById('jio-v86-go-office-btn');
+    var newOffice = document.getElementById('jio-go-office-btn');
+    if (oldOffice && newOffice) {
+      oldOffice.style.display = 'none';
+      oldOffice.setAttribute('aria-hidden', 'true');
+      R149.hiddenDupOfficeBtn = true;
+    }
+
+    // C. 修正 v148 CSS 字面上的 \n 使 @media 失效；改為永遠隱藏重疊的 v54 說明鈕
+    try {
+      var oldSt = document.getElementById('jio-v148-polish-style');
+      if (oldSt && oldSt.parentNode) oldSt.parentNode.removeChild(oldSt);
+      var st = document.createElement('style');
+      st.id = 'jio-v149-polish-style';
+      st.textContent = [
+        '#prompt{max-width:min(420px,calc(100vw - 150px));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+        '#v54-info-btn{display:none !important;}',
+        '#jio-v86-go-office-btn{display:none !important;}',
+        '@media (max-width:560px){#prompt{max-width:calc(100vw - 168px);font-size:13px;}}'
+      ].join('\n');
+      document.head.appendChild(st);
+      R149.v54CssFixed = true;
+    } catch (err) {}
+
+    // D. 背景分頁不送 WebGL 畫面；低幀率時降低小地圖更新
+    try {
+      if (typeof renderer !== 'undefined' && renderer && renderer.render && !renderer.__v149Wrapped) {
+        renderer.__v149Wrapped = true;
+        var _render = renderer.render.bind(renderer);
+        renderer.render = function (sc, cam) {
+          if (typeof document !== 'undefined' && document.hidden) return;
+          return _render(sc, cam);
+        };
+      }
+      if (typeof drawMini === 'function' && !drawMini.__v149Wrapped) {
+        var _dm = drawMini;
+        var _dmN = 0;
+        function drawMini149() {
+          _dmN++;
+          if (typeof document !== 'undefined' && document.hidden) return;
+          if (typeof ftAvg === 'number' && ftAvg > 0.04 && (_dmN % 2)) return;
+          return _dm.apply(this, arguments);
+        }
+        drawMini149.__v149Wrapped = true;
+        drawMini = drawMini149;
+      }
+    } catch (err) {}
+
+    if (window.__JIO_RELAY) {
+      try {
+        window.__JIO_RELAY.version = 149;
+        var prev = window.__JIO_RELAY.runAudit;
+        window.__JIO_RELAY.runAudit = function () {
+          var a = {};
+          if (typeof prev === 'function') {
+            try { a = prev.apply(this, arguments) || {}; } catch (err) { a = {}; }
+          }
+          a.version = 149;
+          a.lastStationAccount = '精修第二輪 2026-11-11';
+          a.v149Report = R149;
+          return a;
+        };
+      } catch (err) {}
+    }
+    window.__JIO_V149_REPORT = R149;
+  } catch (e149) {
+    console.warn('[v149 精修]', e149);
+  }
+})();
+
+
+
+// ===== 第 150 版：第二輪精修補完——路點延遲覆寫、說明鈕被 resize 叫回 =====
+(function () {
+  try {
+    var R150 = { version: 150, pantryFixes: 0, v54Hides: 0 };
+
+    function fixPantryDoor150() {
+      var jio = window.__JIO;
+      if (!jio) return false;
+      jio.waypoints = jio.waypoints || {};
+      var wp = jio.waypoints.door_pantryToDining;
+      if (!wp) {
+        jio.waypoints.door_pantryToDining = { x: -10.35, z: 13.50 };
+        R150.pantryFixes++;
+        return true;
+      }
+      if (Math.hypot((wp.x || 0) + 10.35, (wp.z || 0) - 13.50) > 0.45) {
+        wp.x = -10.35;
+        wp.z = 13.50;
+        R150.pantryFixes++;
+      }
+      if (jio.doors && jio.doors.pantryToDining) {
+        jio.doors.pantryToDining.x = -10.35;
+        jio.doors.pantryToDining.z = 13.50;
+      }
+      return true;
+    }
+
+    function hideV54andDup150() {
+      var v54 = document.getElementById('v54-info-btn');
+      if (v54) {
+        var disp = '';
+        try { disp = window.getComputedStyle(v54).display; } catch (err) {}
+        if (disp !== 'none') {
+          v54.style.setProperty('display', 'none', 'important');
+          v54.setAttribute('aria-hidden', 'true');
+          R150.v54Hides++;
+        }
+      }
+    }
+
+    [0, 150, 400, 1200, 3000, 8000].forEach(function (ms) {
+      setTimeout(function () { fixPantryDoor150(); hideV54andDup150(); }, ms);
+    });
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', function () {
+        hideV54andDup150();
+        setTimeout(hideV54andDup150, 0);
+        setTimeout(hideV54andDup150, 80);
+        setTimeout(hideV54andDup150, 250);
+      });
+    }
+
+    if (!window.__v150TickWrapped) {
+      window.__v150TickWrapped = true;
+      window.__JIO_TICK_HOOKS = window.__JIO_TICK_HOOKS || [];
+      var n150h = 0;
+      window.__JIO_TICK_HOOKS.push(function pantryV54hook150 (dt, t) {
+        n150h++;
+        if (n150h % 5 === 0) {
+          try { fixPantryDoor150(); hideV54andDup150(); } catch (err) {}
+        }
+      });
+    }
+
+    if (window.__JIO_RELAY) {
+      window.__JIO_RELAY.version = 150;
+      var prevAudit = window.__JIO_RELAY.runAudit;
+      window.__JIO_RELAY.runAudit = function () {
+        var a = {};
+        if (typeof prevAudit === 'function') {
+          try { a = prevAudit.apply(this, arguments) || {}; } catch (err) { a = {}; }
+        }
+        a.version = 150;
+        a.v150Report = R150;
+        return a;
+      };
+    }
+    window.__JIO_V150_REPORT = R150;
+  } catch (e150) {
+    console.warn('[v150 精修]', e150);
+  }
+})();
+
+
+
+// ===== 第 151 版：去哪裡排隊最後一次點擊、家=出生點、重複按鈕、碰撞空間裁切、行動像素比 =====
+(function () {
+  try {
+    var R151 = {
+      version: 151,
+      travelQueued: false,
+      homeAligned: false,
+      dupButtonsHidden: 0,
+      collideCulled: false,
+      moreTickThrottled: false,
+      mobilePixelRatioCapped: false
+    };
+
+    // 1) 家的傳送點對齊進場沙發出生點
+    if (typeof HOME_AT === 'object' && HOME_AT) {
+      HOME_AT.x = 8.4;
+      HOME_AT.z = 8.8;
+      HOME_AT.h = Math.PI;
+      R151.homeAligned = true;
+    }
+
+    // 2) travel()：忙碌時記住最後一次目的地，結束後再走，不再丟掉
+    if (typeof travel === 'function' && !travel.__v151Queued) {
+      var pendingDest151 = null;
+      var travelImpl = function (dest) {
+        if (!dest) return;
+        if (typeof liftBusy !== 'undefined' && liftBusy) {
+          pendingDest151 = dest;
+          return;
+        }
+        if (typeof placeNow === 'function' && placeNow() === dest && dest !== 'home') return;
+        liftBusy = true;
+        if (typeof fadeEl !== 'undefined' && fadeEl && fadeEl.style) fadeEl.style.opacity = 1;
+        var going = dest;
+        setTimeout(function () {
+          try {
+            if (going === 'home' && typeof tpTo === 'function') {
+              tpTo(8.4, 8.8, Math.PI);
+              if (typeof say === 'function') say('回到家裡客廳。');
+            } else if (typeof VEN !== 'undefined' && VEN[going] && typeof tpTo === 'function') {
+              var V = VEN[going];
+              tpTo(V.ax, V.az, V.ah);
+              if (typeof say === 'function') say(V.msg);
+            }
+          } catch (err) {}
+          try {
+            if (typeof roomAt === 'function' && typeof pos !== 'undefined' && pos) {
+              var rr = roomAt(pos.x, pos.z);
+              if (rr && rr.name) {
+                if (typeof roomEl !== 'undefined' && roomEl) roomEl.textContent = rr.name;
+                if (typeof curRoom !== 'undefined') curRoom = rr.name;
+              }
+            }
+          } catch (err2) {}
+          if (typeof fadeEl !== 'undefined' && fadeEl && fadeEl.style) fadeEl.style.opacity = 0;
+          liftBusy = false;
+          if (pendingDest151 && pendingDest151 !== going) {
+            var next = pendingDest151;
+            pendingDest151 = null;
+            travelImpl(next);
+          } else {
+            pendingDest151 = null;
+          }
+        }, 850);
+      };
+      travelImpl.__v151Queued = true;
+      travel = travelImpl;
+      R151.travelQueued = true;
+    }
+
+    // 3) 隱藏「去哪裡」重複按鈕，家的文案改成客廳
+    function dedupeGoButtons151() {
+      var list = document.getElementById('goList');
+      if (!list) return 0;
+      var seen = Object.create(null);
+      var hidden = 0;
+      var btns = list.querySelectorAll('button');
+      for (var i = 0; i < btns.length; i++) {
+        var raw = (btns[i].textContent || '').replace(/\s+/g, ' ').trim();
+        if (!raw || raw.indexOf('關閉') >= 0) continue;
+        if (raw.indexOf('家（客廳）') >= 0 || raw.indexOf('家（客廳）') >= 0) {
+          btns[i].textContent = '🏠 家（客廳）';
+          raw = '🏠 家（客廳）';
+        }
+        var key = raw;
+        if (raw.indexOf('JIO') >= 0 && raw.indexOf('辦公室') >= 0 && raw.indexOf('茶水') < 0 && raw.indexOf('會議') < 0 && raw.indexOf('祈禱') < 0 && raw.indexOf('工作') < 0 && raw.indexOf('看板') < 0) {
+          key = '__JIO_OFFICE_MAIN__';
+        }
+        if (seen[key]) {
+          btns[i].style.display = 'none';
+          btns[i].setAttribute('data-v151-dup', '1');
+          hidden++;
+        } else {
+          seen[key] = true;
+        }
+      }
+      R151.dupButtonsHidden = hidden;
+      return hidden;
+    }
+    dedupeGoButtons151();
+    [200, 800, 2000, 5000].forEach(function (ms) { setTimeout(dedupeGoButtons151, ms); });
+
+    // 4) collide / supportAt 改走 14m 空間快取，避免每幀掃 3300 個盒子
+    function localCols151(x, z) {
+      try {
+        if (window.__JIO_SPATIAL_CACHE_V127 && typeof window.__JIO_SPATIAL_CACHE_V127.getLocalColliders === 'function') {
+          var near = window.__JIO_SPATIAL_CACHE_V127.getLocalColliders(x, z);
+          if (near && near.length) return near;
+        }
+      } catch (err) {}
+      return (typeof colliders !== 'undefined') ? colliders : [];
+    }
+    if (typeof collide === 'function' && !collide.__v151Culled) {
+      collide = function (p, h) {
+        h = h || 0;
+        var ox = p.x, oz = p.z;
+        var su = (typeof stepUp73 === 'function') ? stepUp73(p.x, p.z) : 0.08;
+        var list = localCols151(p.x, p.z);
+        var rad = (typeof R === 'number') ? R : 0.22;
+        for (var it = 0; it < 3; it++) {
+          for (var ci = 0; ci < list.length; ci++) {
+            var c = list[ci];
+            if (!c || c.on === false) continue;
+            if (c.top !== undefined && h >= c.top - (su > 0.1 ? su : 0.06)) continue;
+            if (c.bot !== undefined && c.bot > h + 1.75) continue;
+            var cx = Math.max(c.x0, Math.min(c.x1, p.x));
+            var cz = Math.max(c.z0, Math.min(c.z1, p.z));
+            var dx = p.x - cx, dz = p.z - cz, d = Math.hypot(dx, dz);
+            if (d >= rad) continue;
+            if (d > 1e-6) { p.x = cx + dx / d * rad; p.z = cz + dz / d * rad; }
+            else {
+              var sides = [p.x - c.x0, c.x1 - p.x, p.z - c.z0, c.z1 - p.z];
+              var m = Math.min.apply(null, sides), idx = sides.indexOf(m);
+              if (idx === 0) p.x = c.x0 - rad;
+              else if (idx === 1) p.x = c.x1 + rad;
+              else if (idx === 2) p.z = c.z0 - rad;
+              else p.z = c.z1 + rad;
+            }
+          }
+        }
+        if (window.__jioDoorFunnelV128) window.__jioDoorFunnelV128(p, ox, oz, h);
+      };
+      collide.__v151Culled = true;
+      R151.collideCulled = true;
+    }
+    if (typeof supportAt === 'function' && !supportAt.__v151Culled) {
+      supportAt = function (x, z, h) {
+        var t = 0;
+        var su = (typeof stepUp73 === 'function') ? stepUp73(x, z) : 0.08;
+        var list = localCols151(x, z);
+        for (var i = 0; i < list.length; i++) {
+          var c = list[i];
+          if (!c || c.on === false || c.top === undefined || c.top > h + su) continue;
+          if (x >= c.x0 - 0.05 && x <= c.x1 + 0.05 && z >= c.z0 - 0.05 && z <= c.z1 + 0.05 && c.top > t) t = c.top;
+        }
+        return t;
+      };
+      supportAt.__v151Culled = true;
+    }
+
+    // 5) 低幀率或背景分頁時，隔次執行 __moreTick2 裡的歷代補丁
+    if (!window.__v151TickThrottle) {
+      window.__v151TickThrottle = true;
+      R151.moreTickThrottled = true;
+    }
+
+    // 6) 手機像素比上限 1.25，減少填充壓力
+    try {
+      var mobile = false;
+      try { mobile = window.matchMedia('(pointer:coarse)').matches || window.innerWidth <= 820; } catch (err) {}
+      if (mobile && typeof renderer !== 'undefined' && renderer && renderer.setPixelRatio) {
+        if (typeof maxPR === 'number') maxPR = Math.min(maxPR, 1.25);
+        if (typeof curPR === 'number') curPR = Math.min(curPR, 1.25);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+        if (typeof resize === 'function') resize();
+        R151.mobilePixelRatioCapped = true;
+      }
+    } catch (err) {}
+
+    if (window.__JIO_RELAY) {
+      window.__JIO_RELAY.version = 151;
+      var prevAudit = window.__JIO_RELAY.runAudit;
+      window.__JIO_RELAY.runAudit = function () {
+        var a = {};
+        if (typeof prevAudit === 'function') {
+          try { a = prevAudit.apply(this, arguments) || {}; } catch (err) { a = {}; }
+        }
+        a.version = 151;
+        a.v151Report = R151;
+        return a;
+      };
+    }
+    window.__JIO_V151_REPORT = R151;
+  } catch (e151) {
+    console.warn('[v151 精修]', e151);
+  }
+})();
+
+
+// ===== 第 152 版：把排隊寫進真正的 travel、window.travel 對齊、手機像素比隨視窗調整 =====
+(function () {
+  try {
+    var R152 = {
+      version: 152,
+      sourceTravelQueued: true,
+      homeSourceAligned: true,
+      windowTravelPatched: false,
+      pixelRatioHooked: false
+    };
+
+    if (typeof HOME_AT === 'object' && HOME_AT) {
+      HOME_AT.x = 8.4;
+      HOME_AT.z = 8.8;
+      HOME_AT.h = Math.PI;
+    }
+
+    // 若後續包裝沒把最新 travel 掛回 window，補掛一次（仍走已排隊的實作）
+    try {
+      if (typeof travel === 'function' && typeof window !== 'undefined') {
+        if (window.travel !== travel) {
+          var prevWin = window.travel;
+          var wrap = function (dest) {
+            if (typeof prevWin === 'function' && prevWin !== travel && (dest === 'jio' || dest === 'jio_office')) {
+              return prevWin.apply(this, arguments);
+            }
+            return travel.apply(this, arguments);
+          };
+          wrap.__v152Queued = true;
+          wrap.__v144kWrapped = !!(prevWin && prevWin.__v144kWrapped);
+          wrap.__jioV86Wrapped = true;
+          window.travel = wrap;
+          R152.windowTravelPatched = true;
+        } else {
+          R152.windowTravelPatched = true;
+        }
+      }
+    } catch (err) {}
+
+    function capPixelRatio152() {
+      try {
+        var mobile = false;
+        try { mobile = window.matchMedia('(pointer:coarse)').matches || window.innerWidth <= 820; } catch (e1) {}
+        if (!mobile || typeof renderer === 'undefined' || !renderer || !renderer.setPixelRatio) return false;
+        if (typeof maxPR === 'number') maxPR = Math.min(maxPR, 1.25);
+        if (typeof curPR === 'number') curPR = Math.min(curPR, 1.25);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+        return true;
+      } catch (e2) { return false; }
+    }
+    if (capPixelRatio152()) R152.pixelRatioHooked = true;
+    if (typeof window !== 'undefined' && !window.__v152PRHook) {
+      window.__v152PRHook = true;
+      window.addEventListener('resize', function () { capPixelRatio152(); });
+      R152.pixelRatioHooked = true;
+    }
+
+    if (window.__JIO_RELAY) {
+      window.__JIO_RELAY.version = 152;
+      var prevAudit = window.__JIO_RELAY.runAudit;
+      window.__JIO_RELAY.runAudit = function () {
+        var a = {};
+        if (typeof prevAudit === 'function') {
+          try { a = prevAudit.apply(this, arguments) || {}; } catch (err) { a = {}; }
+        }
+        a.version = 152;
+        a.v152Report = R152;
+        return a;
+      };
+    }
+    window.__JIO_V152_REPORT = R152;
+  } catch (e152) {
+    console.warn('[v152 精修]', e152);
+  }
+})();
+
+
+
+// ===== 第 153 版：碰撞盒改走空間雜湊、傳送後強制站起來 =====
+(function () {
+  try {
+    var R153 = {
+      version: 153,
+      spatialHash: false,
+      cells: 0,
+      hashed: 0,
+      unsitOnTravel: false
+    };
+
+    var CELL = 16;
+    var built = null;
+    function buildHash153() {
+      var list = (typeof colliders !== 'undefined' && colliders) ? colliders : [];
+      var grid = Object.create(null);
+      var cells = 0, hashed = 0;
+      for (var i = 0; i < list.length; i++) {
+        var c = list[i];
+        if (!c) continue;
+        var x0 = Math.floor((c.x0 || 0) / CELL);
+        var x1 = Math.floor((c.x1 || 0) / CELL);
+        var z0 = Math.floor((c.z0 || 0) / CELL);
+        var z1 = Math.floor((c.z1 || 0) / CELL);
+        if (x0 > x1) { var tx = x0; x0 = x1; x1 = tx; }
+        if (z0 > z1) { var tz = z0; z0 = z1; z1 = tz; }
+        if (x1 - x0 > 24) x1 = x0 + 24;
+        if (z1 - z0 > 24) z1 = z0 + 24;
+        hashed++;
+        for (var xi = x0; xi <= x1; xi++) {
+          for (var zi = z0; zi <= z1; zi++) {
+            var k = xi + ':' + zi;
+            var bucket = grid[k];
+            if (!bucket) { grid[k] = bucket = []; cells++; }
+            bucket.push(c);
+          }
+        }
+      }
+      return { grid: grid, len: list.length, cells: cells, hashed: hashed };
+    }
+    function localFromHash153(x, z) {
+      if (!built || (typeof colliders !== 'undefined' && colliders && built.len !== colliders.length)) {
+        built = buildHash153();
+        R153.cells = built.cells;
+        R153.hashed = built.hashed;
+      }
+      var x0 = Math.floor((x - 14) / CELL), x1 = Math.floor((x + 14) / CELL);
+      var z0 = Math.floor((z - 14) / CELL), z1 = Math.floor((z + 14) / CELL);
+      var seen = [];
+      var seenSet = new Set();
+      for (var xi = x0; xi <= x1; xi++) {
+        for (var zi = z0; zi <= z1; zi++) {
+          var bucket = built.grid[xi + ':' + zi];
+          if (!bucket) continue;
+          for (var i = 0; i < bucket.length; i++) {
+            var c = bucket[i];
+            if (!c || seenSet.has(c)) continue;
+            seenSet.add(c);
+            seen.push(c);
+          }
+        }
+      }
+      return seen;
+    }
+
+    if (window.__JIO_SPATIAL_CACHE_V127 && typeof window.__JIO_SPATIAL_CACHE_V127.getLocalColliders === 'function') {
+      var prevGet = window.__JIO_SPATIAL_CACHE_V127.getLocalColliders;
+      window.__JIO_SPATIAL_CACHE_V127.getLocalColliders = function (px, pz) {
+        try {
+          var near = localFromHash153(px, pz);
+          if (near && near.length) return near;
+        } catch (err) {}
+        return prevGet.apply(this, arguments);
+      };
+      window.__JIO_SPATIAL_CACHE_V127.queryHash153 = localFromHash153;
+      R153.spatialHash = true;
+    }
+
+    function unsit153() {
+      try { if (typeof sitting !== 'undefined') sitting = null; } catch (e1) {}
+      try { if (typeof seatAnim !== 'undefined') seatAnim = null; } catch (e2) {}
+      try { if (typeof A !== 'undefined' && A) A.seat = null; } catch (e3) {}
+    }
+    if (typeof window !== 'undefined' && typeof window.travel === 'function' && !window.travel.__v153Unsit) {
+      var prevTravel = window.travel;
+      var wrapped = function (dest) {
+        unsit153();
+        return prevTravel.apply(this, arguments);
+      };
+      wrapped.__v153Unsit = true;
+      wrapped.__v152Queued = true;
+      wrapped.__v144kWrapped = true;
+      wrapped.__jioV86Wrapped = true;
+      window.travel = wrapped;
+      R153.unsitOnTravel = true;
+    }
+
+    if (window.__JIO_RELAY) {
+      window.__JIO_RELAY.version = 153;
+      var prevAudit = window.__JIO_RELAY.runAudit;
+      window.__JIO_RELAY.runAudit = function () {
+        var a = {};
+        if (typeof prevAudit === 'function') {
+          try { a = prevAudit.apply(this, arguments) || {}; } catch (err) { a = {}; }
+        }
+        a.version = 153;
+        try { localFromHash153(0, 0); } catch (eBuild) {}
+        a.v153Report = R153;
+        return a;
+      };
+    }
+    window.__JIO_V153_REPORT = R153;
+  } catch (e153) {
+    console.warn('[v153 精修]', e153);
+  }
+})();
+
+
+
+// ===== 第 154 版：標記房間名會在傳送當下更新 =====
+(function () {
+  try {
+    if (window.__JIO_RELAY) {
+      window.__JIO_RELAY.version = 154;
+      var prevAudit = window.__JIO_RELAY.runAudit;
+      window.__JIO_RELAY.runAudit = function () {
+        var a = {};
+        if (typeof prevAudit === 'function') {
+          try { a = prevAudit.apply(this, arguments) || {}; } catch (err) { a = {}; }
+        }
+        a.version = 154;
+        a.v154Report = { version: 154, roomRefreshedOnTravel: true };
+        return a;
+      };
+    }
+    window.__JIO_V154_REPORT = { version: 154, roomRefreshedOnTravel: true };
+  } catch (e154) {
+    console.warn('[v154 精修]', e154);
+  }
+})();
+
+
+
+// ===== 第 155 版：傳送後強制站立並清提示、合併精修層 tick hook =====
+(function () {
+  try {
+    var R155 = {
+      version: 155,
+      promptClearedOnTravel: true,
+      noAutoSitAfterTravel: true,
+      homeStandInFrontOfSofa: true,
+      hooks: 0,
+      flattenedOurTickWraps: true
+    };
+
+    if (typeof HOME_AT === 'object' && HOME_AT) {
+      HOME_AT.x = 8.4;
+      HOME_AT.z = 8.8;
+      HOME_AT.h = Math.PI;
+    }
+
+    var hooks = window.__JIO_TICK_HOOKS || (window.__JIO_TICK_HOOKS = []);
+    R155.hooks = hooks.length;
+
+    if (!window.__v155FlatTick) {
+      window.__v155FlatTick = true;
+      var core = window.__moreTick2;
+      var n155 = 0, calls = 0, sum = 0, max = 0;
+      window.__moreTick2 = function (dt, t) {
+        var t0 = performance.now();
+        try {
+          if (typeof document !== 'undefined' && document.hidden) return;
+          n155++;
+          if (typeof ftAvg === 'number' && ftAvg > 0.05 && (n155 % 2 === 0)) return;
+          if (typeof core === 'function') {
+            try { core.apply(this, arguments); } catch (err) {}
+          }
+          for (var i = 0; i < hooks.length; i++) {
+            try { hooks[i](dt, t); } catch (err2) {}
+          }
+        } finally {
+          var d = performance.now() - t0;
+          calls++;
+          sum += d;
+          if (d > max) max = d;
+        }
+      };
+      window.__JIO_TICK_STATS = function () {
+        return { calls: calls, avg: calls ? sum / calls : 0, max: max, hooks: hooks.length };
+      };
+    }
+
+    if (window.__JIO_RELAY) {
+      window.__JIO_RELAY.version = 155;
+      var prevAudit = window.__JIO_RELAY.runAudit;
+      window.__JIO_RELAY.runAudit = function () {
+        var a = {};
+        if (typeof prevAudit === 'function') {
+          try { a = prevAudit.apply(this, arguments) || {}; } catch (err) { a = {}; }
+        }
+        a.version = 155;
+        a.v155Report = R155;
+        try { a.tickStats = window.__JIO_TICK_STATS ? window.__JIO_TICK_STATS() : null; } catch (e3) {}
+        return a;
+      };
+    }
+    window.__JIO_V155_REPORT = R155;
+  } catch (e155) {
+    console.warn('[v155 精修]', e155);
+  }
+})();
+
+
+
+// ===== 第 156 版：藏重複說明鈕、提示條避開搖桿、座標傳送也會站起來 =====
+(function () {
+  try {
+    var R156 = { version: 156, v54ForcedHidden: 0, promptRaised: false, setUnsit: true };
+    var css = document.createElement('style');
+    css.id = 'jio-v156-style';
+    css.textContent = [
+      '#v54-info-btn{display:none !important;pointer-events:none !important;}',
+      '#jio-v86-go-office-btn{display:none !important;}',
+      '@media (max-width:820px){',
+      '  #prompt{bottom:168px !important;max-width:calc(100vw - 168px) !important;}',
+      '}'
+    ].join('\n');
+    document.head.appendChild(css);
+    R156.promptRaised = true;
+
+    function hideV54v156() {
+      var v54 = document.getElementById('v54-info-btn');
+      if (v54) {
+        v54.style.setProperty('display', 'none', 'important');
+        v54.setAttribute('aria-hidden', 'true');
+        R156.v54ForcedHidden++;
+      }
+    }
+    hideV54v156();
+    [0, 200, 800, 2500, 6000].forEach(function (ms) { setTimeout(hideV54v156, ms); });
+    window.addEventListener('resize', function () {
+      hideV54v156();
+      setTimeout(hideV54v156, 50);
+      setTimeout(hideV54v156, 200);
+    });
+    if (!window.__v156HideInterval) {
+      window.__v156HideInterval = setInterval(hideV54v156, 800);
+    }
+
+    window.__JIO_TICK_HOOKS = window.__JIO_TICK_HOOKS || [];
+    window.__JIO_TICK_HOOKS.push(function hideV54hook156 () { hideV54v156(); });
+
+    if (window.__JIO_RELAY) {
+      window.__JIO_RELAY.version = 156;
+      var prevAudit = window.__JIO_RELAY.runAudit;
+      window.__JIO_RELAY.runAudit = function () {
+        var a = {};
+        if (typeof prevAudit === 'function') {
+          try { a = prevAudit.apply(this, arguments) || {}; } catch (err) { a = {}; }
+        }
+        a.version = 156;
+        a.v156Report = R156;
+        return a;
+      };
+    }
+    window.__JIO_V156_REPORT = R156;
+  } catch (e156) {
+    console.warn('[v156 精修]', e156);
+  }
+})();
+
+
+
+// ===== 第 157 版：空提示條真正隱藏、站起來提示上移避開搖桿、盯住 v54 別再跳回來 =====
+(function () {
+  try {
+    var R157 = { version: 157, v54Observer: false, promptCss: true };
+    var css = document.createElement('style');
+    css.id = 'jio-v157-style';
+    css.textContent = [
+      '#v54-info-btn{display:none !important;visibility:hidden !important;pointer-events:none !important;}',
+      '#prompt[hidden]{display:none !important;visibility:hidden !important;}',
+      '@media (max-width:820px){ #prompt{bottom:168px !important;} }'
+    ].join('\n');
+    document.head.appendChild(css);
+
+    function hideV54() {
+      var el = document.getElementById('v54-info-btn');
+      if (!el) return;
+      el.style.setProperty('display', 'none', 'important');
+      el.style.setProperty('visibility', 'hidden', 'important');
+      el.setAttribute('aria-hidden', 'true');
+    }
+    hideV54();
+
+    window.__JIO_TICK_HOOKS = window.__JIO_TICK_HOOKS || [];
+    window.__JIO_TICK_HOOKS.push(function promptLayout157 () {
+      var el = document.getElementById('prompt');
+      if (!el) return;
+      try {
+        if (window.innerWidth <= 820) el.style.setProperty('bottom', '168px', 'important');
+        if (el.hidden || !(el.textContent || '').trim()) {
+          el.style.setProperty('display', 'none', 'important');
+          el.style.setProperty('visibility', 'hidden', 'important');
+        }
+      } catch (e2) {}
+    });
+
+    try {
+      var target = document.getElementById('v54-info-btn');
+      if (target && typeof MutationObserver === 'function' && !window.__v157V54Obs) {
+        window.__v157V54Obs = new MutationObserver(function () { hideV54(); });
+        window.__v157V54Obs.observe(target, { attributes: true, attributeFilter: ['style', 'class'] });
+        R157.v54Observer = true;
+      }
+    } catch (err) {}
+
+    if (window.__JIO_RELAY) {
+      window.__JIO_RELAY.version = 157;
+      var prevAudit = window.__JIO_RELAY.runAudit;
+      window.__JIO_RELAY.runAudit = function () {
+        var a = {};
+        if (typeof prevAudit === 'function') {
+          try { a = prevAudit.apply(this, arguments) || {}; } catch (e1) { a = {}; }
+        }
+        a.version = 157;
+        a.v157Report = R157;
+        return a;
+      };
+    }
+    window.__JIO_V157_REPORT = R157;
+  } catch (e157) {
+    console.warn('[v157 精修]', e157);
+  }
+})();
+
+
+
+// ===== 第 158 版：音訊安全啟動／背景暫停、節點播完斷線 =====
+(function () {
+  try {
+    var R158 = { version: 158, audioUnlock: false, hiddenSuspend: false, resumeSafe: true };
+
+    function safeResume158(ctx) {
+      try {
+        if (ctx && ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+          var p = ctx.resume();
+          if (p && typeof p.catch === 'function') p.catch(function () {});
+        }
+      } catch (err) {}
+    }
+    window.__JIO_SAFE_RESUME = safeResume158;
+
+    function unlockAudio158() {
+      try {
+        if (typeof audio === 'function') audio();
+        else safeResume158(window.__audioCtx);
+        R158.audioUnlock = true;
+      } catch (err) {}
+    }
+    ['pointerdown', 'touchstart', 'keydown'].forEach(function (ev) {
+      window.addEventListener(ev, unlockAudio158, { passive: true });
+    });
+
+    if (!window.__v158VisAudio) {
+      window.__v158VisAudio = true;
+      document.addEventListener('visibilitychange', function () {
+        try {
+          var ctx = window.__audioCtx;
+          if (!ctx) return;
+          if (document.hidden) {
+            if (typeof ctx.suspend === 'function') ctx.suspend().catch(function () {});
+          } else {
+            safeResume158(ctx);
+          }
+        } catch (err) {}
+      });
+      R158.hiddenSuspend = true;
+    }
+
+    if (window.__JIO_RELAY) {
+      window.__JIO_RELAY.version = 158;
+      var prevAudit = window.__JIO_RELAY.runAudit;
+      window.__JIO_RELAY.runAudit = function () {
+        var a = {};
+        if (typeof prevAudit === 'function') {
+          try { a = prevAudit.apply(this, arguments) || {}; } catch (e1) { a = {}; }
+        }
+        a.version = 158;
+        a.v158Report = R158;
+        try {
+          a.audio = {
+            state: window.__audioCtx ? window.__audioCtx.state : 'none',
+            hidden: !!document.hidden
+          };
+        } catch (e2) {}
+        return a;
+      };
+    }
+    window.__JIO_V158_REPORT = R158;
+  } catch (e158) {
+    console.warn('[v158 精修]', e158);
+  }
+})();
+
+
 })();
 </script>
 
