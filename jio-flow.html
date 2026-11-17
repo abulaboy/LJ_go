@@ -515,7 +515,7 @@
       font-weight: 700;
     }
     .video-box {
-      max-width: 520px;
+      max-width: 640px;
       background: var(--card);
       border: 1px solid var(--line);
       border-radius: 16px;
@@ -664,6 +664,13 @@
               <td>11/17 10:28 起</td>
               <td><span class="badge s-now">目前做法（尚未實跑）</span></td>
               <td>不排程。只在 vida 臨時交代時派小任務；大任務交給 Claude 那邊。四人輪流當執行者與驗收者，一律 Hydrogen、任務模式。做好後問要不要上傳 JIO Studio，同意才上傳。</td>
+            </tr>
+            <tr>
+              <td>⑩ 平日 15:50 問影片靈感</td>
+              <td><span class="tag tag-grok">Grok</span></td>
+              <td>11/17 起</td>
+              <td><span class="badge s-now">目前做法（尚未實跑）</span></td>
+              <td>平日（週一至週五）下午 15:50 問靈感；週六、週日不問。問完後 Ryan 會產出簡短腳本、分鏡表與可貼進 Claude Code 的提示詞。做好的影片經檢查、vida 同意後，才上傳 YouTube 或 JIO Studio。原先設為每晚 20:00，同日改成這個時間。</td>
             </tr>
           </tbody>
         </table>
@@ -837,7 +844,12 @@
         <article class="tl grok">
           <div class="when">11/17 10:28　<span class="tag tag-grok">Grok</span></div>
           <h3>暫停 6-jio；改為臨時小任務、四人輪值全才、Hydrogen</h3>
-          <p>Ryan 不再排程派工，每天 18:00 的 6-jio 已暫停。只在 vida 臨時交代時派小任務；大任務由 Claude 那邊分派。員工一律用 Hydrogen 模型、開「任務」模式。四人都是全才，照 Rudy → Kaz → Idn → Tidal 輪流當執行者與驗收者，同一件工作這兩個角色不能是同一人；請假或額度 ≥95% 就跳過。做好後 Ryan 實際看成品、回報 vida，再問要不要上傳 <a href="https://abulaboy.github.io/jio-studio">JIO Studio</a>，同意才上傳。限流不變：一次一個帳號、間隔 2–3 分鐘、遇驗證就停並通知；不重設 Tidal。每晚 20:00 問靈感的排程照常。這套做法尚未實跑。</p>
+          <p>Ryan 不再排程派工，每天 18:00 的 6-jio 已暫停。只在 vida 臨時交代時派小任務；大任務由 Claude 那邊分派。員工一律用 Hydrogen 模型、開「任務」模式。四人都是全才，照 Rudy → Kaz → Idn → Tidal 輪流當執行者與驗收者，同一件工作這兩個角色不能是同一人；請假或額度 ≥95% 就跳過。做好後 Ryan 實際看成品、回報 vida，再問要不要上傳 <a href="https://abulaboy.github.io/jio-studio">JIO Studio</a>，同意才上傳。限流不變：一次一個帳號、間隔 2–3 分鐘、遇驗證就停並通知；不重設 Tidal。當時仍保留每晚 20:00 問靈感的排程（同日稍後改為平日 15:50）。這套派工做法尚未實跑。</p>
+        </article>
+        <article class="tl grok">
+          <div class="when">11/17　<span class="tag tag-grok">Grok</span></div>
+          <h3>影片靈感改為平日 15:50，並寫明會產出什麼</h3>
+          <p>原定每晚 20:00 問靈感，改成平日（週一至週五）下午 15:50，週末不問。問完後，Ryan 會產出簡短腳本、分鏡表（每一鏡的畫面、旁白／字幕、秒數），以及可直接貼進 Claude Code 的提示詞，方便你積下來之後再做。你用 Claude Code 做好影片後，把成品傳給 Ryan 檢查；你同意後，才上傳到指定 YouTube 頻道或 JIO Studio。</p>
         </article>
       </div>
     </section>
@@ -1274,21 +1286,30 @@
     </section>
 
     <section class="block" id="video">
-      <h2>影片靈感流程　<span class="tag tag-grok">Grok 端</span></h2>
-      <p class="lead" style="margin-bottom:16px">每天晚上 8 點左右，Ryan 會在對話裡問你當天的影片靈感。這條排程仍照常進行，和臨時修 bug 派工是分開的。</p>
-      <div class="video-box video-flow">
-        <ol>
-          <li>問 vida 當天的影片靈感</li>
-          <li>vida 用 Claude Code 做影片</li>
-          <li>vida 看完成品並同意</li>
-          <li>才上傳到指定 YouTube 頻道<br><span class="lock">沒有同意，不上傳</span></li>
-        </ol>
+      <h2>影片靈感流程　<span class="tag tag-grok">Grok 端</span> <span class="badge s-now">目前做法（尚未實跑）</span></h2>
+      <p class="lead" style="margin-bottom:12px">平日（週一至週五）下午 15:50，Ryan 會在對話裡問你當天的影片靈感。週六、週日不問。這條排程和臨時修 bug 派工是分開的。</p>
+      <div class="video-box">
+        <p style="margin:0 0 12px">你回靈感之後，Ryan 會幫你整理成可以直接拿去用的材料，也可以先積下來，哪天再做：</p>
+        <ul class="tight">
+          <li>簡短腳本</li>
+          <li>分鏡表（每一鏡的畫面、旁白／字幕、秒數）</li>
+          <li>可直接貼進 Claude Code 的提示詞</li>
+        </ul>
+        <div class="video-flow" style="margin-top:16px">
+          <ol>
+            <li>平日 15:50，問 vida 當天的影片靈感</li>
+            <li>Ryan 產出簡短腳本、分鏡表，以及可直接貼進 Claude Code 的提示詞</li>
+            <li>vida 用 Claude Code 做影片（材料也可以先積著）</li>
+            <li>把成品傳給 Ryan 檢查</li>
+            <li>vida 同意後，才上傳到 YouTube 或 JIO Studio<br><span class="lock">沒有同意，不上傳</span></li>
+          </ol>
+        </div>
       </div>
     </section>
 
     <footer class="site">
       <p>更新於 2026-11-17（台北時間，UTC+8）。</p>
-      <p>資料來源：Claude 工件「JIO 公司派工模式：演變與驗證狀態」（整理 2026/10/22～11/17 的對話、技能與排程設定；對話包括 10/25 放假問候、10/28 工作分派、11/2 接力流程、11/3 額度與工作、11/6 YouTube 與漫畫、11/7 公園影片、11/9 海報、11/12 中華隊影片，以及排程「家裡走走每晚加強」。四位員工 Gemini 排程的即時狀態那次沒有連線檢查）；Grok 端頁面「JIO 四人派工模式演變與驗證」（v141～v149，整理於 2026-11-17 08:59，來源含 Ryan 記憶與日誌、本機交件檔、雲端代理測試紀錄、jio-team-dispatch 技能）；以及 11/17 上午一度改定的每日 18:00 先收件再派工流程（設定後未實跑即暫停）、11/17 10:28 改定的臨時小任務／四人輪值全才／Hydrogen 流程，與每晚 20:00 問靈感流程。</p>
+      <p>資料來源：Claude 工件「JIO 公司派工模式：演變與驗證狀態」（整理 2026/10/22～11/17 的對話、技能與排程設定；對話包括 10/25 放假問候、10/28 工作分派、11/2 接力流程、11/3 額度與工作、11/6 YouTube 與漫畫、11/7 公園影片、11/9 海報、11/12 中華隊影片，以及排程「家裡走走每晚加強」。四位員工 Gemini 排程的即時狀態那次沒有連線檢查）；Grok 端頁面「JIO 四人派工模式演變與驗證」（v141～v149，整理於 2026-11-17 08:59，來源含 Ryan 記憶與日誌、本機交件檔、雲端代理測試紀錄、jio-team-dispatch 技能）；以及 11/17 上午一度改定的每日 18:00 先收件再派工流程（設定後未實跑即暫停）、11/17 10:28 改定的臨時小任務／四人輪值全才／Hydrogen 流程，與平日（週一至週五）下午 15:50 問靈感流程（原為每晚 20:00，同日改定）。</p>
       <p>線上站：<a href="https://abulaboy.github.io/LJ_go/">abulaboy.github.io/LJ_go</a>　·　本頁：<a href="https://abulaboy.github.io/LJ_go/jio-flow.html">jio-flow.html</a></p>
     </footer>
   </div>
