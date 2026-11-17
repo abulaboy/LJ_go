@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="JIO 每日派工流程：傍晚 6 點先收件、驗證再派工；晚上 8 點問影片靈感。">
-  <title>JIO 每日派工流程</title>
+  <meta name="description" content="整合 Claude 端與 Grok 端的 JIO 公司派工模式：演變、驗證狀態、每日收件派工流程，以及接力／即時派工指令。">
+  <title>JIO 公司派工模式：演變、驗證與每日流程</title>
   <style>
     :root {
       --paper: #f3eee4;
@@ -22,8 +22,12 @@
       --fail: #9b2c1f;
       --warn: #8a5a00;
       --rail: #cfc6b6;
+      --claude: #9a4b1c;
+      --grok: #1d4e89;
+      --nav-h: 58px;
     }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     html, body { margin: 0; padding: 0; }
     body {
       font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
@@ -35,19 +39,81 @@
       font-size: 16px;
     }
     a { color: var(--collect); }
+    .skip {
+      position: absolute;
+      left: -999px;
+      top: 0;
+    }
+    .skip:focus {
+      left: 12px;
+      top: 8px;
+      z-index: 80;
+      background: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(243, 238, 228, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+    }
+    .topnav .inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: var(--nav-h);
+    }
+    .topnav .brand {
+      flex: 0 0 auto;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      color: var(--ink);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .topnav nav {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      padding: 8px 0;
+    }
+    .topnav nav a {
+      flex: 0 0 auto;
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .topnav nav a:hover,
+    .topnav nav a:focus {
+      background: #fffaf3;
+      color: var(--ink);
+    }
     .wrap {
       max-width: 1100px;
       margin: 0 auto;
-      padding: 28px 18px 64px;
+      padding: 28px 18px 72px;
     }
-    header.hero {
-      margin-bottom: 28px;
+    section.block {
+      margin: 0 0 48px;
+      scroll-margin-top: calc(var(--nav-h) + 12px);
     }
+    header.hero { margin-bottom: 28px; }
     .kicker {
       display: inline-block;
       font-size: 12px;
       letter-spacing: 0.14em;
-      text-transform: uppercase;
       color: var(--muted);
       border: 1px solid var(--line);
       background: #fffaf3;
@@ -56,17 +122,117 @@
       margin-bottom: 12px;
     }
     h1 {
-      font-size: clamp(28px, 5vw, 42px);
+      font-size: clamp(26px, 5vw, 40px);
       line-height: 1.2;
       margin: 0 0 10px;
       letter-spacing: -0.02em;
       font-weight: 700;
     }
-    .lead {
-      margin: 0;
-      max-width: 40em;
+    h2 {
+      font-size: clamp(22px, 3.4vw, 28px);
+      margin: 0 0 14px;
+      letter-spacing: -0.02em;
+    }
+    h3 {
+      font-size: 18px;
+      margin: 22px 0 10px;
+    }
+    .lead, .prose { max-width: 48em; }
+    .lead { margin: 0; color: var(--muted); font-size: 17px; }
+    .prose p, .step p { margin: 0 0 10px; }
+    .prose p:last-child, .step p:last-child { margin-bottom: 0; }
+    .systems {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin: 18px 0 20px;
+    }
+    @media (min-width: 760px) {
+      .systems { grid-template-columns: 1fr 1fr; }
+    }
+    .sys {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 16px 18px;
+    }
+    .sys h3 { margin: 0 0 8px; }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      color: #fff;
+      vertical-align: middle;
+      margin: 0 4px 4px 0;
+    }
+    .tag-claude { background: var(--claude); }
+    .tag-grok { background: var(--grok); }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      color: #fff;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    .s-ok { background: var(--ship); }
+    .s-part { background: var(--check); }
+    .s-off { background: #6b6560; }
+    .s-none { background: #8a7d6b; }
+    .s-wait { background: var(--collect); }
+    .s-fail { background: var(--fail); }
+    .s-split { background: #5b3a8c; }
+    .callout {
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin: 14px 0;
+      font-size: 15px;
+    }
+    .callout-info { background: #eef4fb; border: 1px solid #c9d9ec; color: #1b3a5c; }
+    .callout-warn { background: #fff4e5; border: 1px solid #efd3a3; color: #6b4500; }
+    .callout strong { display: block; margin-bottom: 4px; }
+    .table-wrap { overflow-x: auto; margin: 12px 0 8px; -webkit-overflow-scrolling: touch; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      background: var(--card);
+      min-width: 640px;
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    th {
+      background: #efe6d6;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin: 8px 0 12px;
+      font-size: 13px;
       color: var(--muted);
-      font-size: 17px;
+    }
+    .legend i {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 6px;
     }
     .layout {
       display: grid;
@@ -76,12 +242,9 @@
     }
     @media (min-width: 960px) {
       .layout { grid-template-columns: minmax(0, 1fr) 320px; }
-      .aside { position: sticky; top: 20px; }
+      .aside { position: sticky; top: calc(var(--nav-h) + 16px); }
     }
-    .flow {
-      position: relative;
-      padding-left: 8px;
-    }
+    .flow { position: relative; padding-left: 8px; }
     .flow::before {
       content: "";
       position: absolute;
@@ -114,27 +277,10 @@
       font-size: 13px;
       z-index: 1;
     }
-    .step h2 {
+    .step h3, .step h2 {
       margin: 0 0 6px;
       font-size: 18px;
       line-height: 1.35;
-    }
-    .step p { margin: 0; color: var(--ink); }
-    .step .meta {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-    .badge {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      padding: 2px 8px;
-      border-radius: 999px;
-      color: #fff;
-      vertical-align: middle;
-      margin-left: 6px;
     }
     .c-start { background: var(--start); }
     .c-collect { background: var(--collect); }
@@ -143,12 +289,7 @@
     .c-ship { background: var(--ship); }
     .c-dispatch { background: var(--dispatch); }
     .c-fail { background: var(--fail); }
-    .accounts {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
+    .accounts, .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .chip {
       border: 1px solid var(--line);
       background: #fff;
@@ -173,16 +314,9 @@
       font-size: 14px;
       line-height: 1.5;
     }
-    .path-fail {
-      background: #fdeceb;
-      color: #6f1d15;
-      border: 1px solid #f3c5be;
-    }
-    .path-ok {
-      background: #e8f6ef;
-      color: #145338;
-      border: 1px solid #bfe4d0;
-    }
+    .path-fail { background: #fdeceb; color: #6f1d15; border: 1px solid #f3c5be; }
+    .path-ok { background: #e8f6ef; color: #145338; border: 1px solid #bfe4d0; }
+    .path-note { background: #f7f1e3; color: #4d4333; border: 1px solid #ead9b3; }
     .alert {
       margin-top: 10px;
       background: #fff4e5;
@@ -220,17 +354,17 @@
       font-size: 15px;
       letter-spacing: 0.04em;
     }
-    .roles { list-style: none; margin: 0; padding: 0; }
+    .roles, .plain { list-style: none; margin: 0; padding: 0; }
     .roles li {
       display: grid;
-      grid-template-columns: 72px 1fr;
+      grid-template-columns: 96px 1fr;
       gap: 8px;
       padding: 8px 0;
       border-top: 1px solid var(--line);
       font-size: 14px;
     }
     .roles li:first-child { border-top: 0; padding-top: 0; }
-    .roles dt, .roles .who { font-weight: 700; }
+    .roles .who { font-weight: 700; }
     .rules { margin: 0; padding: 0 0 0 18px; font-size: 14px; }
     .rules li { margin: 0 0 8px; }
     .note {
@@ -241,6 +375,99 @@
       font-size: 13.5px;
       color: #4d4333;
     }
+    .phase {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 18px 0 10px;
+    }
+    .prompts { display: grid; gap: 12px; margin: 12px 0 18px; }
+    .prompt {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .prompt-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #efe6d6;
+      border-bottom: 1px solid var(--line);
+    }
+    .prompt-head span { font-weight: 700; font-size: 14px; }
+    .copy {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .copy:hover { background: #fffaf3; }
+    .copy.done { background: #e8f6ef; color: #145338; border-color: #bfe4d0; }
+    .prompt pre {
+      margin: 0;
+      padding: 12px 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", monospace;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .timeline { position: relative; padding-left: 18px; }
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 6px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: var(--rail);
+    }
+    .tl {
+      position: relative;
+      margin: 0 0 16px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 12px 14px 12px 16px;
+    }
+    .tl::before {
+      content: "";
+      position: absolute;
+      left: -16px;
+      top: 18px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--start);
+      border: 2px solid #fffaf3;
+    }
+    .tl.claude::before { background: var(--claude); }
+    .tl.grok::before { background: var(--grok); }
+    .tl.both::before { background: linear-gradient(135deg, var(--claude) 50%, var(--grok) 50%); }
+    .tl .when { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .tl h3 { margin: 0 0 6px; font-size: 16px; }
+    .tl p { margin: 0; font-size: 14.5px; }
+    .gaps { margin: 0; padding: 0; list-style: none; }
+    .gaps li {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin: 0 0 10px;
+    }
+    .gaps h3 { margin: 0 0 6px; font-size: 16px; }
+    .gaps p { margin: 0; font-size: 14.5px; }
     .video-flow ol {
       margin: 0;
       padding: 0;
@@ -250,8 +477,8 @@
     .video-flow li {
       counter-increment: v;
       position: relative;
-      padding: 0 0 14px 28px;
-      font-size: 14px;
+      padding: 0 0 16px 32px;
+      font-size: 15px;
     }
     .video-flow li:last-child { padding-bottom: 0; }
     .video-flow li::before {
@@ -259,12 +486,12 @@
       position: absolute;
       left: 0;
       top: 1px;
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
       border-radius: 50%;
       background: var(--start);
       color: #fff;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       display: grid;
       place-items: center;
@@ -272,8 +499,8 @@
     .video-flow li::after {
       content: "";
       position: absolute;
-      left: 9px;
-      top: 22px;
+      left: 10px;
+      top: 24px;
       bottom: 2px;
       width: 2px;
       background: var(--rail);
@@ -286,36 +513,323 @@
       color: var(--fail);
       font-weight: 700;
     }
-    footer {
-      margin-top: 28px;
+    .video-box {
+      max-width: 520px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 18px 18px 16px;
+    }
+    footer.site {
+      margin-top: 12px;
       padding-top: 16px;
       border-top: 1px solid var(--line);
       color: var(--muted);
       font-size: 13px;
     }
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 14px;
-      margin: 18px 0 4px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .legend i {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-right: 6px;
-    }
+    footer.site p { margin: 0 0 8px; }
+    .muted { color: var(--muted); }
+    ul.tight { margin: 8px 0 0; padding-left: 18px; }
+    ul.tight li { margin: 0 0 6px; }
   </style>
 </head>
 <body>
+  <a class="skip" href="#overview">跳到本文</a>
+  <div class="topnav">
+    <div class="inner">
+      <a class="brand" href="#overview">JIO 派工</a>
+      <nav aria-label="頁面目錄">
+        <a href="#overview">總覽</a>
+        <a href="#timeline">時間軸</a>
+        <a href="#daily">每日派工</a>
+        <a href="#relay">接力流程</a>
+        <a href="#instant">即時派工</a>
+        <a href="#findings">實測發現</a>
+        <a href="#next">建議下一步</a>
+        <a href="#video">影片靈感</a>
+      </nav>
+    </div>
+  </div>
+
   <div class="wrap">
     <header class="hero">
-      <div class="kicker">排程 6-jio · 台北時間</div>
-      <h1>JIO 每日派工流程</h1>
-      <p class="lead">每天傍晚 6 點，同一個排程先收回上一輪成果、驗證通過再上線，然後才派新的 bug 修正。不再另外建收件排程，避免卡片過期就漏收。</p>
+      <div class="kicker">整合頁 · 更新於 2026-11-17（台北時間）</div>
+      <h1>JIO 公司派工模式：演變、驗證與每日流程</h1>
+      <p class="lead">把 Claude 端的六種派工紀錄，和 Grok 端 Ryan 的每日修 bug 流程放在同一頁。四位員工 Rudy、Kaz、Idn、Tidal 都是 Gemini 帳號；兩邊可以同時存在，但不要同時派同一批帳號。</p>
+    </header>
+
+    <section class="block" id="overview">
+      <h2>總覽</h2>
+      <div class="systems">
+        <article class="sys">
+          <h3><span class="tag tag-claude">Claude 端</span> Claude 桌面 App 當老闆</h3>
+          <p>整理範圍是 2026/10/22～11/17 的對話、技能與排程。前後換過 6 種派工方式，真正穩定跑完、成品有驗收過的只有一種：<strong>Claude 用瀏覽器即時派工</strong>（海報、公園影片、中華隊 8 場、漫畫設定都是這樣做的）。</p>
+          <p>「四個人自己接力、不用盯」從來沒有完整跑通過。每小時接力只跑了幾天，四人沒有同時正常上線過，約定的「兩天後驗收、上傳 GitHub」也找不到執行紀錄。交接文件從 11/7 之後就沒再更新。</p>
+        </article>
+        <article class="sys">
+          <h3><span class="tag tag-grok">Grok 端</span> Ryan（Grok Bot）派工</h3>
+          <p>從 10/28 起由 Ryan 派《家裡走走》的 bug 修正，對象是 Kaz、Idn、Rudy。Tidal 只在 v142 做過靜態審查，之後帳號登不入就沒再派，規定是不重設、不救回。</p>
+          <p>經典四人編制（Rudy 拆工、Kaz 與 Idn 實作、Tidal 驗收）在 Ryan 接手以後，沒有一輪從頭到尾完整跑完並驗證。員工交件且有實測上線的是 <strong>v146、v147（都只完成一部分）</strong>。真正標成已驗證的 <strong>145m、145n、v148</strong> 是雲端程式代理自己修、並在電腦和 iPhone 上測過的。<strong>v149 派出後從未收回。</strong></p>
+        </article>
+      </div>
+
+      <div class="callout callout-warn">
+        <strong>關於「⑤ Grok 當總管」與後來實際派工</strong>
+        Claude 端在 10/26 評估後，建議不要把總管搬到 Grok（當時還沒確認能不能用 Argon、雲端 IP 會不會被驗證；評估裡寫之後 Grok 只負責看新資訊、存 Notion）。可是從 10/28 起，Grok 端的 Ryan 確實接手派工，並完成了 v141～v149 多輪。這兩件事都是事實，這裡並列記下，不做孰對孰錯的判斷。
+      </div>
+
+      <h3>全部模式狀態</h3>
+      <div class="legend" aria-label="狀態圖例">
+        <span><span class="badge s-ok">驗收過／已驗證</span></span>
+        <span><span class="badge s-part">部分執行</span></span>
+        <span><span class="badge s-off">已停用</span></span>
+        <span><span class="badge s-none">沒紀錄／沒採用</span></span>
+        <span><span class="badge s-wait">已設定、尚未實跑</span></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>模式</th>
+              <th>端</th>
+              <th>期間</th>
+              <th>狀態</th>
+              <th>一句話</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>① 每晚排程（固定分工）</td>
+              <td><span class="tag tag-claude">Claude</span></td>
+              <td>10/22～11/1</td>
+              <td><span class="badge s-off">已停用</span></td>
+              <td>Claude 排程每晚派工改《家裡走走》，每晚的成果報告找不到，最後一次執行 4 秒就結束。</td>
+            </tr>
+            <tr>
+              <td>② 即時派工（jio-team-dispatch）</td>
+              <td><span class="tag tag-claude">Claude</span></td>
+              <td>10/25～現在</td>
+              <td><span class="badge s-ok">驗收過</span></td>
+              <td>最常用、最穩，代價是耗 Claude 額度，而且常常變成 Idn 一個人做。</td>
+            </tr>
+            <tr>
+              <td>③ 任務單手動貼</td>
+              <td><span class="tag tag-claude">Claude</span></td>
+              <td>10/28</td>
+              <td><span class="badge s-none">沒有紀錄</span></td>
+              <td>你選了這個方案，也拿到任務單，但之後沒有執行結果的紀錄。</td>
+            </tr>
+            <tr>
+              <td>④ Gemini Gem 角色</td>
+              <td><span class="tag tag-claude">Claude</span></td>
+              <td>10/28</td>
+              <td><span class="badge s-none">沒採用</span></td>
+              <td>只提出過，沒選。</td>
+            </tr>
+            <tr>
+              <td>⑤ Grok 當總管</td>
+              <td><span class="tag tag-claude">Claude</span></td>
+              <td>10/26</td>
+              <td><span class="badge s-none">評估後沒採用</span></td>
+              <td>Claude 端評估後建議不要搬過去。後來 Grok 端實際派工見 ⑦。</td>
+            </tr>
+            <tr>
+              <td>⑥ 24 小時每小時接力（jio-hourly-relay）</td>
+              <td><span class="tag tag-claude">Claude</span></td>
+              <td>11/2～約 11/7</td>
+              <td><span class="badge s-part">部分執行</span></td>
+              <td>只有部分驗證：寫入自己的文件可行、Kaz 修了 2 個 bug；四人從沒同時上線，也沒驗收。</td>
+            </tr>
+            <tr>
+              <td>⑦ 每 6 小時→每日 bug 派工（v141～v149）</td>
+              <td><span class="tag tag-grok">Grok</span></td>
+              <td>10/28～11/1</td>
+              <td><span class="badge s-part">部分執行</span></td>
+              <td>Ryan 派工修《家裡走走》。v146／v147 部分完成並實測上線；v148 由雲端代理驗證；v149 從未收件。11/2 起暫停到 11/17。</td>
+            </tr>
+            <tr>
+              <td>⑧ 新版每日 18:00 先收件再派工</td>
+              <td><span class="tag tag-grok">Grok</span></td>
+              <td>11/17 起</td>
+              <td><span class="badge s-wait">已設定、尚未實跑</span></td>
+              <td>同一排程先收回上一輪、合併檢查、雲端代理在電腦與 iPhone 實測，通過才上線，然後才派新工作。今晚起才會第一次跑。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>分工設定也曾前後打架</h3>
+      <ul class="tight">
+        <li><strong>舊設定（①②）：</strong>固定職位：Rudy 小主管拆單、Kaz／Idn 工程師、Tidal 測試員。</li>
+        <li><strong>新設定（⑥，11/2）：</strong>四人都是通才，不分職位，輪流接力。</li>
+        <li><strong>Claude 端實際情形：</strong>最近幾次幾乎是「誰有額度誰做」。11/9 的海報四張全是 Idn 畫的，中華隊 8 場是 Idn 做 1～5 場、Rudy 做 6～8 場。</li>
+        <li><strong>Grok 端現行：</strong>只派 Kaz、Idn、Rudy 寫修正；實測改由雲端程式代理做，不再假設 Tidal 能驗收。</li>
+      </ul>
+      <p class="muted">Claude 的兩個技能現在各寫各的規則，會依觸發詞選其中一個，所以行為不一致。</p>
+
+      <h3>Grok 端各版摘要（v141～v149）</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>版本</th>
+              <th>誰做</th>
+              <th>狀態</th>
+              <th>重點</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>v141</td>
+              <td>第 4 棒起始（何人寫的不確定）</td>
+              <td><span class="badge s-part">部分</span></td>
+              <td>有本機補丁並上 Drive；找不到瀏覽器實測紀錄。</td>
+            </tr>
+            <tr>
+              <td>v142</td>
+              <td>Kaz 交件，Tidal 靜態審查</td>
+              <td><span class="badge s-fail">未完成</span></td>
+              <td>Tidal 退件（超出範圍加了新功能），未上傳，無瀏覽器實測。這是 Tidal 唯一確認參與的一輪。</td>
+            </tr>
+            <tr>
+              <td>v142b～v145</td>
+              <td>Idn、Rudy、Kaz（Tidal 已不派）</td>
+              <td><span class="badge s-part">部分</span></td>
+              <td>多半只做到讀碼或語法檢查。v144 找不到 Rudy 交件檔。v145 已推 GitHub，但那次沒做電腦／iPhone 實測。</td>
+            </tr>
+            <tr>
+              <td>145m／145n</td>
+              <td>雲端代理（不是四位員工）</td>
+              <td><span class="badge s-ok">已驗證</span></td>
+              <td>修手機搖桿遮罩、提示亂跳，以及公司門改回單開門；電腦與 iPhone 實測通過。</td>
+            </tr>
+            <tr>
+              <td>v146</td>
+              <td>Kaz、Idn 有補丁；Rudy 沒回覆</td>
+              <td><span class="badge s-part">部分</span></td>
+              <td>已上 Drive 與 GitHub。雲端代理實測家門與搖桿；合併時拿掉 Kaz 搬公司門的段落，以免和 145n 對打。Rudy 的球場任務沒做完。</td>
+            </tr>
+            <tr>
+              <td>v147</td>
+              <td>Rudy、Idn、Kaz 都有補丁</td>
+              <td><span class="badge s-part">部分</span></td>
+              <td>最接近「JIO 交件加實測上線」的一輪。電腦鍵盤與 iPhone 搖桿可走，門與樓層高度對得上，但 #jio-go-work 沒出現，球場截圖被徽章遮住。</td>
+            </tr>
+            <tr>
+              <td>v148</td>
+              <td>雲端代理（依使用者門口照片）</td>
+              <td><span class="badge s-ok">已驗證</span></td>
+              <td>公司門退到 x=-2.84、預設關閉、藏起走廊多餘的牆。電腦走進走出公司、門靠近會開；iPhone 搖桿可走且畫面不捲。這輪不算 JIO 員工派工。GitHub 兩支都已更新；11/1 時 Drive 仍是 v147，之後有沒有補傳不確定。</td>
+            </tr>
+            <tr>
+              <td>v149</td>
+              <td>Kaz、Idn、Rudy（未派 Tidal）</td>
+              <td><span class="badge s-fail">未完成</span></td>
+              <td>11/1 18:02 派出。收件排程要另建，核准卡過期後沒重試，交件從未收回。沒有合併檔，沒上 Drive，沒推 GitHub。11/12 起停止追蹤。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="block" id="timeline">
+      <h2>時間軸</h2>
+      <p class="lead" style="margin-bottom:16px">依台北時間合併兩邊紀錄。標了來源；同一天若兩邊都有事，會分兩則或寫在一起。</p>
+      <div class="timeline">
+        <article class="tl claude">
+          <div class="when">10/22　<span class="tag tag-claude">Claude</span></div>
+          <h3>① 每晚排程「家裡走走每晚加強」上線</h3>
+          <p>每晚 19:51 由 Claude 排程開工：Claude 定方向 → Rudy 拆單 → Kaz／Idn 寫程式 → Tidal 審查 → Claude 實機測試、發布，最後產生「JIO 晚會報告圖」。</p>
+        </article>
+        <article class="tl claude">
+          <div class="when">10/25　<span class="tag tag-claude">Claude</span></div>
+          <h3>模型建議與資料夾搬家</h3>
+          <p>派工的 Claude 建議用 Sonnet、投入程度選「中」。JIO 素材搬到 <code>C:\AI\JIO公司</code>，排程路徑也跟著改。</p>
+        </article>
+        <article class="tl claude">
+          <div class="when">10/26　<span class="tag tag-claude">Claude</span></div>
+          <h3>② 即時派工第一次全員測試；⑤ 評估後建議不搬</h3>
+          <p>放假問候測試：Kaz、Idn、Tidal 有回話，Rudy 被 Google 機器人驗證擋住。原因是同時開太多帳號，之後加進「錯開派工、備援順序」規則。同一天評估 ⑤ 讓 Grok 當總管，結論是不搬（能不能用 Argon、雲端 IP 會不會被驗證都還沒確認）。</p>
+        </article>
+        <article class="tl grok">
+          <div class="when">10/28 前　<span class="tag tag-grok">Grok</span></div>
+          <h3>既有編制，使用者已在第 4 棒、從 v141 開始</h3>
+          <p>老闆（原為 Claude）派工；Rudy 拆任務、審查；Kaz、Idn 執行；Tidal 測試。各人用到約 95% 額度就交棒。v141 有本機補丁並上 Drive，找不到瀏覽器實測，狀態為部分。</p>
+        </article>
+        <article class="tl grok">
+          <div class="when">10/28 15:47～16:19　<span class="tag tag-grok">Grok</span></div>
+          <h3>改由 Ryan 接手派工</h3>
+          <p>語音確認：輪流讓四人做、Ryan 只看成果；檔案放 Drive（index.html、待辦、修改紀錄）；擔心網頁登入遇到「我不是機器人」。同日授權自動派工，範圍限五項 bug（球場入口與樓梯電梯、家門、公司門、走廊招牌，再修其他 bug），不加新功能。Ryan 自己週用量到 10% 要停。</p>
+        </article>
+        <article class="tl both">
+          <div class="when">10/28　<span class="tag tag-claude">Claude</span> <span class="tag tag-grok">Grok</span></div>
+          <h3>兩邊同一天：手動任務單，與 v142 退件</h3>
+          <p>Claude 端額度快滿，改成 ③ 手動貼任務單：寫了一張給 Rudy 的「JIO 公司辦公室」任務單，由你自己貼。當時就已經找不到每晚排程的成果報告，之後也沒有這次執行結果的紀錄。④ 把 Rudy、Tidal 做成 Gem 的想法同日提出，當時選了 ③，沒採用。</p>
+          <p style="margin-top:8px">Grok 端派出 v142：Kaz 有交件，Tidal 靜態審查不通過（加了新功能），未上傳，無瀏覽器實測。23:04 Ryan 週用量到 9.8%，依當時規則暫停派工。</p>
+        </article>
+        <article class="tl grok">
+          <div class="when">10/28～29　<span class="tag tag-grok">Grok</span></div>
+          <h3>v142b：Tidal 登不入，改派 Idn</h3>
+          <p>原派 Kaz 回覆出錯沒交件；本要 Tidal 自己修完，但帳號當時無法使用，改由 Idn 交完整品，Rudy 複審。已上 Drive；測試是語法檢查與讀碼，沒有瀏覽器實測。規定改為：Tidal 登不進就改派，禁止重設或找回密碼；使用者不親自開瀏覽器測。約 10/29～30 起，限流改為一次只開一個帳號、間隔 2–3 分鐘；遇到驗證碼或 google.com/sorry 就停下來通知，不重試。</p>
+        </article>
+        <article class="tl grok">
+          <div class="when">10/30　<span class="tag tag-grok">Grok</span></div>
+          <h3>改為每 6 小時檢查，6-jio 開始；v143／v143b</h3>
+          <p>每 6 小時看 Kaz、Idn、Rudy 是否還在做事；有人閒置滿 8 小時就從最新檔拆新包再派。v143／v143b 有交件並上 Drive，員工被要求只做讀碼桌上測試，不得聲稱有跑瀏覽器或 node。</p>
+        </article>
+        <article class="tl grok">
+          <div class="when">10/31　<span class="tag tag-grok">Grok</span></div>
+          <h3>解除 10% 停用規則，開始推 GitHub 並做實測</h3>
+          <p>每版要覆蓋 GitHub main，並推到 gh-pages。開始交雲端代理推檔，之後加上電腦／iPhone 實測。v144、v145 部分完成（v144 找不到 Rudy 交件檔；v145 推 GitHub 時沒做實測）。145m、145n 由雲端代理修完並實測，已驗證。v146 於 18:04 派出。</p>
+        </article>
+        <article class="tl grok">
+          <div class="when">11/1　<span class="tag tag-grok">Grok</span></div>
+          <h3>改成每天只派一次；v146～v149</h3>
+          <p>你說「目前先一天派工一次就好」，改成傍晚約 6 點跑 6-jio。v146 凌晨合併（部分：Rudy 沒回覆）。v147 三人交件並實測上線，仍有已知未修 bug。v148 由雲端代理依門口照片修好公司門，電腦與 iPhone 實測通過。v149 於 18:02～18:13 派出，收件排程核准卡過期，交件從未收回。</p>
+        </article>
+        <article class="tl claude">
+          <div class="when">11/1～11/2　<span class="tag tag-claude">Claude</span></div>
+          <h3>① 每晚排程停用</h3>
+          <p>最後一次執行是 11/1，從開始到結束只有 4 秒，看起來沒有真的做事。11/2 之後就停用了。排程內容還在（含分工、額度紀錄、晚會報告規則）。</p>
+        </article>
+        <article class="tl both">
+          <div class="when">11/2～11/3　<span class="tag tag-claude">Claude</span> <span class="tag tag-grok">Grok</span></div>
+          <h3>⑥ 每小時接力開始測試；Grok 端例行暫停</h3>
+          <p>Claude 端改成四人都是通才，用文件接力；交接超過 1 小時沒人更新就由下一位順延（後來放寬到 2 小時）。實測發現排程寫共用文件要人按允許，所以改成每人寫自己的交接文件。Idn 自動寫入成功 7 次。11/3：Kaz 修好 5 個目標 bug 裡的 2 個；Rudy、Tidal 各用掉 95% 的時段額度，卻沒留下交接；Idn 被機器人驗證擋住，還停在測試版。</p>
+          <p style="margin-top:8px">Grok 端為省額度暫停例行（含 6-jio）。原說停到 11/4 14:41，實際停到 11/17。v149 追蹤 11/12 正式停止。</p>
+        </article>
+        <article class="tl claude">
+          <div class="when">11/5～11/6　<span class="tag tag-claude">Claude</span></div>
+          <h3>YouTube 第一集：接力不可靠，改回即時派工</h3>
+          <p>接力沒有把工作順利交棒，Claude 得手動補交接文件、逐一派工。另外發現影片生成只能在一般對話用，任務模式和排程都不行，每個帳號約 5 小時只能生成 1～3 支。漫畫設定由 Rudy 用任務模式完成。</p>
+        </article>
+        <article class="tl both">
+          <div class="when">11/7　<span class="tag tag-claude">Claude</span> <span class="tag tag-grok">Grok</span></div>
+          <h3>公園影片完成；開始談每日影片靈感</h3>
+          <p>Claude 先看各員工的影片額度再即時派工，成片完成並上傳公司網站。員工的交接文件從這天之後就沒再更新。同一天你問 Grok 端能不能每天問靈感、看完成品再上傳 YouTube；Ryan 說可以，但上傳前一定要先點頭。當時還沒開跑。</p>
+        </article>
+        <article class="tl claude">
+          <div class="when">11/9　<span class="tag tag-claude">Claude</span></div>
+          <h3>幾何海報（即時派工）</h3>
+          <p>只有 Idn 有額度，四張都是 Idn 畫的。Claude 發現長相跟定裝照不符，請 Idn 重畫後才上傳網站。</p>
+        </article>
+        <article class="tl both">
+          <div class="when">11/11～11/12　<span class="tag tag-claude">Claude</span> <span class="tag tag-grok">Grok</span></div>
+          <h3>中華隊 8 場；YouTube 連結改交員工分析</h3>
+          <p>11/11 起全體助理共用規定：收到 YouTube 連結，要交 JIO 員工用 Gemini 看畫面分析。11/11～12 Claude 做中華隊 8 番勝負：名稱是「接力」，實際上是 Claude 每 10 分鐘回來看一次再派下一場。第 1～5 場 Idn 做、第 6～8 場 Rudy 做，Tidal 寫字幕。剪接是 Claude 做的，因為員工沒辦法把影片接起來。成片約 1 分 29 秒，但第 2、4 場出現真實聯盟和球隊的標誌，第 6、7 場長相跑掉。</p>
+        </article>
+        <article class="tl grok">
+          <div class="when">11/17　<span class="tag tag-grok">Grok</span></div>
+          <h3>恢復每日 18:00，並改成先收件再派工；新增 20:00 問靈感</h3>
+          <p>6-jio 恢復，且收件和派工改在同一個排程完成，避免再像 v149 那樣漏收。新增每天 20:00 問當天影片靈感；影片預設由你用 Claude Code 做，上傳 YouTube 前一定先等你點頭。v149 仍不追蹤，下一輪從已上線的 v148 開始。截至本頁整理時，恢復後的第一次 18:00 尚未實跑。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="block" id="daily">
+      <h2>目前的每日派工流程　<span class="tag tag-grok">Grok 端</span></h2>
+      <p class="lead" style="margin-bottom:16px">每天傍晚 6 點，同一個排程先收回上一輪成果、驗證通過再上線，然後才派新的 bug 修正。不再另外建收件排程，避免卡片過期就漏收。</p>
       <div class="legend" aria-label="圖例">
         <span><i style="background:var(--collect)"></i>收件</span>
         <span><i style="background:var(--check)"></i>合併檢查</span>
@@ -324,121 +838,479 @@
         <span><i style="background:var(--dispatch)"></i>派工</span>
         <span><i style="background:var(--fail)"></i>失敗／立刻停</span>
       </div>
-    </header>
-
-    <div class="layout">
-      <main>
-        <div class="flow" aria-label="每天傍晚 6 點派工流程">
-          <article class="step">
-            <span class="num c-start">1</span>
-            <h2>每天 18:00 排程啟動</h2>
-            <p>排程 6-jio 在台北時間每天約傍晚 6 點自動開始，一次做完收件與派工。</p>
-          </article>
-
-          <article class="step">
-            <span class="num c-collect">2</span>
-            <h2>步驟一　收件 <span class="badge c-collect">先收再派</span></h2>
-            <p>打開三位員工上一輪的 Gemini 對話，收回修正程式。沒交件的先標記，下一輪重派。</p>
-            <div class="accounts">
-              <div class="chip"><strong>Kaz</strong><span>帳號 /u/0</span></div>
-              <div class="chip"><strong>Idn</strong><span>帳號 /u/1</span></div>
-              <div class="chip"><strong>Rudy</strong><span>帳號 /u/3</span></div>
-            </div>
-          </article>
-
-          <article class="step">
-            <span class="num c-check">3</span>
-            <h2>合併進遊戲主程式，並做語法檢查</h2>
-            <p>把收回的修正合併進主程式，再用 <code>node --check</code> 檢查語法。</p>
-            <div class="branch">
-              <div class="path path-fail">失敗 → 退回該份修正，不進入實測。</div>
-              <div class="path path-ok">通過 → 交給雲端程式代理實測。</div>
-            </div>
-          </article>
-
-          <article class="step">
-            <span class="num c-test">4</span>
-            <h2>雲端程式代理實際開遊戲測試</h2>
-            <p>在電腦和 iPhone 上打開遊戲，實際操作後才算測過。只看過程式碼不算驗證。</p>
-            <div class="branch">
-              <div class="path path-fail">不通過 → 不上線，列為下一輪要修的 bug。</div>
-              <div class="path path-ok">通過 → 進入上線與歸檔。</div>
-            </div>
-          </article>
-
-          <article class="step">
-            <span class="num c-ship">5</span>
-            <h2>通過後上線，標記「已驗證」</h2>
-            <p>推到 GitHub 的 <strong>main</strong> 與 <strong>gh-pages</strong>，網站同步更新；再把新檔上傳到 Drive（另存新檔，不覆蓋舊的）。這一步完成後，這一版才算已驗證。</p>
-          </article>
-
-          <article class="step">
-            <span class="num c-dispatch">6</span>
-            <h2>步驟二　派工</h2>
-            <p>從最新「已驗證」版本切出 bug 修正工作包，只修 bug，每份不超過 150KB。</p>
-          </article>
-
-          <article class="step">
-            <span class="num c-dispatch">7</span>
-            <h2>依序送出，一次一個帳號</h2>
-            <p>一次只登入一個帳號，間隔 2–3 分鐘再送下一份。</p>
-            <div class="alert">遇到驗證碼，或出現 google.com/sorry 頁面：立刻停止，通知 vida，不要重試。</div>
-          </article>
-
-          <article class="step">
-            <span class="num c-dispatch">8</span>
-            <h2>記錄對話網址</h2>
-            <p>把這輪派出去的對話網址記下來，留給明天 18:00 同一個排程收件。</p>
-          </article>
-
-          <article class="step">
-            <span class="num c-start">9</span>
-            <h2>用繁中回報 vida</h2>
-            <p>說明收到什麼、驗證結果、新派了什麼，以及過程中有沒有問題。</p>
-          </article>
-
-          <div class="loop"><span>隔天 18:00 回到步驟 1，先收下這一輪的成果</span></div>
+      <div class="layout">
+        <div>
+          <div class="flow" aria-label="每天傍晚 6 點派工流程">
+            <article class="step">
+              <span class="num c-start">1</span>
+              <h3>每天 18:00 排程啟動</h3>
+              <p>排程 6-jio 在台北時間每天約傍晚 6 點自動開始，一次做完收件與派工。</p>
+            </article>
+            <article class="step">
+              <span class="num c-collect">2</span>
+              <h3>步驟一　收件 <span class="badge s-wait">先收再派</span></h3>
+              <p>打開三位員工上一輪的 Gemini 對話，收回修正程式。沒交件的先標記，下一輪重派。</p>
+              <div class="accounts">
+                <div class="chip"><strong>Kaz</strong><span>實務上常見 /u/0；編號會變，每次要重認</span></div>
+                <div class="chip"><strong>Idn</strong><span>實務上常見 /u/1</span></div>
+                <div class="chip"><strong>Rudy</strong><span>實務上常見 /u/3</span></div>
+              </div>
+            </article>
+            <article class="step">
+              <span class="num c-check">3</span>
+              <h3>合併進遊戲主程式，並做語法檢查</h3>
+              <p>把收回的修正合併進主程式，再用 <code>node --check</code> 檢查語法。</p>
+              <div class="branch">
+                <div class="path path-fail">失敗 → 退回該份修正，不進入實測。</div>
+                <div class="path path-ok">通過 → 交給雲端程式代理實測。</div>
+              </div>
+            </article>
+            <article class="step">
+              <span class="num c-test">4</span>
+              <h3>雲端程式代理實際開遊戲測試</h3>
+              <p>在電腦和 iPhone 上打開遊戲，實際操作後才算測過。只看過程式碼不算驗證。</p>
+              <div class="branch">
+                <div class="path path-fail">不通過 → 不上線，列為下一輪要修的 bug。</div>
+                <div class="path path-ok">通過 → 進入上線與歸檔。</div>
+              </div>
+            </article>
+            <article class="step">
+              <span class="num c-ship">5</span>
+              <h3>通過後上線，標記「已驗證」</h3>
+              <p>推到 GitHub 的 <strong>main</strong> 與 <strong>gh-pages</strong>，網站同步更新；再把新檔上傳到 Drive（另存新檔，不覆蓋舊的）。這一步完成後，這一版才算已驗證。</p>
+            </article>
+            <article class="step">
+              <span class="num c-dispatch">6</span>
+              <h3>步驟二　派工</h3>
+              <p>從最新「已驗證」版本切出 bug 修正工作包，只修 bug，每份不超過 150KB。v149 不再追蹤，下一輪從已上線的 v148 開始。</p>
+            </article>
+            <article class="step">
+              <span class="num c-dispatch">7</span>
+              <h3>依序送出，一次一個帳號</h3>
+              <p>一次只登入一個帳號，間隔 2–3 分鐘再送下一份。模型選 Argon，用任務模式送出。</p>
+              <div class="alert">遇到驗證碼，或出現 google.com/sorry 頁面：立刻停止，通知 vida，不要重試。</div>
+            </article>
+            <article class="step">
+              <span class="num c-dispatch">8</span>
+              <h3>記錄對話網址</h3>
+              <p>把這輪派出去的對話網址記下來，留給明天 18:00 同一個排程收件。</p>
+            </article>
+            <article class="step">
+              <span class="num c-start">9</span>
+              <h3>用繁中回報 vida</h3>
+              <p>說明收到什麼、驗證結果、新派了什麼，以及過程中有沒有問題。</p>
+            </article>
+            <div class="loop"><span>隔天 18:00 回到步驟 1，先收下這一輪的成果</span></div>
+          </div>
         </div>
-      </main>
+        <aside class="aside">
+          <section class="panel">
+            <h3>角色</h3>
+            <ul class="roles">
+              <li><span class="who">Kaz／Idn／Rudy</span><span>寫修正程式</span></li>
+              <li><span class="who">Tidal</span><span>帳號停用，不重設、不救回</span></li>
+              <li><span class="who">Ryan</span><span>合併成果，並負責派工</span></li>
+              <li><span class="who">雲端代理</span><span>在電腦與 iPhone 實測，通過才上線</span></li>
+            </ul>
+          </section>
+          <section class="panel">
+            <h3>規則</h3>
+            <ul class="rules">
+              <li>只修 bug，不加新功能、新物件、新房間。</li>
+              <li>額度用到 95% 就停止該員工的工作。</li>
+              <li>刪檔、對外發送、花錢、登入之前，都要先問 vida。</li>
+              <li>每版以新檔上傳 Drive 資料夾，舊檔由你自刪；同時推 GitHub main 與 gh-pages。</li>
+            </ul>
+          </section>
+          <section class="panel">
+            <h3>這次改了什麼</h3>
+            <p class="note">舊問題：過去收件靠另建排程，卡片過期就漏收（v149）；現在收件和派工在同一個排程完成。</p>
+          </section>
+        </aside>
+      </div>
+    </section>
 
-      <aside class="aside">
-        <section class="panel">
-          <h3>角色</h3>
-          <ul class="roles">
-            <li><span class="who">Kaz／Idn／Rudy</span><span>寫修正程式</span></li>
-            <li><span class="who">Tidal</span><span>帳號停用，不重設、不救回</span></li>
-            <li><span class="who">Ryan</span><span>合併成果，並負責派工</span></li>
-            <li><span class="who">雲端代理</span><span>在電腦與 iPhone 實測，通過才上線</span></li>
-          </ul>
-        </section>
+    <section class="block" id="relay">
+      <h2>⑥ 24 小時每小時接力　<span class="tag tag-claude">Claude 端</span> <span class="badge s-part">部分執行</span></h2>
+      <p class="prose">重點：Claude 只做「開頭設定」跟「最後驗收」。中間的接力是四位員工的 Gemini 排程，在 Google 伺服器上每小時自己跑，電腦關掉也會跑。說出「每小時接力」這幾個字，Claude 就會載入這個技能。開工前要先準備：電腦開著 Claude 桌面 App（設定排程要用內建瀏覽器）、四個 Gemini 帳號都已登入、Tidal 要在家才能驗證。總目標換成你這次要做的事。沒給總目標就不能開工。</p>
 
-        <section class="panel">
-          <h3>規則</h3>
-          <ul class="rules">
-            <li>只修 bug，不加新功能。</li>
-            <li>額度用到 95% 就停止該員工的工作。</li>
-            <li>刪檔、對外發送、花錢、登入之前，都要先問 vida。</li>
-          </ul>
-        </section>
+      <h3>你在 Claude 這邊要說的話</h3>
+      <div class="prompts">
+        <article class="prompt">
+          <div class="prompt-head"><span>① 開工</span><button type="button" class="copy" data-copy="用 JIO 每小時接力。總目標：家裡走走（GitHub abulaboy/LJ_go）修 3 個 bug、提升遊戲體驗。第一棒給 Rudy，跑兩天。">複製</button></div>
+          <pre>用 JIO 每小時接力。總目標：家裡走走（GitHub abulaboy/LJ_go）修 3 個 bug、提升遊戲體驗。第一棒給 Rudy，跑兩天。</pre>
+        </article>
+        <article class="prompt">
+          <div class="prompt-head"><span>② 查進度</span><button type="button" class="copy" data-copy="JIO 每小時接力現在做到哪？讀交接文件跟我說，不用開瀏覽器。">複製</button></div>
+          <pre>JIO 每小時接力現在做到哪？讀交接文件跟我說，不用開瀏覽器。</pre>
+        </article>
+        <article class="prompt">
+          <div class="prompt-head"><span>③ 驗收</span><button type="button" class="copy" data-copy="驗收 JIO 每小時接力的成果，實際開遊戲測試，沒問題就上傳 GitHub。">複製</button></div>
+          <pre>驗收 JIO 每小時接力的成果，實際開遊戲測試，沒問題就上傳 GitHub。</pre>
+        </article>
+        <article class="prompt">
+          <div class="prompt-head"><span>④ 收工</span><button type="button" class="copy" data-copy="暫停 JIO 四位員工的每小時排程，避免空轉耗額度。">複製</button></div>
+          <pre>暫停 JIO 四位員工的每小時排程，避免空轉耗額度。</pre>
+        </article>
+      </div>
 
-        <section class="panel">
-          <h3>這次改了什麼</h3>
-          <p class="note">舊問題：過去收件靠另建排程，卡片過期就漏收（v149）；現在收件和派工在同一個排程完成。</p>
-        </section>
+      <p class="phase">階段一　Claude 開工設定（只做一次）</p>
+      <div class="flow">
+        <article class="step">
+          <span class="num c-start">1</span>
+          <h3>你說「用 JIO 每小時接力，總目標：…」</h3>
+          <p>沒給總目標就不能開工。</p>
+        </article>
+        <article class="step">
+          <span class="num c-check">2</span>
+          <h3>改寫雲端硬碟的「JIO 待辦清單」</h3>
+          <p>填總目標、程式碼位置、交付方式；第一棒交給 Rudy；清掉舊紀錄。</p>
+        </article>
+        <article class="step">
+          <span class="num c-test">3</span>
+          <h3>檢查四人有沒有登入、有沒有排程</h3>
+          <p>開 gemini.google.com/u/N/scheduled 查看。沒登入的要你自己登，Claude 不輸入密碼；Tidal 要在家用手機驗證。</p>
+        </article>
+        <article class="step">
+          <span class="num c-dispatch">4</span>
+          <h3>幫缺排程的員工建立每小時排程</h3>
+          <p>開新對話 → 選 Argon → 點「任務」→ 貼通用指令。約 1 小時後回來確認真的有寫入。</p>
+        </article>
+      </div>
 
-        <section class="panel video-flow">
-          <h3>每晚 20:00　影片靈感</h3>
-          <ol>
-            <li>問 vida 當天的影片靈感</li>
-            <li>vida 用 Claude Code 做影片</li>
-            <li>vida 看完成品並同意</li>
-            <li>才上傳到指定 YouTube 頻道<br><span class="lock">沒有同意，不上傳</span></li>
-          </ol>
-        </section>
-      </aside>
-    </div>
+      <p class="phase">階段二　Gemini 員工每小時接力（四人各自的排程，大約每小時 53～58 分跑）</p>
+      <div class="flow">
+        <article class="step">
+          <span class="num c-collect">5</span>
+          <h3>打開「JIO 待辦清單」和交接文件</h3>
+          <p>看【總目標】和【下一棒交接】。</p>
+          <div class="branch">
+            <div class="path path-fail">總目標沒填 → 回報「尚未開工」，結束。</div>
+            <div class="path path-ok">填了 → 再看下一棒是不是自己。</div>
+          </div>
+        </article>
+        <article class="step">
+          <span class="num c-dispatch">6</span>
+          <h3>下一棒是我：全力做這一棒</h3>
+          <p>成果寫進【工作紀錄】，再更新【下一棒交接】：下一位是誰、要做什麼、做到哪、遇到什麼問題、交接時間。</p>
+          <p class="alert">寫「共用」文件要人按允許。後來改成寫自己的文件「JIO 交接-名字」才能自動寫入。</p>
+        </article>
+        <article class="step">
+          <span class="num c-check">7</span>
+          <h3>下一棒不是我：看有沒有超時</h3>
+          <p>技能寫 1 小時，實際設定改成 2 小時。</p>
+          <div class="branch">
+            <div class="path path-note">超過 → 順延接手，註明「某某未接棒，由我順延」，做完照常交棒。</div>
+            <div class="path path-fail">沒超過 → 回報「還沒輪到我」，結束。</div>
+          </div>
+        </article>
+        <article class="step">
+          <span class="num c-ship">8</span>
+          <h3>總目標全部完成了嗎？</h3>
+          <div class="branch">
+            <div class="path path-note">還沒 → 下一小時換下一位：Rudy → Kaz → Idn → Tidal → Rudy …（Tidal 未登入時先跳過）</div>
+            <div class="path path-ok">完成 → 【狀態】改成「已完成，等老闆驗收」。</div>
+          </div>
+        </article>
+      </div>
 
-    <footer>更新於 2026-11-17（台北時間）</footer>
+      <p class="phase">階段三　你／Claude 驗收（約兩天後，或你通知的時候）</p>
+      <div class="flow">
+        <article class="step">
+          <span class="num c-start">9</span>
+          <h3>你說「驗收 JIO 每小時接力的成果」</h3>
+          <p>Claude 讀待辦清單和四份交接文件，實際開遊戲測試（檢查工作也可以先交給 Gemini 做）。沒問題就上傳 GitHub（abulaboy/LJ_go），並問你要不要暫停四人的排程。</p>
+        </article>
+      </div>
+
+      <div class="callout callout-warn">
+        <strong>要先知道的落差</strong>
+        技能內容比實際設定舊：存起來的技能還是寫「寫共用待辦清單、超過 1 小時就順延」。11/2～3 實際改成的「每人寫自己的交接文件、2 小時順延」，還沒寫進技能。照現在的技能開工，會再卡在「要按允許」那一步。<br>
+        階段三從來沒有執行過。<br>
+        不適合做影片和圖：排程跟任務模式都不能生成影片。這類工作請改用即時派工。<br>
+        中間沒有人盯：員工說「做完了」不代表真的做完。11/3 Rudy、Tidal 用掉 95% 額度，卻沒有留下交接。<br>
+        11/2 起 Rudy、Kaz、Tidal 有排程；Idn 當時被驗證擋住，停在測試版。交接文件 11/7 後沒再更新。四位的 Gemini 排程現在是否還在跑、空耗額度，尚未確認。
+      </div>
+    </section>
+
+    <section class="block" id="instant">
+      <h2>② 即時派工　<span class="tag tag-claude">Claude 端</span> <span class="badge s-ok">驗收過</span></h2>
+      <p class="prose">重點：每一步都由 Claude 操作內建瀏覽器，替你一個一個派給員工、讀回結果、驗收。可靠性最高，影片和圖片也能做，代價是 Claude 全程在線、耗額度。需要電腦開著 Claude 桌面 App，而且這個對話已經連到電腦。說出「交給 JIO 公司」「派給員工」「用公司模式」都會載入這個技能。最後一句「看額度／做成工作模式圖」會改用 jio-company-report 技能產圖。</p>
+
+      <h3>你在 Claude 這邊要說的話</h3>
+      <div class="prompts">
+        <article class="prompt">
+          <div class="prompt-head"><span>派工</span><button type="button" class="copy" data-copy="交給 JIO 公司：（要做什麼）＋（交出什麼成品、格式）＋（要注意的限制）。">複製</button></div>
+          <pre>交給 JIO 公司：（要做什麼）＋（交出什麼成品、格式）＋（要注意的限制）。</pre>
+        </article>
+        <article class="prompt">
+          <div class="prompt-head"><span>指定人</span><button type="button" class="copy" data-copy="派給 Idn：用四人定裝照畫一張 JIO 員工在辦公室開會的圖，不要有文字。">複製</button></div>
+          <pre>派給 Idn：用四人定裝照畫一張 JIO 員工在辦公室開會的圖，不要有文字。</pre>
+        </article>
+        <article class="prompt">
+          <div class="prompt-head"><span>查進度</span><button type="button" class="copy" data-copy="JIO 員工剛剛派的工作做完了嗎？只讀結尾和【給老闆的回報】。">複製</button></div>
+          <pre>JIO 員工剛剛派的工作做完了嗎？只讀結尾和【給老闆的回報】。</pre>
+        </article>
+        <article class="prompt">
+          <div class="prompt-head"><span>看額度</span><button type="button" class="copy" data-copy="查 JIO 四位員工的 Gemini 額度，做成工作模式圖。">複製</button></div>
+          <pre>查 JIO 四位員工的 Gemini 額度，做成工作模式圖。</pre>
+        </article>
+      </div>
+
+      <p class="phase">你／Claude 準備</p>
+      <div class="flow">
+        <article class="step">
+          <span class="num c-start">1</span>
+          <h3>你說「交給 JIO 公司：…」</h3>
+          <p>Claude 開內建瀏覽器，只確認要派的那個帳號，不一次查全部帳號（避免被當成機器人）。</p>
+        </article>
+        <article class="step">
+          <span class="num c-check">2</span>
+          <h3>讀這次要派的人的額度</h3>
+          <p>打開 gemini.google.com/u/N/usage；額度最多的人先接，目前時段用了 95% 以上的人先別派。</p>
+        </article>
+      </div>
+
+      <p class="phase">Claude 派工與交件</p>
+      <div class="flow">
+        <article class="step">
+          <span class="num c-dispatch">3</span>
+          <h3>看工作大不大</h3>
+          <div class="branch">
+            <div class="path path-note">大工作 → 先給 Rudy 拆成任務單，分給 Kaz、Idn，避免分工重疊。</div>
+            <div class="path path-ok">小工作／畫圖／影片 → 直接派給額度多的人。畫圖、影片用一般對話，不用任務模式。</div>
+          </div>
+        </article>
+        <article class="step">
+          <span class="num c-dispatch">4</span>
+          <h3>派工：選 Argon → 點「任務」→ 「任務：…」條列需求</h3>
+          <p>多人派工時每位間隔 15～20 秒；結尾要求寫【給老闆的回報】。</p>
+        </article>
+        <article class="step">
+          <span class="num c-fail">5</span>
+          <h3>員工狀況正常嗎？</h3>
+          <p>被 Google 驗證擋住、登入過期、額度滿、或 60 秒沒回：標「請假」換人。備援順序：Kaz → Idn → Tidal → Rudy → 主帳號（只做小修）→ Claude 自己做。驗證、密碼一律等你處理。</p>
+        </article>
+        <article class="step">
+          <span class="num c-collect">6</span>
+          <h3>Claude 設 15～20 分鐘後回來看</h3>
+          <p>不一直輪詢，比較省額度。讀回成果時只讀結尾和【給老闆的回報】；長程式、圖片存成檔案。</p>
+        </article>
+      </div>
+
+      <p class="phase">Tidal／Claude 驗收與回報</p>
+      <div class="flow">
+        <article class="step">
+          <span class="num c-test">7</span>
+          <h3>重要成果先給 Tidal 檢查</h3>
+          <p>找到問題就退回原本的人修。Claude 再實際看成品：開檔、看圖、跑測試；不能只聽員工說做完了。</p>
+        </article>
+        <article class="step">
+          <span class="num c-ship">8</span>
+          <h3>回報給你</h3>
+          <p>老闆一句總結 → 四人各自第一人稱報告 → 每人一行額度（用了幾則、每週剩多少、重設時間）。</p>
+        </article>
+      </div>
+
+      <p class="muted">已實際跑過並驗收的例子：放假問候、YouTube 第一集、漫畫設定、公園影片、幾何海報、中華隊 8 場。成品都經過 Claude 檢查，也抓出過標誌、長相不符等問題。缺點是 Claude 要一直輪詢，額度耗最多，違反「Claude 越省越好」；額度不平均，常常只有 Idn 在做。</p>
+
+      <h3>兩種 Claude 模式怎麼選</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>⑥ 每小時接力</th>
+              <th>② 即時派工</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>誰在推進</td>
+              <td>Gemini 排程自己跑</td>
+              <td>Claude 一步一步派</td>
+            </tr>
+            <tr>
+              <td>Claude 額度</td>
+              <td>少（只做開頭和驗收）</td>
+              <td>多（全程在線）</td>
+            </tr>
+            <tr>
+              <td>電腦要開著</td>
+              <td>只在開工和驗收時</td>
+              <td>全程</td>
+            </tr>
+            <tr>
+              <td>適合</td>
+              <td>修 bug、寫程式、寫劇本、查資料這類長時間工作</td>
+              <td>影片、畫圖、要馬上拿到的成品</td>
+            </tr>
+            <tr>
+              <td>做不到</td>
+              <td>影片生成、剪接</td>
+              <td>剪接（員工沒辦法接影片）</td>
+            </tr>
+            <tr>
+              <td>驗證程度</td>
+              <td>部分執行</td>
+              <td>驗收過</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="block" id="findings">
+      <h2>實測發現</h2>
+      <h3>Claude 端這段期間測出來的限制</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>發現</th>
+              <th>影響</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>同時開多個帳號、快速切換，會被 Google 擋成機器人（google.com/sorry）</td>
+              <td>派工要錯開；被擋的帳號當天停用</td>
+            </tr>
+            <tr>
+              <td>Gemini 排程寫<strong>共用</strong>文件要人按「允許」；寫<strong>自己的</strong>文件可以自動</td>
+              <td>接力改成每人一份交接文件</td>
+            </tr>
+            <tr>
+              <td>Gemini 排程不準點，約在每小時 53～58 分執行，偶爾延遲或漏跑</td>
+              <td>順延時間要抓寬（後來放寬到 2 小時）</td>
+            </tr>
+            <tr>
+              <td>影片只能在一般對話生成，任務模式和排程都不行；約 5 小時只能生成 1～3 支</td>
+              <td>影片沒辦法自動接力，一定要有人（Claude）在線上派</td>
+            </tr>
+            <tr>
+              <td>員工沒辦法把多支影片接成一支</td>
+              <td>剪接只能由 Claude 或你自己做</td>
+            </tr>
+            <tr>
+              <td>員工畫的長相常跑掉、會畫出真實的商標</td>
+              <td>需要附定裝照，最後一定要檢查</td>
+            </tr>
+            <tr>
+              <td>Rudy、Tidal 曾經用掉 95% 額度卻沒有交接</td>
+              <td>不能相信員工說「做完了」，要看實際檔案</td>
+            </tr>
+            <tr>
+              <td>Tidal 要手機驗證才能登入，驗證裝置在家裡</td>
+              <td>在公司時常常只有 3 個人能動</td>
+            </tr>
+            <tr>
+              <td>帳號對應的 /u/N 編號會變</td>
+              <td>每次派工前都要重新確認</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Grok 端另外學到的兩點</h3>
+      <ul class="gaps">
+        <li>
+          <h3>收件排程卡片過期，就會漏收（v149）</h3>
+          <p>11/1 18:02 已把工作派給 Kaz、Idn、Rudy，但例行任務不能自己再建立收件排程；核准卡過期後沒有重試，三個人交的東西一直沒人收。後來把收件和派工併進同一個每日 18:00 排程，就是為了避開這個缺口。</p>
+        </li>
+        <li>
+          <h3>Gemini 員工只能讀程式碼，不能實際開遊戲測試</h3>
+          <p>所以早期 v142 到 v145 多半只做到讀碼或語法檢查，不算真正驗證過。後來改由雲端程式代理在電腦和 iPhone 上實際打開遊戲測試，通過才算完成。v148 就是這樣驗證的。</p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="block" id="next">
+      <h2>建議下一步</h2>
+      <ol class="gaps" style="list-style:none;padding:0">
+        <li>
+          <h3>1. 先查四位的 Gemini「已排定」頁</h3>
+          <p>每小時接力的排程如果還開著，每天都在空耗額度。要嘛暫停，要嘛給一個新目標重新開始。這次整理時沒有連線檢查即時狀態。</p>
+        </li>
+        <li>
+          <h3>2. 定一個主要模式，把兩個 Claude 技能合併</h3>
+          <p>程式、文字類（家裡走走修 bug、劇本、查資料）→ 用每小時接力，Claude 只在開頭設定、最後驗收。這類工作排程本身就做得到。影片、圖片類 → 用即時派工，因為排程生不了影片。分工也統一成一種：建議用「通才＋誰額度多誰先做」，比較符合實際情形。</p>
+        </li>
+        <li>
+          <h3>3. 補一次真正的完整驗證</h3>
+          <p>選一個小目標（例如修 3 個 bug），四人都上線跑 24 小時，最後由 Claude 驗收、上傳 GitHub。跑完這一輪，才能說接力真的可行。</p>
+        </li>
+        <li>
+          <h3>4. 每次接力結束時留一份紀錄</h3>
+          <p>記下日期、誰做了什麼、有沒有驗收，之後才不會又搞不清楚有沒有真的完成。</p>
+        </li>
+        <li>
+          <h3>5. 不要讓兩套系統同時派同一批 Gemini 帳號</h3>
+          <p>Claude 端和 Grok 端如果同時對 Rudy、Kaz、Idn、Tidal 派工，會搶額度，也更容易被 Google 當成機器人擋掉。同一時間只讓一邊派這四個帳號。</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="block" id="video">
+      <h2>影片靈感流程　<span class="tag tag-grok">Grok 端</span></h2>
+      <p class="lead" style="margin-bottom:16px">每天晚上 8 點左右，Ryan 會在對話裡問你當天的影片靈感。這條線和傍晚 6 點的修 bug 排程是分開的。</p>
+      <div class="video-box video-flow">
+        <ol>
+          <li>問 vida 當天的影片靈感</li>
+          <li>vida 用 Claude Code 做影片</li>
+          <li>vida 看完成品並同意</li>
+          <li>才上傳到指定 YouTube 頻道<br><span class="lock">沒有同意，不上傳</span></li>
+        </ol>
+      </div>
+    </section>
+
+    <footer class="site">
+      <p>更新於 2026-11-17（台北時間，UTC+8）。</p>
+      <p>資料來源：Claude 工件「JIO 公司派工模式：演變與驗證狀態」（整理 2026/10/22～11/17 的對話、技能與排程設定；對話包括 10/25 放假問候、10/28 工作分派、11/2 接力流程、11/3 額度與工作、11/6 YouTube 與漫畫、11/7 公園影片、11/9 海報、11/12 中華隊影片，以及排程「家裡走走每晚加強」。四位員工 Gemini 排程的即時狀態那次沒有連線檢查）；Grok 端頁面「JIO 四人派工模式演變與驗證」（v141～v149，整理於 2026-11-17 08:59，來源含 Ryan 記憶與日誌、本機交件檔、雲端代理測試紀錄、jio-team-dispatch 技能）；以及 11/17 改定的每日 18:00 先收件再派工流程、每晚 20:00 問靈感流程。</p>
+      <p>線上站：<a href="https://abulaboy.github.io/LJ_go/">abulaboy.github.io/LJ_go</a>　·　本頁：<a href="https://abulaboy.github.io/LJ_go/jio-flow.html">jio-flow.html</a></p>
+    </footer>
   </div>
+
+  <script>
+    (function () {
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text);
+        }
+        return new Promise(function (resolve, reject) {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand("copy") ? resolve() : reject();
+          } catch (err) {
+            reject(err);
+          } finally {
+            document.body.removeChild(ta);
+          }
+        });
+      }
+      document.querySelectorAll(".copy").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var text = btn.getAttribute("data-copy") || "";
+          copyText(text).then(function () {
+            var old = btn.textContent;
+            btn.classList.add("done");
+            btn.textContent = "已複製";
+            setTimeout(function () {
+              btn.classList.remove("done");
+              btn.textContent = old;
+            }, 1600);
+          }).catch(function () {
+            btn.textContent = "複製失敗";
+          });
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
