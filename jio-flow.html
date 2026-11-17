@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="JIO 每日派工流程：傍晚 6 點先收件、驗證再派工；晚上 8 點問影片靈感。">
+  <title>JIO 每日派工流程</title>
+  <style>
+    :root {
+      --paper: #f3eee4;
+      --ink: #1c1915;
+      --muted: #5c564c;
+      --line: #d8d0c2;
+      --card: #fffaf3;
+      --shadow: 0 1px 2px rgba(28, 25, 21, 0.06), 0 8px 24px rgba(28, 25, 21, 0.06);
+      --start: #3d3a35;
+      --collect: #1d4e89;
+      --check: #8a5a00;
+      --test: #0f4c5c;
+      --ship: #1b6b4a;
+      --dispatch: #5b3a8c;
+      --fail: #9b2c1f;
+      --warn: #8a5a00;
+      --rail: #cfc6b6;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #efe6d4 0%, transparent 60%),
+        var(--paper);
+      color: var(--ink);
+      line-height: 1.65;
+      font-size: 16px;
+    }
+    a { color: var(--collect); }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 18px 64px;
+    }
+    header.hero {
+      margin-bottom: 28px;
+    }
+    .kicker {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      background: #fffaf3;
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: clamp(28px, 5vw, 42px);
+      line-height: 1.2;
+      margin: 0 0 10px;
+      letter-spacing: -0.02em;
+      font-weight: 700;
+    }
+    .lead {
+      margin: 0;
+      max-width: 40em;
+      color: var(--muted);
+      font-size: 17px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+    @media (min-width: 960px) {
+      .layout { grid-template-columns: minmax(0, 1fr) 320px; }
+      .aside { position: sticky; top: 20px; }
+    }
+    .flow {
+      position: relative;
+      padding-left: 8px;
+    }
+    .flow::before {
+      content: "";
+      position: absolute;
+      left: 27px;
+      top: 18px;
+      bottom: 18px;
+      width: 2px;
+      background: var(--rail);
+    }
+    .step {
+      position: relative;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 16px 16px 16px 56px;
+      margin: 0 0 14px;
+    }
+    .step .num {
+      position: absolute;
+      left: 12px;
+      top: 16px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      z-index: 1;
+    }
+    .step h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      line-height: 1.35;
+    }
+    .step p { margin: 0; color: var(--ink); }
+    .step .meta {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      color: #fff;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+    .c-start { background: var(--start); }
+    .c-collect { background: var(--collect); }
+    .c-check { background: var(--check); }
+    .c-test { background: var(--test); }
+    .c-ship { background: var(--ship); }
+    .c-dispatch { background: var(--dispatch); }
+    .c-fail { background: var(--fail); }
+    .accounts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+    .chip strong { display: block; font-size: 14px; }
+    .chip span { color: var(--muted); font-size: 12px; }
+    .branch {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin: 12px 0 0;
+    }
+    @media (min-width: 640px) {
+      .branch { grid-template-columns: 1fr 1fr; }
+    }
+    .path {
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .path-fail {
+      background: #fdeceb;
+      color: #6f1d15;
+      border: 1px solid #f3c5be;
+    }
+    .path-ok {
+      background: #e8f6ef;
+      color: #145338;
+      border: 1px solid #bfe4d0;
+    }
+    .alert {
+      margin-top: 10px;
+      background: #fff4e5;
+      border: 1px solid #efd3a3;
+      color: #6b4500;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    .loop {
+      text-align: center;
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      position: relative;
+      padding: 10px 12px 10px 56px;
+    }
+    .loop span {
+      display: inline-block;
+      border: 1px dashed var(--rail);
+      background: #fffaf3;
+      border-radius: 999px;
+      padding: 6px 14px;
+    }
+    .aside { display: grid; gap: 14px; }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 16px 16px 14px;
+    }
+    .panel h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      letter-spacing: 0.04em;
+    }
+    .roles { list-style: none; margin: 0; padding: 0; }
+    .roles li {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 8px;
+      padding: 8px 0;
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+    }
+    .roles li:first-child { border-top: 0; padding-top: 0; }
+    .roles dt, .roles .who { font-weight: 700; }
+    .rules { margin: 0; padding: 0 0 0 18px; font-size: 14px; }
+    .rules li { margin: 0 0 8px; }
+    .note {
+      background: #f7f1e3;
+      border: 1px solid #ead9b3;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13.5px;
+      color: #4d4333;
+    }
+    .video-flow ol {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: v;
+    }
+    .video-flow li {
+      counter-increment: v;
+      position: relative;
+      padding: 0 0 14px 28px;
+      font-size: 14px;
+    }
+    .video-flow li:last-child { padding-bottom: 0; }
+    .video-flow li::before {
+      content: counter(v);
+      position: absolute;
+      left: 0;
+      top: 1px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--start);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+    }
+    .video-flow li::after {
+      content: "";
+      position: absolute;
+      left: 9px;
+      top: 22px;
+      bottom: 2px;
+      width: 2px;
+      background: var(--rail);
+    }
+    .video-flow li:last-child::after { display: none; }
+    .video-flow .lock {
+      display: inline-block;
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--fail);
+      font-weight: 700;
+    }
+    footer {
+      margin-top: 28px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin: 18px 0 4px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .legend i {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="kicker">排程 6-jio · 台北時間</div>
+      <h1>JIO 每日派工流程</h1>
+      <p class="lead">每天傍晚 6 點，同一個排程先收回上一輪成果、驗證通過再上線，然後才派新的 bug 修正。不再另外建收件排程，避免卡片過期就漏收。</p>
+      <div class="legend" aria-label="圖例">
+        <span><i style="background:var(--collect)"></i>收件</span>
+        <span><i style="background:var(--check)"></i>合併檢查</span>
+        <span><i style="background:var(--test)"></i>實測</span>
+        <span><i style="background:var(--ship)"></i>上線</span>
+        <span><i style="background:var(--dispatch)"></i>派工</span>
+        <span><i style="background:var(--fail)"></i>失敗／立刻停</span>
+      </div>
+    </header>
+
+    <div class="layout">
+      <main>
+        <div class="flow" aria-label="每天傍晚 6 點派工流程">
+          <article class="step">
+            <span class="num c-start">1</span>
+            <h2>每天 18:00 排程啟動</h2>
+            <p>排程 6-jio 在台北時間每天約傍晚 6 點自動開始，一次做完收件與派工。</p>
+          </article>
+
+          <article class="step">
+            <span class="num c-collect">2</span>
+            <h2>步驟一　收件 <span class="badge c-collect">先收再派</span></h2>
+            <p>打開三位員工上一輪的 Gemini 對話，收回修正程式。沒交件的先標記，下一輪重派。</p>
+            <div class="accounts">
+              <div class="chip"><strong>Kaz</strong><span>帳號 /u/0</span></div>
+              <div class="chip"><strong>Idn</strong><span>帳號 /u/1</span></div>
+              <div class="chip"><strong>Rudy</strong><span>帳號 /u/3</span></div>
+            </div>
+          </article>
+
+          <article class="step">
+            <span class="num c-check">3</span>
+            <h2>合併進遊戲主程式，並做語法檢查</h2>
+            <p>把收回的修正合併進主程式，再用 <code>node --check</code> 檢查語法。</p>
+            <div class="branch">
+              <div class="path path-fail">失敗 → 退回該份修正，不進入實測。</div>
+              <div class="path path-ok">通過 → 交給雲端程式代理實測。</div>
+            </div>
+          </article>
+
+          <article class="step">
+            <span class="num c-test">4</span>
+            <h2>雲端程式代理實際開遊戲測試</h2>
+            <p>在電腦和 iPhone 上打開遊戲，實際操作後才算測過。只看過程式碼不算驗證。</p>
+            <div class="branch">
+              <div class="path path-fail">不通過 → 不上線，列為下一輪要修的 bug。</div>
+              <div class="path path-ok">通過 → 進入上線與歸檔。</div>
+            </div>
+          </article>
+
+          <article class="step">
+            <span class="num c-ship">5</span>
+            <h2>通過後上線，標記「已驗證」</h2>
+            <p>推到 GitHub 的 <strong>main</strong> 與 <strong>gh-pages</strong>，網站同步更新；再把新檔上傳到 Drive（另存新檔，不覆蓋舊的）。這一步完成後，這一版才算已驗證。</p>
+          </article>
+
+          <article class="step">
+            <span class="num c-dispatch">6</span>
+            <h2>步驟二　派工</h2>
+            <p>從最新「已驗證」版本切出 bug 修正工作包，只修 bug，每份不超過 150KB。</p>
+          </article>
+
+          <article class="step">
+            <span class="num c-dispatch">7</span>
+            <h2>依序送出，一次一個帳號</h2>
+            <p>一次只登入一個帳號，間隔 2–3 分鐘再送下一份。</p>
+            <div class="alert">遇到驗證碼，或出現 google.com/sorry 頁面：立刻停止，通知 vida，不要重試。</div>
+          </article>
+
+          <article class="step">
+            <span class="num c-dispatch">8</span>
+            <h2>記錄對話網址</h2>
+            <p>把這輪派出去的對話網址記下來，留給明天 18:00 同一個排程收件。</p>
+          </article>
+
+          <article class="step">
+            <span class="num c-start">9</span>
+            <h2>用繁中回報 vida</h2>
+            <p>說明收到什麼、驗證結果、新派了什麼，以及過程中有沒有問題。</p>
+          </article>
+
+          <div class="loop"><span>隔天 18:00 回到步驟 1，先收下這一輪的成果</span></div>
+        </div>
+      </main>
+
+      <aside class="aside">
+        <section class="panel">
+          <h3>角色</h3>
+          <ul class="roles">
+            <li><span class="who">Kaz／Idn／Rudy</span><span>寫修正程式</span></li>
+            <li><span class="who">Tidal</span><span>帳號停用，不重設、不救回</span></li>
+            <li><span class="who">Ryan</span><span>合併成果，並負責派工</span></li>
+            <li><span class="who">雲端代理</span><span>在電腦與 iPhone 實測，通過才上線</span></li>
+          </ul>
+        </section>
+
+        <section class="panel">
+          <h3>規則</h3>
+          <ul class="rules">
+            <li>只修 bug，不加新功能。</li>
+            <li>額度用到 95% 就停止該員工的工作。</li>
+            <li>刪檔、對外發送、花錢、登入之前，都要先問 vida。</li>
+          </ul>
+        </section>
+
+        <section class="panel">
+          <h3>這次改了什麼</h3>
+          <p class="note">舊問題：過去收件靠另建排程，卡片過期就漏收（v149）；現在收件和派工在同一個排程完成。</p>
+        </section>
+
+        <section class="panel video-flow">
+          <h3>每晚 20:00　影片靈感</h3>
+          <ol>
+            <li>問 vida 當天的影片靈感</li>
+            <li>vida 用 Claude Code 做影片</li>
+            <li>vida 看完成品並同意</li>
+            <li>才上傳到指定 YouTube 頻道<br><span class="lock">沒有同意，不上傳</span></li>
+          </ol>
+        </section>
+      </aside>
+    </div>
+
+    <footer>更新於 2026-11-17（台北時間）</footer>
+  </div>
+</body>
+</html>
