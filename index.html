@@ -114631,6 +114631,85 @@ try {
   }
 })();
 
+// ===== 第 159 版：JIO 派工流程告示 =====
+try {
+  var JIO_FLOW_URL_159 = 'jio-flow.html';
+  function openJioFlow159() {
+    window.open(JIO_FLOW_URL_159, '_blank', 'noopener');
+  }
+
+  if (typeof THREE !== 'undefined' && typeof scene !== 'undefined' && scene) {
+    var cv159 = document.createElement('canvas');
+    cv159.width = 512;
+    cv159.height = 280;
+    var g159 = cv159.getContext('2d');
+    g159.fillStyle = '#5c3317';
+    g159.fillRect(0, 0, 512, 280);
+    g159.fillStyle = '#fff8ee';
+    g159.fillRect(18, 18, 476, 244);
+    g159.fillStyle = '#c45c26';
+    g159.fillRect(18, 18, 476, 64);
+    g159.fillStyle = '#fff8ee';
+    g159.font = 'bold 42px "WenQuanYi Micro Hei","Droid Sans Fallback",sans-serif';
+    g159.textAlign = 'center';
+    g159.textBaseline = 'middle';
+    g159.fillText('JIO 派工流程', 256, 50);
+    g159.fillStyle = '#3a2414';
+    g159.font = 'bold 32px "WenQuanYi Micro Hei","Droid Sans Fallback",sans-serif';
+    g159.fillText('點告示，或走近按互動', 256, 150);
+    g159.font = '26px "WenQuanYi Micro Hei","Droid Sans Fallback",sans-serif';
+    g159.fillStyle = '#6b4a2a';
+    g159.fillText('看大家怎麼派工作', 256, 204);
+    var tex159 = new THREE.CanvasTexture(cv159);
+    if (THREE.sRGBEncoding) tex159.encoding = THREE.sRGBEncoding;
+    var board159 = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.05, 0.62),
+      new THREE.MeshBasicMaterial({ map: tex159, toneMapped: false, side: THREE.DoubleSide })
+    );
+    board159.position.set(-4.55, 1.55, 6.45);
+    board159.rotation.y = 0;
+    board159.name = 'jioFlowSign159';
+    scene.add(board159);
+    if (typeof clickables !== 'undefined' && clickables) {
+      clickables.push({ mesh: board159, go: function () { openJioFlow159(); } });
+    }
+    if (typeof things !== 'undefined' && things) {
+      things.push({
+        x: -4.55,
+        z: 6.95,
+        r: 0.9,
+        label: function () { return '看 JIO 派工流程'; },
+        go: function () {
+          openJioFlow159();
+          if (typeof say === 'function') say('派工流程開在新的一頁。');
+        }
+      });
+    }
+  }
+
+  function ensureJioFlowBtn159() {
+    var list = document.getElementById('goList');
+    if (!list || document.getElementById('jio-flow-link')) return;
+    var btn = document.createElement('button');
+    btn.id = 'jio-flow-link';
+    btn.type = 'button';
+    btn.className = 'tbtn pickb';
+    btn.textContent = '📋 派工流程';
+    btn.addEventListener('click', function (ev) {
+      if (ev) { ev.preventDefault(); if (ev.stopPropagation) ev.stopPropagation(); }
+      openJioFlow159();
+    });
+    list.appendChild(btn);
+  }
+  ensureJioFlowBtn159();
+  var goB159 = document.getElementById('goB');
+  if (goB159 && !goB159.__v159Flow) {
+    goB159.__v159Flow = 1;
+    goB159.addEventListener('click', function () { setTimeout(ensureJioFlowBtn159, 0); });
+  }
+} catch (e159) {
+  console.warn('[v159 派工流程]', e159);
+}
 
 })();
 </script>
