@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="整合 Claude 端與 Grok 端的 JIO 公司派工模式：演變、驗證狀態、每日收件派工流程，以及接力／即時派工指令。">
+  <meta name="description" content="整合 Claude 端與 Grok 端的 JIO 公司派工模式：演變、驗證狀態、臨時小任務派工流程，以及接力／即時派工指令。">
   <title>JIO 公司派工模式：演變、驗證與每日流程</title>
   <style>
     :root {
@@ -189,6 +189,7 @@
     .s-wait { background: var(--collect); }
     .s-fail { background: var(--fail); }
     .s-split { background: #5b3a8c; }
+    .s-now { background: #0f4c5c; }
     .callout {
       border-radius: 14px;
       padding: 12px 14px;
@@ -357,7 +358,7 @@
     .roles, .plain { list-style: none; margin: 0; padding: 0; }
     .roles li {
       display: grid;
-      grid-template-columns: 96px 1fr;
+      grid-template-columns: 110px 1fr;
       gap: 8px;
       padding: 8px 0;
       border-top: 1px solid var(--line);
@@ -542,7 +543,7 @@
       <nav aria-label="頁面目錄">
         <a href="#overview">總覽</a>
         <a href="#timeline">時間軸</a>
-        <a href="#daily">每日派工</a>
+        <a href="#daily">臨時派工</a>
         <a href="#relay">接力流程</a>
         <a href="#instant">即時派工</a>
         <a href="#findings">實測發現</a>
@@ -556,7 +557,7 @@
     <header class="hero">
       <div class="kicker">整合頁 · 更新於 2026-11-17（台北時間）</div>
       <h1>JIO 公司派工模式：演變、驗證與每日流程</h1>
-      <p class="lead">把 Claude 端的六種派工紀錄，和 Grok 端 Ryan 的每日修 bug 流程放在同一頁。四位員工 Rudy、Kaz、Idn、Tidal 都是 Gemini 帳號；兩邊可以同時存在，但不要同時派同一批帳號。</p>
+      <p class="lead">把 Claude 端的六種派工紀錄，和 Grok 端 Ryan 的臨時小任務派工流程放在同一頁。四位員工 Rudy、Kaz、Idn、Tidal 都是 Gemini 帳號；兩邊可以同時存在，但不要同時派同一批帳號。</p>
     </header>
 
     <section class="block" id="overview">
@@ -569,8 +570,9 @@
         </article>
         <article class="sys">
           <h3><span class="tag tag-grok">Grok 端</span> Ryan（Grok Bot）派工</h3>
-          <p>從 10/28 起由 Ryan 派《家裡走走》的 bug 修正，對象是 Kaz、Idn、Rudy。Tidal 只在 v142 做過靜態審查，之後帳號登不入就沒再派，規定是不重設、不救回。</p>
+          <p>從 10/28 起由 Ryan 派《家裡走走》的 bug 修正，對象多半是 Kaz、Idn、Rudy。Tidal 只在 v142 做過靜態審查，之後帳號登不入就沒再派，規定仍是不重設、不救回。</p>
           <p>經典四人編制（Rudy 拆工、Kaz 與 Idn 實作、Tidal 驗收）在 Ryan 接手以後，沒有一輪從頭到尾完整跑完並驗證。員工交件且有實測上線的是 <strong>v146、v147（都只完成一部分）</strong>。真正標成已驗證的 <strong>145m、145n、v148</strong> 是雲端程式代理自己修、並在電腦和 iPhone 上測過的。<strong>v149 派出後從未收回。</strong></p>
+          <p>11/17 10:28 改定：Ryan 不再用排程派工，只在 vida 臨時交代時派小任務；四人都是全才，輪流當執行者與驗收者，模型改用 Hydrogen。這套做法尚未實跑。</p>
         </article>
       </div>
 
@@ -586,6 +588,7 @@
         <span><span class="badge s-off">已停用</span></span>
         <span><span class="badge s-none">沒紀錄／沒採用</span></span>
         <span><span class="badge s-wait">已設定、尚未實跑</span></span>
+        <span><span class="badge s-now">目前做法（尚未實跑）</span></span>
       </div>
       <div class="table-wrap">
         <table>
@@ -649,11 +652,18 @@
               <td>Ryan 派工修《家裡走走》。v146／v147 部分完成並實測上線；v148 由雲端代理驗證；v149 從未收件。11/2 起暫停到 11/17。</td>
             </tr>
             <tr>
-              <td>⑧ 新版每日 18:00 先收件再派工</td>
+              <td>⑧ 每日 18:00 收件+派工</td>
               <td><span class="tag tag-grok">Grok</span></td>
-              <td>11/17 起</td>
-              <td><span class="badge s-wait">已設定、尚未實跑</span></td>
-              <td>同一排程先收回上一輪、合併檢查、雲端代理在電腦與 iPhone 實測，通過才上線，然後才派新工作。今晚起才會第一次跑。</td>
+              <td>11/17 上午</td>
+              <td><span class="badge s-off">已停用</span></td>
+              <td>11/17 設定後未實跑即暫停。原設計是同一排程先收件、實測通過才上線，再派新工作。</td>
+            </tr>
+            <tr>
+              <td>⑨ 臨時小任務、四人輪值全才、Hydrogen</td>
+              <td><span class="tag tag-grok">Grok</span></td>
+              <td>11/17 10:28 起</td>
+              <td><span class="badge s-now">目前做法（尚未實跑）</span></td>
+              <td>不排程。只在 vida 臨時交代時派小任務；大任務交給 Claude 那邊。四人輪流當執行者與驗收者，一律 Hydrogen、任務模式。做好後問要不要上傳 JIO Studio，同意才上傳。</td>
             </tr>
           </tbody>
         </table>
@@ -664,7 +674,7 @@
         <li><strong>舊設定（①②）：</strong>固定職位：Rudy 小主管拆單、Kaz／Idn 工程師、Tidal 測試員。</li>
         <li><strong>新設定（⑥，11/2）：</strong>四人都是通才，不分職位，輪流接力。</li>
         <li><strong>Claude 端實際情形：</strong>最近幾次幾乎是「誰有額度誰做」。11/9 的海報四張全是 Idn 畫的，中華隊 8 場是 Idn 做 1～5 場、Rudy 做 6～8 場。</li>
-        <li><strong>Grok 端現行：</strong>只派 Kaz、Idn、Rudy 寫修正；實測改由雲端程式代理做，不再假設 Tidal 能驗收。</li>
+        <li><strong>Grok 端現行（⑨，11/17 10:28）：</strong>不再固定職位。四人都是全才，照 Rudy → Kaz → Idn → Tidal 輪流當執行者與驗收者，同一件工作這兩個角色不能是同一人；請假或額度 ≥95% 就跳過。Tidal 不再是專責驗收，帳號若登不入就跳過，仍不重設、不救回。</li>
       </ul>
       <p class="muted">Claude 的兩個技能現在各寫各的規則，會依觸發詞選其中一個，所以行為不一致。</p>
 
@@ -820,111 +830,123 @@
           <p>11/11 起全體助理共用規定：收到 YouTube 連結，要交 JIO 員工用 Gemini 看畫面分析。11/11～12 Claude 做中華隊 8 番勝負：名稱是「接力」，實際上是 Claude 每 10 分鐘回來看一次再派下一場。第 1～5 場 Idn 做、第 6～8 場 Rudy 做，Tidal 寫字幕。剪接是 Claude 做的，因為員工沒辦法把影片接起來。成片約 1 分 29 秒，但第 2、4 場出現真實聯盟和球隊的標誌，第 6、7 場長相跑掉。</p>
         </article>
         <article class="tl grok">
-          <div class="when">11/17　<span class="tag tag-grok">Grok</span></div>
+          <div class="when">11/17 稍早　<span class="tag tag-grok">Grok</span></div>
           <h3>恢復每日 18:00，並改成先收件再派工；新增 20:00 問靈感</h3>
-          <p>6-jio 恢復，且收件和派工改在同一個排程完成，避免再像 v149 那樣漏收。新增每天 20:00 問當天影片靈感；影片預設由你用 Claude Code 做，上傳 YouTube 前一定先等你點頭。v149 仍不追蹤，下一輪從已上線的 v148 開始。截至本頁整理時，恢復後的第一次 18:00 尚未實跑。</p>
+          <p>6-jio 恢復，且收件和派工改在同一個排程完成，避免再像 v149 那樣漏收。新增每天 20:00 問當天影片靈感；影片預設由你用 Claude Code 做，上傳 YouTube 前一定先等你點頭。v149 仍不追蹤。這一版排程後來在同日上午改定前，一次都還沒跑過。</p>
+        </article>
+        <article class="tl grok">
+          <div class="when">11/17 10:28　<span class="tag tag-grok">Grok</span></div>
+          <h3>暫停 6-jio；改為臨時小任務、四人輪值全才、Hydrogen</h3>
+          <p>Ryan 不再排程派工，每天 18:00 的 6-jio 已暫停。只在 vida 臨時交代時派小任務；大任務由 Claude 那邊分派。員工一律用 Hydrogen 模型、開「任務」模式。四人都是全才，照 Rudy → Kaz → Idn → Tidal 輪流當執行者與驗收者，同一件工作這兩個角色不能是同一人；請假或額度 ≥95% 就跳過。做好後 Ryan 實際看成品、回報 vida，再問要不要上傳 <a href="https://abulaboy.github.io/jio-studio">JIO Studio</a>，同意才上傳。限流不變：一次一個帳號、間隔 2–3 分鐘、遇驗證就停並通知；不重設 Tidal。每晚 20:00 問靈感的排程照常。這套做法尚未實跑。</p>
         </article>
       </div>
     </section>
 
     <section class="block" id="daily">
-      <h2>目前的每日派工流程　<span class="tag tag-grok">Grok 端</span></h2>
-      <p class="lead" style="margin-bottom:16px">每天傍晚 6 點，同一個排程先收回上一輪成果、驗證通過再上線，然後才派新的 bug 修正。不再另外建收件排程，避免卡片過期就漏收。</p>
+      <h2>目前的臨時派工流程　<span class="tag tag-grok">Grok 端</span> <span class="badge s-now">目前做法（尚未實跑）</span></h2>
+      <p class="lead" style="margin-bottom:16px">Ryan 不再用排程派工。只在 vida 臨時交代時派小任務；大任務由 Claude 那邊分派。四人都是全才，輪流當執行者與驗收者。員工一律用 Hydrogen 模型、開「任務」模式。做好後先問 vida 要不要上傳 JIO Studio，同意才上傳。</p>
       <div class="legend" aria-label="圖例">
-        <span><i style="background:var(--collect)"></i>收件</span>
-        <span><i style="background:var(--check)"></i>合併檢查</span>
-        <span><i style="background:var(--test)"></i>實測</span>
-        <span><i style="background:var(--ship)"></i>上線</span>
+        <span><i style="background:var(--start)"></i>交代／確認</span>
         <span><i style="background:var(--dispatch)"></i>派工</span>
+        <span><i style="background:var(--collect)"></i>收件</span>
+        <span><i style="background:var(--check)"></i>驗收</span>
+        <span><i style="background:var(--test)"></i>看成品</span>
+        <span><i style="background:var(--ship)"></i>問過才上傳</span>
         <span><i style="background:var(--fail)"></i>失敗／立刻停</span>
       </div>
       <div class="layout">
         <div>
-          <div class="flow" aria-label="每天傍晚 6 點派工流程">
+          <div class="flow" aria-label="臨時小任務派工流程">
             <article class="step">
               <span class="num c-start">1</span>
-              <h3>每天 18:00 排程啟動</h3>
-              <p>排程 6-jio 在台北時間每天約傍晚 6 點自動開始，一次做完收件與派工。</p>
+              <h3>vida 臨時交代工作</h3>
+              <p>沒有每日排程。只有你開口交代時，Ryan 才開始派工。</p>
             </article>
             <article class="step">
-              <span class="num c-collect">2</span>
-              <h3>步驟一　收件 <span class="badge s-wait">先收再派</span></h3>
-              <p>打開三位員工上一輪的 Gemini 對話，收回修正程式。沒交件的先標記，下一輪重派。</p>
+              <span class="num c-check">2</span>
+              <h3>Ryan 確認是不是小任務</h3>
+              <p>大任務不在這邊拆，直接轉給 Claude 那邊分派。</p>
+              <div class="branch">
+                <div class="path path-note">大任務 → 轉給 Claude 那邊，這邊停止。</div>
+                <div class="path path-ok">小任務 → 繼續派工。</div>
+              </div>
+            </article>
+            <article class="step">
+              <span class="num c-collect">3</span>
+              <h3>查出這輪的執行者與驗收者</h3>
+              <p>四人都是全才，照固定順序輪流擔任；同一件工作，執行者和驗收者不能是同一人。請假或額度用到 95% 以上就跳過，換下一位。</p>
               <div class="accounts">
-                <div class="chip"><strong>Kaz</strong><span>實務上常見 /u/0；編號會變，每次要重認</span></div>
-                <div class="chip"><strong>Idn</strong><span>實務上常見 /u/1</span></div>
-                <div class="chip"><strong>Rudy</strong><span>實務上常見 /u/3</span></div>
+                <div class="chip"><strong>Rudy</strong><span>輪值 1</span></div>
+                <div class="chip"><strong>Kaz</strong><span>輪值 2</span></div>
+                <div class="chip"><strong>Idn</strong><span>輪值 3</span></div>
+                <div class="chip"><strong>Tidal</strong><span>輪值 4；登不入就跳過，不重設</span></div>
               </div>
             </article>
             <article class="step">
-              <span class="num c-check">3</span>
-              <h3>合併進遊戲主程式，並做語法檢查</h3>
-              <p>把收回的修正合併進主程式，再用 <code>node --check</code> 檢查語法。</p>
+              <span class="num c-dispatch">4</span>
+              <h3>派給執行者</h3>
+              <p>一律選 Hydrogen 模型，開「任務」模式送出。任務單最後要求對方寫一段【給老闆的回報】。</p>
+              <div class="alert">一次只登入一個帳號，間隔 2–3 分鐘。遇到驗證碼，或出現 google.com/sorry 頁面：立刻停止，通知 vida，不要重試。</div>
+            </article>
+            <article class="step">
+              <span class="num c-collect">5</span>
+              <h3>收回執行者的成果</h3>
+              <p>打開這輪的 Gemini 對話，收下修正或成品。沒交件就先標記，視情況改派或等你指示。</p>
+            </article>
+            <article class="step">
+              <span class="num c-check">6</span>
+              <h3>交給這輪的驗收者檢查</h3>
+              <p>驗收者是輪值表上的另一個人，不能跟執行者重複。</p>
               <div class="branch">
-                <div class="path path-fail">失敗 → 退回該份修正，不進入實測。</div>
-                <div class="path path-ok">通過 → 交給雲端程式代理實測。</div>
+                <div class="path path-fail">有問題 → 退回執行者修改，再收件、再驗。</div>
+                <div class="path path-ok">通過 → 交給 Ryan 實際看成品。</div>
               </div>
             </article>
             <article class="step">
-              <span class="num c-test">4</span>
-              <h3>雲端程式代理實際開遊戲測試</h3>
-              <p>在電腦和 iPhone 上打開遊戲，實際操作後才算測過。只看過程式碼不算驗證。</p>
+              <span class="num c-test">7</span>
+              <h3>Ryan 實際看成品</h3>
+              <p>不能只聽員工或驗收者說做完了。該打開的成品要實際看過，有問題就退回再修。</p>
+            </article>
+            <article class="step">
+              <span class="num c-start">8</span>
+              <h3>回報 vida</h3>
+              <p>用繁中說明做了什麼、驗收結果，以及過程中有沒有問題。</p>
+            </article>
+            <article class="step">
+              <span class="num c-ship">9</span>
+              <h3>問要不要上傳 JIO Studio</h3>
+              <p>先問你要不要把成品上傳到 <a href="https://abulaboy.github.io/jio-studio">abulaboy.github.io/jio-studio</a>。你說好才上傳。</p>
               <div class="branch">
-                <div class="path path-fail">不通過 → 不上線，列為下一輪要修的 bug。</div>
-                <div class="path path-ok">通過 → 進入上線與歸檔。</div>
+                <div class="path path-note">沒同意 → 不上傳。</div>
+                <div class="path path-ok">同意 → 才上傳到 JIO Studio。</div>
               </div>
             </article>
-            <article class="step">
-              <span class="num c-ship">5</span>
-              <h3>通過後上線，標記「已驗證」</h3>
-              <p>推到 GitHub 的 <strong>main</strong> 與 <strong>gh-pages</strong>，網站同步更新；再把新檔上傳到 Drive（另存新檔，不覆蓋舊的）。這一步完成後，這一版才算已驗證。</p>
-            </article>
-            <article class="step">
-              <span class="num c-dispatch">6</span>
-              <h3>步驟二　派工</h3>
-              <p>從最新「已驗證」版本切出 bug 修正工作包，只修 bug，每份不超過 150KB。v149 不再追蹤，下一輪從已上線的 v148 開始。</p>
-            </article>
-            <article class="step">
-              <span class="num c-dispatch">7</span>
-              <h3>依序送出，一次一個帳號</h3>
-              <p>一次只登入一個帳號，間隔 2–3 分鐘再送下一份。模型選 Argon，用任務模式送出。</p>
-              <div class="alert">遇到驗證碼，或出現 google.com/sorry 頁面：立刻停止，通知 vida，不要重試。</div>
-            </article>
-            <article class="step">
-              <span class="num c-dispatch">8</span>
-              <h3>記錄對話網址</h3>
-              <p>把這輪派出去的對話網址記下來，留給明天 18:00 同一個排程收件。</p>
-            </article>
-            <article class="step">
-              <span class="num c-start">9</span>
-              <h3>用繁中回報 vida</h3>
-              <p>說明收到什麼、驗證結果、新派了什麼，以及過程中有沒有問題。</p>
-            </article>
-            <div class="loop"><span>隔天 18:00 回到步驟 1，先收下這一輪的成果</span></div>
+            <div class="loop"><span>沒有每日排程。等下一次 vida 臨時交代，再從步驟 1 開始</span></div>
           </div>
         </div>
         <aside class="aside">
           <section class="panel">
             <h3>角色</h3>
             <ul class="roles">
-              <li><span class="who">Kaz／Idn／Rudy</span><span>寫修正程式</span></li>
-              <li><span class="who">Tidal</span><span>帳號停用，不重設、不救回</span></li>
-              <li><span class="who">Ryan</span><span>合併成果，並負責派工</span></li>
-              <li><span class="who">雲端代理</span><span>在電腦與 iPhone 實測，通過才上線</span></li>
+              <li><span class="who">四人全員</span><span>都是全才，輪流當執行者與驗收者；同一件工作這兩個角色不能是同一人</span></li>
+              <li><span class="who">輪值順序</span><span>Rudy → Kaz → Idn → Tidal；請假或額度 ≥95% 就跳過</span></li>
+              <li><span class="who">Ryan</span><span>確認是小任務、派工、實際看成品、回報後再問要不要上傳</span></li>
+              <li><span class="who">vida</span><span>臨時交代工作；決定要不要上傳 JIO Studio</span></li>
             </ul>
           </section>
           <section class="panel">
             <h3>規則</h3>
             <ul class="rules">
-              <li>只修 bug，不加新功能、新物件、新房間。</li>
-              <li>額度用到 95% 就停止該員工的工作。</li>
-              <li>刪檔、對外發送、花錢、登入之前，都要先問 vida。</li>
-              <li>每版以新檔上傳 Drive 資料夾，舊檔由你自刪；同時推 GitHub main 與 gh-pages。</li>
+              <li>不列入排程。只在 vida 臨時交代時派小任務；大任務交給 Claude 那邊。</li>
+              <li>一律用 Hydrogen 模型、開「任務」模式；任務單結尾要寫【給老闆的回報】。</li>
+              <li>一次只開一個帳號，間隔 2–3 分鐘；遇到驗證就停下來通知 vida，不要重試。</li>
+              <li>不重設、不救回 Tidal 的帳號；登不入或額度滿就跳過。</li>
+              <li>做好後先問要不要上傳 JIO Studio，同意才上傳。</li>
             </ul>
           </section>
           <section class="panel">
             <h3>這次改了什麼</h3>
-            <p class="note">舊問題：過去收件靠另建排程，卡片過期就漏收（v149）；現在收件和派工在同一個排程完成。</p>
+            <p class="note">11/17 10:28 暫停每天 18:00 的 6-jio 排程（設定後還沒跑過就停了）。改成臨時小任務、四人輪值全才、Hydrogen。Tidal 不再是專責驗收，和另外三人一樣輪值。上傳改問 JIO Studio，你點頭才傳。</p>
           </section>
         </aside>
       </div>
@@ -1216,7 +1238,7 @@
       <ul class="gaps">
         <li>
           <h3>收件排程卡片過期，就會漏收（v149）</h3>
-          <p>11/1 18:02 已把工作派給 Kaz、Idn、Rudy，但例行任務不能自己再建立收件排程；核准卡過期後沒有重試，三個人交的東西一直沒人收。後來把收件和派工併進同一個每日 18:00 排程，就是為了避開這個缺口。</p>
+          <p>11/1 18:02 已把工作派給 Kaz、Idn、Rudy，但例行任務不能自己再建立收件排程；核准卡過期後沒有重試，三個人交的東西一直沒人收。後來一度把收件和派工併進同一個每日 18:00 排程（⑧），想避開這個缺口，但 11/17 設定後尚未實跑就已暫停。現在改成臨時交代才派工，收件也在同一輪流程裡完成。</p>
         </li>
         <li>
           <h3>Gemini 員工只能讀程式碼，不能實際開遊戲測試</h3>
@@ -1253,7 +1275,7 @@
 
     <section class="block" id="video">
       <h2>影片靈感流程　<span class="tag tag-grok">Grok 端</span></h2>
-      <p class="lead" style="margin-bottom:16px">每天晚上 8 點左右，Ryan 會在對話裡問你當天的影片靈感。這條線和傍晚 6 點的修 bug 排程是分開的。</p>
+      <p class="lead" style="margin-bottom:16px">每天晚上 8 點左右，Ryan 會在對話裡問你當天的影片靈感。這條排程仍照常進行，和臨時修 bug 派工是分開的。</p>
       <div class="video-box video-flow">
         <ol>
           <li>問 vida 當天的影片靈感</li>
@@ -1266,7 +1288,7 @@
 
     <footer class="site">
       <p>更新於 2026-11-17（台北時間，UTC+8）。</p>
-      <p>資料來源：Claude 工件「JIO 公司派工模式：演變與驗證狀態」（整理 2026/10/22～11/17 的對話、技能與排程設定；對話包括 10/25 放假問候、10/28 工作分派、11/2 接力流程、11/3 額度與工作、11/6 YouTube 與漫畫、11/7 公園影片、11/9 海報、11/12 中華隊影片，以及排程「家裡走走每晚加強」。四位員工 Gemini 排程的即時狀態那次沒有連線檢查）；Grok 端頁面「JIO 四人派工模式演變與驗證」（v141～v149，整理於 2026-11-17 08:59，來源含 Ryan 記憶與日誌、本機交件檔、雲端代理測試紀錄、jio-team-dispatch 技能）；以及 11/17 改定的每日 18:00 先收件再派工流程、每晚 20:00 問靈感流程。</p>
+      <p>資料來源：Claude 工件「JIO 公司派工模式：演變與驗證狀態」（整理 2026/10/22～11/17 的對話、技能與排程設定；對話包括 10/25 放假問候、10/28 工作分派、11/2 接力流程、11/3 額度與工作、11/6 YouTube 與漫畫、11/7 公園影片、11/9 海報、11/12 中華隊影片，以及排程「家裡走走每晚加強」。四位員工 Gemini 排程的即時狀態那次沒有連線檢查）；Grok 端頁面「JIO 四人派工模式演變與驗證」（v141～v149，整理於 2026-11-17 08:59，來源含 Ryan 記憶與日誌、本機交件檔、雲端代理測試紀錄、jio-team-dispatch 技能）；以及 11/17 上午一度改定的每日 18:00 先收件再派工流程（設定後未實跑即暫停）、11/17 10:28 改定的臨時小任務／四人輪值全才／Hydrogen 流程，與每晚 20:00 問靈感流程。</p>
       <p>線上站：<a href="https://abulaboy.github.io/LJ_go/">abulaboy.github.io/LJ_go</a>　·　本頁：<a href="https://abulaboy.github.io/LJ_go/jio-flow.html">jio-flow.html</a></p>
     </footer>
   </div>
